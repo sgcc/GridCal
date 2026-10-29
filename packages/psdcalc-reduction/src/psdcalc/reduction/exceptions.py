@@ -23,3 +23,11 @@ class ConfigSemanticError(ReductionError):
 
 class ArtifactError(ReductionError):
     """An artifact path or persistent write is invalid."""
+
+
+class IdentityError(ReductionError):
+    """A stable identity or sidecar binding is invalid."""
+
+
+class SignatureError(ReductionError):
+    """A grid signature cannot be computed from the supplied input."""
