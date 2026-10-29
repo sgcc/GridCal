@@ -322,9 +322,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             export_schema(args.path)
             print(args.path)
         elif args.command == "report":
-            manifest = Path(args.run_dir) / "run_manifest.json"
-            print(json.dumps(json.loads(manifest.read_text(encoding="utf-8")),
-                             ensure_ascii=False, indent=2))
+            run_dir = Path(args.run_dir)
+            manifest = json.loads((run_dir / "run_manifest.json").read_text(
+                encoding="utf-8"
+            ))
+            payload: dict[str, object] = {"manifest": manifest}
+            for name in ("structural", "topology_structural", "failure"):
+                path = run_dir / "validation" / f"{name}.json"
+                if path.exists():
+                    payload[name] = json.loads(path.read_text(encoding="utf-8"))
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
         else:
             config_path = Path(args.config).resolve()
             if args.command == "build":

@@ -48,7 +48,9 @@ def test_build_persists_structural_evidence(tmp_path: Path, capsys) -> None:
     assert "pypsa" in manifest["software_versions"]
     assert (tmp_path / "runs/case/maps/branch_map.parquet").exists()
     assert main(["report", str(tmp_path / "runs/case")]) == 0
-    assert "STRUCTURALLY_VALID" in capsys.readouterr().out
+    report_output = capsys.readouterr().out
+    assert "STRUCTURALLY_VALID" in report_output
+    assert "injection_conservation" in report_output
 
 
 def test_topology_build_preserves_transformer_interface(tmp_path: Path) -> None:
