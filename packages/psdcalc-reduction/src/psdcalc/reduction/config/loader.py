@@ -77,7 +77,7 @@ def _gate_features(config: ReductionConfig) -> None:
         raise UnsupportedFeatureError("external plugins are not implemented")
     if config.partition is not None and config.partition.target.type == "from_hierarchy_level":
         raise UnsupportedFeatureError("hierarchy target is not implemented")
-    if any(b.enabled and b.type not in {"geographic_xy", "load_generation"}
+    if any(b.enabled and b.type not in {"geographic_xy", "load_generation", "renewable_time"}
            for b in config.features.builders):
         raise UnsupportedFeatureError("requested feature builder is not implemented")
     if any(getattr(config.cost_accounting, name) for name in (
@@ -95,13 +95,14 @@ def _check_semantics(config: ReductionConfig) -> None:
     if config.pipeline.materialization_family == "simplification":
         if len(enabled) != 1 or enabled[0].type != "voltage_aware_topology":
             raise ConfigSemanticError("simplification pipeline requires one voltage_aware_topology operation")
-    elif enabled:
-        raise ConfigSemanticError("enabled topology simplification requires simplification pipeline")
     if config.pipeline.materialization_family == "simplification":
         return
     if config.partition is None:
         raise ConfigSemanticError("partition is required for aggregation")
     target = config.partition.target
+    if (config.partition.planner != "custom_busmap" and
+            not any(op.type == "voltage_aware_topology" for op in enabled)):
+        raise ConfigSemanticError("energy planners require preceding voltage_aware_topology")
     if config.partition.planner == "custom_busmap":
         if not config.partition.custom_busmap.path:
             raise ConfigSemanticError("custom_busmap.path is required for custom_busmap planner")

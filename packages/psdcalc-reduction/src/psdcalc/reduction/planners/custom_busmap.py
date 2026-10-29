@@ -68,9 +68,23 @@ class CustomBusmapPlanner:
         connectivity_policy: Literal["reject", "split_disconnected"] = "reject",
     ) -> PartitionPlan:
         """Return a deterministic partition or raise PartitionError."""
+        return self.plan_mapping(
+            network, sidecar, _read_map(path), protection,
+            connectivity_policy=connectivity_policy,
+        )
+
+    def plan_mapping(
+        self,
+        network: pypsa.Network,
+        sidecar: IdentitySidecar,
+        mapping: dict[StableId, StableId],
+        protection: ProtectionSet,
+        *,
+        connectivity_policy: Literal["reject", "split_disconnected"] = "reject",
+    ) -> PartitionPlan:
+        """Validate any source-ID mapping with the same hard topology rules."""
         if connectivity_policy not in {"reject", "split_disconnected"}:
             raise PartitionError(f"Unknown connectivity policy: {connectivity_policy}")
-        mapping = _read_map(path)
         expected = {sidecar.source_id("Bus", str(name)) for name in network.buses.index}
         if set(mapping) != expected:
             missing = len(expected - set(mapping))

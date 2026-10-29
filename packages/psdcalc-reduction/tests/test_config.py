@@ -26,6 +26,10 @@ def minimal_config() -> dict:
                  "final_authority": "full_grid_independent_pf"},
         "partition": {"planner": "pypsa_kmeans", "target": {"n_clusters": 2},
                       "connectivity_policy": "reject"},
+        "simplification": {"operations": [
+            {"id": "selective", "type": "voltage_aware_topology", "enabled": True,
+             "mode": "keep_transformer_interface"}
+        ]},
         "aggregation": {"backend": "pypsa"},
     }
 
@@ -59,6 +63,8 @@ def test_disabled_future_fields_parse_but_enabled_future_feature_fails() -> None
 
 def test_disabled_voltage_aware_transform_parses_but_enabled_one_fails() -> None:
     data = minimal_config()
+    data["partition"]["planner"] = "custom_busmap"
+    data["partition"]["custom_busmap"] = {"path": "map.csv"}
     data["simplification"] = {"operations": [
         {"id": "selective", "type": "voltage_aware_topology", "enabled": False,
          "mode": "keep_transformer_interface"}
@@ -66,8 +72,7 @@ def test_disabled_voltage_aware_transform_parses_but_enabled_one_fails() -> None
     assert not load_config(data).simplification.operations[0].enabled
 
     data["simplification"]["operations"][0]["enabled"] = True
-    with pytest.raises(ConfigSemanticError, match="simplification pipeline"):
-        load_config(data)
+    assert load_config(data).simplification.operations[0].enabled
 
     data["pipeline"] = {"materialization_family": "simplification"}
     assert load_config(data).simplification.operations[0].enabled

@@ -117,7 +117,7 @@ class FeatureBuilder(StrictModel):
 
     type: Literal["geographic_xy", "load_generation", "renewable_profile", "renewable_time", "electrical_distance", "qv_sensitivity"]
     enabled: bool = True
-    weight: float | None = None
+    weight: float | None = Field(default=None, ge=0)
 
 
 class FeaturesConfig(StrictModel):

@@ -55,3 +55,7 @@ class MaterializationError(ReductionError):
 
 class MappingError(ReductionError):
     """A source object cannot be traced to a valid quotient target."""
+
+
+class FeatureError(ReductionError):
+    """An energy feature cannot be constructed from declared source data."""

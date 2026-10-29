@@ -2,7 +2,9 @@
 
 import argparse
 from collections.abc import Sequence
+from dataclasses import replace
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -15,10 +17,14 @@ from psdcalc.reduction.core.records import ReductionRecord
 from psdcalc.reduction.core.signatures import hash_file
 from psdcalc.reduction.exceptions import ReductionError, UnsupportedFeatureError
 from psdcalc.reduction.mapping.bundle import MappingBundle
+from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.materializers.quotient import QuotientMaterializer
 from psdcalc.reduction.planners.custom_busmap import CustomBusmapPlanner
-from psdcalc.reduction.protection.engine import ProtectionEngine
-from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
+from psdcalc.reduction.planners.energy import EnergyPartitionPlanner
+from psdcalc.reduction.protection.engine import ProtectionEngine, ProtectionSet
+from psdcalc.reduction.topology.simplifier import (
+    TopologySimplificationResult, VoltageAwareTopologySimplifier,
+)
 from psdcalc.reduction.validation.structural import StructuralValidator
 
 
@@ -42,13 +48,23 @@ def _context(config: ReductionConfig, config_path: Path) -> tuple[object, object
 
 
 def _plan(config: ReductionConfig, config_path: Path,
-          network: object, sidecar: object, protection: object) -> object:
+          network: object, sidecar: object, protection: ProtectionSet,
+          *, ring_edges: frozenset[str] = frozenset()) -> object:
     """Plan a source-ID custom partition using its declared connectivity policy."""
     if config.partition is None:
         raise UnsupportedFeatureError("Partition is unavailable for this pipeline")
     if config.partition.planner != "custom_busmap":
-        raise UnsupportedFeatureError(
-            f"Planner {config.partition.planner} awaits the energy-planner stage"
+        target = config.partition.target
+        count = (target.n_clusters if target.type == "count" else
+                 math.ceil(len(network.buses) * (target.ratio or 0.0)))
+        if count is None:
+            raise UnsupportedFeatureError("Energy planner requires a count or ratio target")
+        return EnergyPartitionPlanner().plan(
+            network, sidecar, protection, planner=config.partition.planner,
+            n_clusters=count, seed=config.run.seed,
+            builders=config.features.builders, options=config.partition.options,
+            connectivity_policy=config.partition.connectivity_policy,
+            ring_edges=tuple(sorted(ring_edges)),
         )
     path = Path(config.partition.custom_busmap.path or "")
     if not path.is_absolute():
@@ -59,15 +75,30 @@ def _plan(config: ReductionConfig, config_path: Path,
     )
 
 
-def _build_topology(store: ArtifactStore, config: ReductionConfig,
-                    network: object, sidecar: object, protection: object) -> None:
-    """Persist selective topology simplification and all required evidence."""
-    adapter = PypsaAdapter()
-    result = VoltageAwareTopologySimplifier().simplify(
-        network, sidecar, protection, mode="keep_transformer_interface"
+def _protect_ring(protection: ProtectionSet, sidecar: object,
+                  network: object, cycle_edges: frozenset[str]) -> ProtectionSet:
+    """Keep every retained cycle edge and its terminal buses distinct."""
+    ring_buses = set()
+    ring_lines = set()
+    for name in cycle_edges:
+        row = network.lines.loc[name]
+        ring_lines.add(sidecar.source_id("Line", name))
+        ring_buses.add(sidecar.source_id("Bus", str(row.bus0)))
+        ring_buses.add(sidecar.source_id("Bus", str(row.bus1)))
+    return replace(
+        protection,
+        singleton_buses=frozenset(set(protection.singleton_buses) | ring_buses),
+        preserved_components=frozenset(set(protection.preserved_components) | ring_lines),
     )
-    for name, path in result.mappings.save_parquet(store.path("maps")).items():
-        store.record_artifact(name, str(path.relative_to(store.run_dir)))
+
+
+def _save_topology(store: ArtifactStore,
+                   result: TopologySimplificationResult) -> None:
+    """Persist one topology stage's source-ID maps and gate evidence."""
+    adapter = PypsaAdapter()
+    topology_maps = store.path("maps/topology")
+    for name, path in result.mappings.save_parquet(topology_maps).items():
+        store.record_artifact(f"topology_{name}", str(path.relative_to(store.run_dir)))
     evidence = {
         "voltage_layer_map": result.voltage_layer_map,
         "topology_roles": result.topology_roles,
@@ -78,8 +109,8 @@ def _build_topology(store: ArtifactStore, config: ReductionConfig,
     for name, value in evidence.items():
         store.write_json(f"validation/{name}.json", value)
         store.record_artifact(name, f"validation/{name}.json")
-    store.write_json("validation/structural.json", result.structural.to_dict())
-    store.record_artifact("structural", "validation/structural.json")
+    store.write_json("validation/topology_structural.json", result.structural.to_dict())
+    store.record_artifact("topology_structural", "validation/topology_structural.json")
     for record in result.records:
         relative = f"records/{record.operation_id}.json"
         store.write_json(relative, record.model_dump(mode="json"))
@@ -87,6 +118,17 @@ def _build_topology(store: ArtifactStore, config: ReductionConfig,
     target = store.path("levels/L1.nc")
     adapter.export(result.network, target, "netcdf")
     store.record_artifact("simplified_network", "levels/L1.nc")
+
+
+def _build_topology(store: ArtifactStore, config: ReductionConfig,
+                    network: object, sidecar: object, protection: object) -> None:
+    """Build and persist a standalone selective topology simplification."""
+    result = VoltageAwareTopologySimplifier().simplify(
+        network, sidecar, protection, mode="keep_transformer_interface"
+    )
+    _save_topology(store, result)
+    store.write_json("validation/structural.json", result.structural.to_dict())
+    store.record_artifact("structural", "validation/structural.json")
     store.set_structural_result(
         result.structural.status == "STRUCTURALLY_VALID",
         "STRUCTURALLY_SIMPLIFIED" if result.structural.status == "STRUCTURALLY_VALID"
@@ -112,7 +154,30 @@ def _build(config: ReductionConfig, config_path: Path) -> Path:
         if config.pipeline.materialization_family == "simplification":
             _build_topology(store, config, network, sidecar, protection)
             return store.run_dir
-        plan = _plan(config, config_path, network, sidecar, protection)
+        enabled_topology = any(op.enabled and op.type == "voltage_aware_topology"
+                               for op in config.simplification.operations)
+        topology = None
+        working = network
+        working_sidecar = sidecar
+        working_protection = protection
+        if enabled_topology:
+            topology = VoltageAwareTopologySimplifier().simplify(
+                network, sidecar, protection, mode="keep_transformer_interface"
+            )
+            _save_topology(store, topology)
+            if topology.structural.status != "STRUCTURALLY_VALID":
+                store.set_structural_result(False)
+                return store.run_dir
+            working = topology.network
+            working_sidecar = adapter.identity_sidecar(
+                working, config.input.source_namespace
+            )
+            working_protection = _protect_ring(
+                protection, working_sidecar, working, topology.cycle_edges
+            )
+        plan = _plan(config, config_path, working, working_sidecar,
+                     working_protection,
+                     ring_edges=topology.cycle_edges if topology else frozenset())
         store.write_json("input/plan.json", {
             "requested_cluster_count": plan.requested_cluster_count,
             "actual_cluster_count": plan.actual_cluster_count,
@@ -121,27 +186,48 @@ def _build(config: ReductionConfig, config_path: Path) -> Path:
         })
         store.record_artifact("plan", "input/plan.json")
         quotient = QuotientMaterializer().materialize(
-            network, sidecar, plan, config.aggregation, protection
+            working, working_sidecar, plan, config.aggregation, working_protection
         )
-        mapping = MappingBundle.from_quotient(
-            network, sidecar, plan, quotient, operation_id="cluster-1"
+        stage_mapping = MappingBundle.from_quotient(
+            working, working_sidecar, plan, quotient, operation_id="cluster-1"
         )
+        mapping = (MappingBundle(
+            compose_maps(topology.mappings.bus_map, stage_mapping.bus_map),
+            compose_maps(topology.mappings.branch_map, stage_mapping.branch_map),
+            compose_maps(topology.mappings.device_map, stage_mapping.device_map),
+            compose_maps(topology.mappings.control_map, stage_mapping.control_map),
+        ) if topology else stage_mapping)
         for name, path in mapping.save_parquet(store.path("maps")).items():
             store.record_artifact(name, str(path.relative_to(store.run_dir)))
-        target = store.path("levels/L1.nc")
+        target_relative = "levels/L2.nc" if topology else "levels/L1.nc"
+        target = store.path(target_relative)
         adapter.export(quotient.network, target, "netcdf")
-        store.record_artifact("quotient", "levels/L1.nc")
+        store.record_artifact("quotient", target_relative)
         evidence = StructuralValidator().validate(
             network, quotient.network, sidecar, mapping, protection,
             original_topology_signature=source_signature,
             original_snapshot=original_snapshot,
         )
+        if topology:
+            ring_sources = {sidecar.source_id("Line", name)
+                            for name in topology.cycle_edges}
+            ring_rows = [row for row in mapping.branch_map
+                         if row.source_id in ring_sources]
+            ring_valid = (len(ring_rows) == len(ring_sources) and
+                          all(row.target_id is not None for row in ring_rows) and
+                          len({row.target_id for row in ring_rows}) == len(ring_rows))
+            checks = {**evidence.checks, "cycle_skeleton": ring_valid}
+            evidence = type(evidence)(
+                "STRUCTURALLY_VALID" if all(checks.values()) else "STRUCTURALLY_INVALID",
+                checks, evidence.details,
+            )
         store.write_json("validation/structural.json", evidence.to_dict())
         store.record_artifact("structural", "validation/structural.json")
         record = ReductionRecord(
             operation_id="cluster-1", operation_type="aggregation",
-            parent_grid_hash=input_hash, child_grid_hash=hash_file(target),
-            input_signature=source_signature,
+            parent_grid_hash=(hash_file(store.path("levels/L1.nc")) if topology
+                              else input_hash), child_grid_hash=hash_file(target),
+            input_signature=adapter.topology_signature(working, working_sidecar),
             output_signature=adapter.topology_signature(
                 quotient.network,
                 adapter.identity_sidecar(quotient.network, config.input.source_namespace),
@@ -194,7 +280,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 }, sort_keys=True))
             elif args.command == "plan":
                 network, sidecar, protection = _context(config, config_path)
-                plan = _plan(config, config_path, network, sidecar, protection)
+                ring_edges = frozenset()
+                if any(op.enabled and op.type == "voltage_aware_topology"
+                       for op in config.simplification.operations):
+                    topology = VoltageAwareTopologySimplifier().simplify(
+                        network, sidecar, protection
+                    )
+                    network = topology.network
+                    sidecar = PypsaAdapter().identity_sidecar(
+                        network, config.input.source_namespace
+                    )
+                    protection = _protect_ring(
+                        protection, sidecar, network, topology.cycle_edges
+                    )
+                    ring_edges = topology.cycle_edges
+                plan = _plan(config, config_path, network, sidecar, protection,
+                             ring_edges=ring_edges)
                 print(json.dumps({"requested_cluster_count": plan.requested_cluster_count,
                                   "actual_cluster_count": plan.actual_cluster_count},
                                  sort_keys=True))

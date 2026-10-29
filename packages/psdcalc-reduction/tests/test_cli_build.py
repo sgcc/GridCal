@@ -80,3 +80,40 @@ def test_topology_build_preserves_transformer_interface(tmp_path: Path) -> None:
     restored = pypsa.Network(run / "levels/L1.nc")
     assert set(restored.transformers.index) == {"t"}
     assert set(restored.buses.index) == {"a", "lv"}
+
+
+def test_energy_build_runs_after_topology_stage(tmp_path: Path) -> None:
+    network = pypsa.Network()
+    for index in range(4):
+        network.add("Bus", f"b{index}", v_nom=110, x=float(index), y=0,
+                    country="west" if index < 2 else "east")
+        if index:
+            network.add("Line", f"l{index}", bus0=f"b{index-1}",
+                        bus1=f"b{index}", r=0.01, x=0.1, s_nom=100)
+    network.add("Load", "demand", bus="b0", p_set=5)
+    network.export_to_netcdf(tmp_path / "input.nc")
+    config = {
+        "schema_version": "0.1.0",
+        "run": {"id": "energy", "seed": 17, "output_dir": "runs"},
+        "input": {"backend": "pypsa", "path": "input.nc", "format": "netcdf",
+                  "source_namespace": "n"},
+        "task": {"type": "planning", "profile": "planning_aggregation",
+                 "reduction_role": "candidate", "final_authority": "original"},
+        "simplification": {"operations": [
+            {"id": "t", "type": "voltage_aware_topology", "enabled": True,
+             "mode": "keep_transformer_interface"}]},
+        "features": {"builders": [{"type": "load_generation"}]},
+        "partition": {"planner": "pypsa_kmeans", "target": {"n_clusters": 2},
+                      "connectivity_policy": "split_disconnected"},
+        "aggregation": {"backend": "pypsa", "aggregate_one_ports": ["Load"]},
+    }
+    path = tmp_path / "energy.yaml"
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["build", str(path)]) == 0
+    run = tmp_path / "runs/energy"
+    manifest = json.loads((run / "run_manifest.json").read_text())
+    assert manifest["status"] == "STRUCTURALLY_VALID"
+    assert (run / "levels/L1.nc").exists()
+    assert (run / "levels/L2.nc").exists()
+    assert (run / "maps/bus_map.parquet").exists()
