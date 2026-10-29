@@ -2,7 +2,7 @@
 
 _Design for Phase 1.5 follow-up; proposed for review, 2026-10-30._
 
-Status: proposed for review, with required clarifications incorporated.
+Status: proposed for review.
 This is an **opt-in enhancement** of
 [ADR-008](008-multi-voltage-quotient.md), not a replacement for its default
 quotient contract. It authorizes no implementation until reviewed and does
@@ -53,22 +53,27 @@ not create an AC Line corridor. L+ is never a corridor member.
 | Term | Contract |
 |---|---|
 | `parallel_corridor` | A same-layer endpoint pair with at least two distinct source Line StableIds, irrespective of active state. A source card or name resemblance alone does not establish membership. |
-| `member` | One source Line StableId, original ordered terminals, circuit ID if supplied by an authoritative source ledger, and its complete Line attributes. Count distinct Line StableIds, not `num_parallel`. Duplicate StableIds or duplicate raw source-card identities fail preflight. |
+| `member` | One source Line StableId, original ordered terminals, circuit provenance governed by the declared source profile, and its complete Line attributes. Count distinct Line StableIds, not `num_parallel`. Duplicate StableIds or duplicate raw source-card identities fail preflight. |
 | `active_member` | A member whose static `active` value is true. Only these members contribute to the current active topology and cycle classification. |
 | `inactive_member` | A member whose static `active` value is false. It remains an inventory object and mapping obligation but does not create an active edge. |
 | `parallel_only_cycle` | At least two active members connect a pair that is a bridge in the active simple Line graph. Removing parallel multiplicity destroys this multigraph cycle. |
-| `simple_graph_cycle` | The pair is a non-bridge edge of the active simple Line graph. At least one alternative simple path exists; this predicate may coexist with parallel multiplicity. |
+| `simple_graph_cycle` | The pair is a non-bridge edge of the active simple Line graph. At least one alternative simple path exists; the corridor may also have parallel members. |
 
 The existing near-linear active-Line corridor helper supplies the simple graph,
-bridge set, and active multiplicities. The two predicates are not mutually
-exclusive: a parallel corridor on a triangle is both a multigraph cycle and a
-`simple_graph_cycle`; a double circuit between otherwise disconnected buses
-is `parallel_only_cycle`. The audit label `both` means active multiplicity is
-at least two and `simple_graph_cycle` is true. An active single Line in a
-triangle is `simple_graph_cycle` only. Inactive members never turn a bridge
-into a cycle. Classification is recomputed at the Builder input and after
-reload, without changing the existing `cycle_corridors` predicate. The
-PyPSA `num_parallel` field is a Line attribute: a single Line row with
+bridge set, and active multiplicities. As defined above,
+`parallel_only_cycle` and `simple_graph_cycle` are **mutually exclusive for
+one corridor**: the former requires a simple-graph bridge and the latter a
+non-bridge. A double circuit between otherwise disconnected buses is
+`parallel_only_cycle`. A parallel corridor on a triangle has both parallel
+redundancy and a simple-graph cycle, but is **not** `parallel_only_cycle`.
+The audit `cycle_type` labels are exclusive: `parallel_only` means at least
+two active members on a simple-graph bridge; `simple_graph_cycle` means one
+active member on a non-bridge; `both` means at least two active members on a
+non-bridge. A corridor with no active cycle has no cycle label. Inactive
+members never turn a bridge into a cycle. Classification is recomputed at the
+Builder input and after reload, without changing the existing
+`cycle_corridors` predicate. The PyPSA `num_parallel` field is a Line
+attribute: a single Line row with
 `num_parallel=2` remains one member and never creates a second StableId or a
 parallel-only cycle by itself. Corridor grouping uses unordered StableId
 endpoints; each member's ordered `bus0`/`bus1` direction is still preserved
@@ -79,16 +84,22 @@ and checked by `LineSemanticHash`.
 | Strategy | Meaning | Compatibility and authorization |
 |---|---|---|
 | `aggregate_corridor` | Use ADR-008's existing ordinary quotient and many-to-one branch map, subject to unchanged structural Gates. | 0.2.0-compatible default, including after the opt-in enhancement is added. It can remain structurally invalid on parallel-only cycles; it gains no waiver. |
-| `preserve_protected_members` | Keep all members of each protected corridor as separate target Lines. Unprotected corridors continue through the existing ordinary quotient. | Strict-profile opt-in and the **only new strategy** authorized for a first implementation. While absent, enabling it raises `UnsupportedFeatureError`. |
+| `preserve_protected_members` | Keep all members of each protected corridor as separate target Lines. Unprotected corridors continue through the existing ordinary quotient. | Strict-profile opt-in and the **only new strategy** authorized for a first implementation. Error behavior depends on whether the selector exists, as specified below. |
 | `preserve_all_members` | Keep all members of every parallel corridor, including inactive members, with singleton endpoints. | Future option; enabling it raises `UnsupportedFeatureError` until separately reviewed and implemented. |
 
-The 0.2.0 configuration has no parallel-strategy selector, so its actual
-behavior is the `aggregate_corridor` row above. A later configuration model
-may expose an explicit selector and strict profile; its default must remain
-`aggregate_corridor` for compatibility. A known but unimplemented selected
-value is a typed `UnsupportedFeatureError`, never a successful no-op. The
-strict profile must record its selected strategy in resolved config,
-manifest, and `ReductionRecord`.
+The selector's fixed path is `aggregation.parallel_corridors.policy`; no
+alias or alternate path is permitted. In 0.2.0 this field does not exist:
+omission uses the existing `aggregate_corridor` behavior, while supplying
+`aggregation.parallel_corridors` fails strict unknown-field validation with
+`ConfigSchemaError`. The first implementing release (PR-019 or later) adds
+the selector with an `aggregate_corridor` default. It recognizes the three
+strategy values in the table: `preserve_protected_members` is implemented,
+whereas selecting the still-unimplemented `preserve_all_members` raises
+`UnsupportedFeatureError`. If a recognized strategy is exposed before its
+handler is available, selecting it also raises `UnsupportedFeatureError`;
+an unknown policy value raises `ConfigSchemaError`. Neither case may silently
+fall back. The strict profile must set this fixed path explicitly and record
+the resolved strategy in config, manifest, and `ReductionRecord`.
 
 The handler, additional singleton requirements, Line/L+ identity contract,
 and new named Gates below apply only when the strict
@@ -152,7 +163,7 @@ The handler's steps are deterministic and fail closed:
    topology using source Bus and Line StableIds, static active state, exact
    canonical voltage layers, and source circuit ledger. Reject missing
    bindings, duplicate member identities, unsupported populated dynamic
-   fields, ambiguous circuit IDs in a source that promises them, and
+   fields, circuit IDs that violate the declared source profile, and
    unresolvable L+ ownership.
 2. Compute protected members, validate the complete `PartitionPlan`, and
    enforce singleton endpoints before calling any quotient or detaching any
@@ -220,7 +231,19 @@ field names and types:
 | Static Line row | Every public static Line attribute, including `active`, `num_parallel`, r/x/g/b, length, rating, geometry or other supported fields, and `type`. Exclude only regenerated `sub_network` and documented nonsemantic serializer metadata; unknown populated fields are preserved or rejected. |
 | Dynamic Line data | Every populated supported input attribute, exact snapshot and investment-period index/order, explicit value-presence mask, static fallback, and effective dense values. Dense access runs on detached views so it cannot mutate the caller's network. Unknown populated dynamic attributes fail. |
 | Type reference | Exact `LineType` name and canonical hash of its full referenced row; missing or conflicting type rows fail. Referenced `Carrier` metadata, if present for a supported Line field, is copied and verified under the same rule. |
-| Circuit provenance | Exact external circuit ID and authoritative source-card identity when supplied. Missing and blank IDs are distinct; real BPA `L ` sources require a nonblank, unique circuit ID within their corridor. Programmatic PyPSA fixtures may explicitly mark circuit ID unavailable. |
+| Circuit provenance | The declared source profile defines whether a circuit ID exists, its authoritative card field and namespace, and its requiredness and uniqueness rules. Preserve the exact parsed ID and authoritative source-card identity when present; missing and blank IDs are distinct. No ID is inferred from equipment names or `num_parallel`. |
+
+The source profile is an input provenance contract, separate from a reduction
+configuration profile. The Beijing `BPA10056814` and Jilin `BPA10056819`
+source profiles use the audited BPA `L ` raw-card ledger as authority. For
+these profiles every
+Line member must bind to exactly one distinct raw `L ` card and have a
+nonblank circuit ID that is unique within its unordered StableId endpoint
+pair and canonical voltage layer. A missing, blank, duplicated, or
+ambiguous ID/card binding fails preflight. Other source profiles must declare
+their own circuit-ID contract rather than inherit the BPA requirement;
+programmatic PyPSA fixtures may explicitly declare IDs unavailable. That
+declaration is distinct from a blank ID in a profile that requires one.
 
 Canonical encoding sorts attribute keys, preserves terminal and snapshot
 order, normalizes equivalent finite numeric representations and a typed
@@ -247,9 +270,21 @@ the explicit `preserve_component_identity` protection action: its source and
 target StableIds are equal and its `device_map` row has
 `mapping_type="preserved"`. It is created from exact source keys and parser
 provenance, never device names.
-There may be zero, one, or two terminal rows for a base Line; a duplicated
-side or orphan association fails. L+ is never counted as an active Line or
-used to increase corridor multiplicity.
+There may be zero, one, or two terminal rows for a base Line. Three
+uniqueness constraints apply before detach and after ledger reload:
+
+1. A source L+ card identity binds to exactly one base Line StableId and may
+   produce at most one association per terminal side; the same card identity
+   cannot be reused for another base Line or duplicated on the same side.
+2. `(base Line StableId, terminal side)` identifies at most one association,
+   even if two different L+ cards claim it.
+3. Each derived Shunt StableId belongs to exactly one association and one
+   source L+ card/side; no association may reuse or replace another Shunt.
+
+A source-card identity includes the source file identity, raw-card location,
+and exact card content, not only the visible card text. A duplicated key,
+conflicting owner, or orphan association fails. L+ is never counted as an
+active Line or used to increase corridor multiplicity.
 
 After reconnect and again after NetCDF, sidecar, association-ledger, and
 Parquet-map reload, the Gate verifies that each association still names its
@@ -309,8 +344,9 @@ Passing these new checks never overrides a failure of `cycle_corridors` or
 `simple_ring_topology`.
 
 `CompressionOpportunityReport` adds per-layer and global counts for parallel
-corridors by multiplicity, `parallel_only_cycle`, `simple_graph_cycle`, and
-`both`; protected active/inactive members; singleton endpoints and overlaps;
+corridors by multiplicity, the two mutually exclusive cycle predicates, and
+the exclusive audit labels `parallel_only`, `simple_graph_cycle`, and `both`;
+protected active/inactive members; singleton endpoints and overlaps;
 L+ associated Lines and Shunts; ordinary aggregated corridors; rejected
 candidates by reason; and protected-member retention cost in Bus and Line
 counts. The report retains source/simplified/requested/planned/actual/final
@@ -329,9 +365,11 @@ StableIds are not committed.
 | Programmatic case | Required assertion |
 |---|---|
 | Two active parallel Lines are the only cycle | Both members and their IDs survive; existing `cycle_corridors` and new multiplicity checks pass. |
-| 0.2.0-compatible default | Without a strategy selector, ordinary `aggregate_corridor` output and existing Gate result remain unchanged; a lost parallel-only cycle is still invalid. |
-| Strict or future strategy enabled before implementation | `preserve_protected_members` and `preserve_all_members` each raise `UnsupportedFeatureError`, never silently use the default. |
-| Three active parallel Lines | Three distinct preserved map rows, target Lines, and circuit IDs survive. |
+| 0.2.0-compatible default | Without a selector, ordinary `aggregate_corridor` output and existing Gate result remain unchanged; a lost parallel-only cycle is still invalid. Supplying `aggregation.parallel_corridors.policy` to strict 0.2.0 config raises `ConfigSchemaError`. |
+| First implementing release policy selector | Omission defaults to `aggregate_corridor`; `preserve_protected_members` is the only newly implemented choice; `preserve_all_members` raises `UnsupportedFeatureError`; an unknown value raises `ConfigSchemaError`. |
+| Recognized strategy enabled before its handler exists | It raises `UnsupportedFeatureError`, never silently uses the default. |
+| Parallel corridor on a triangle | `cycle_type=both`: active multiplicity and simple-graph cycle coexist, while `parallel_only_cycle` is false. |
+| Three active parallel Lines | Three distinct preserved map rows and target Lines survive; circuit IDs are checked when the declared source profile requires them. |
 | Active plus inactive member | Both survive with distinct identities and exact active states; only the active member enters the static cycle graph. |
 | One Line with `num_parallel=2` | It remains one member and one StableId; no parallel-only cycle is inferred. Its attribute survives the semantic hash. |
 | Different r/x/rating/LineType | Each complete row and referenced type survives; no parameter averaging. |
@@ -345,6 +383,7 @@ StableIds are not committed.
 | Parquet map corruption or dropped protected row | Reloaded mapping Gate fails with evidence. |
 | NetCDF drops or changes protected Line/dynamic data | Final round-trip and Line semantic checks fail. |
 | L+ on both terminals | Base Line, `FROM`/`TO` Shunt StableIds, signed values, and exact terminal Buses survive reload. |
+| Duplicate L+ source card, duplicate `(base Line, side)`, or reused Shunt StableId | Each violates its separate uniqueness constraint and fails before detach or at ledger reload. |
 | L+ derived Shunt is aggregated or its protection action removed | `preserve_component_identity`, device-map, and association Gate fail after reload. |
 | Nonprotected parallel corridor in a simple ring | Existing ordinary quotient may aggregate; many-to-one branch map is complete and existing cycle Gate still passes. |
 | Original network mutation attempt | Input SHA and semantic signature detect a change; the normal run leaves the source unchanged. |
