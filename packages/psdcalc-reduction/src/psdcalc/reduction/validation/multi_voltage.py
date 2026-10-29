@@ -20,7 +20,9 @@ from psdcalc.reduction.exceptions import (
     BackendCapabilityError, ConfigSemanticError, MappingError,
 )
 from psdcalc.reduction.mapping.bundle import MappingBundle
+from psdcalc.reduction.planners.multi_voltage_busmap import MultiVoltageBusmapValidator
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.active import branch_is_active
 from psdcalc.reduction.topology.cycle_corridors import (
     CycleCorridorAnalysis, analyze_cycle_corridors,
 )
@@ -185,6 +187,8 @@ def _branch_graph(network: pypsa.Network,
                          for name in network.buses.index)
     for frame in (network.lines, network.transformers, network.links):
         for _, row in frame.iterrows():
+            if not branch_is_active(row):
+                continue
             graph.add_edge(sidecar.source_id("Bus", str(row.bus0)),
                            sidecar.source_id("Bus", str(row.bus1)))
     return graph
@@ -241,6 +245,8 @@ class MultiVoltageStructuralValidator:
         invariants: tuple[AggregationInvariantSpec, ...] = (),
     ) -> None:
         """Reject unsupported populated input time series before construction."""
+        if invariants:
+            self._validate_explicit_specs(network, invariants)
         self._reject_unknown_dynamic(network, invariants or _DEFAULT_INVARIANTS)
 
     def precheck(self, parent_network: pypsa.Network,
@@ -255,6 +261,8 @@ class MultiVoltageStructuralValidator:
                  ) -> PreliminaryStructuralEvidence:
         """Return only in-memory evidence or raise a typed error."""
         specs = invariants or _DEFAULT_INVARIANTS
+        if invariants:
+            self._validate_explicit_specs(parent_network, invariants)
         self._reject_unknown_dynamic(parent_network, specs)
         checks: dict[str, bool] = {}
         details: dict[str, str] = {}
@@ -423,8 +431,11 @@ class MultiVoltageStructuralValidator:
             parent_network, quotient_network, parent_sidecar,
             target_sidecar, mappings, specs,
         )
-        singleton = protection.singleton_buses | protection.terminal_buses
+        singleton = MultiVoltageBusmapValidator.mandatory_singletons(
+            parent_network, parent_sidecar, protection,
+        )
         checks["protected_singletons"] = all(
+            source in busmap and busmap[source] is not None and
             sum(row.target_id == busmap[source] for row in mappings.bus_map) == 1
             for source in singleton
         )
@@ -442,7 +453,7 @@ class MultiVoltageStructuralValidator:
         mappings: MappingBundle,
         voltage_layer_map: Mapping[StableId, tuple[float, float]],
     ) -> bool:
-        """Verify canonical Bus voltages and legal Line/Transformer interfaces."""
+        """Verify canonical Bus voltages and legal branch interfaces."""
         bus_rows = mappings.bus_map
         if {row.source_id for row in bus_rows} != set(voltage_layer_map):
             return False
@@ -492,7 +503,50 @@ class MultiVoltageStructuralValidator:
             b = names_by_layer.get(str(row.bus1))
             if a is None or b is None or a == b:
                 return False
+        for _, row in child.links.iterrows():
+            a = names_by_layer.get(str(row.bus0))
+            b = names_by_layer.get(str(row.bus1))
+            if a is None or b is None or a != b:
+                return False
+            for column in child.links.columns:
+                if (str(column).startswith("bus") and
+                        str(column)[3:].isdigit() and int(str(column)[3:]) >= 2):
+                    value = row[column]
+                    if pd.notna(value) and str(value) != "":
+                        return False
         return True
+
+    @staticmethod
+    def _validate_explicit_specs(
+        network: pypsa.Network,
+        specs: tuple[AggregationInvariantSpec, ...],
+    ) -> None:
+        """Fail misspelled invariant references before any quotient work."""
+        supported = {"Load", "Generator", "StorageUnit", "Store",
+                     "ShuntImpedance"}
+        component_names = {component.name for component in network.components}
+        for spec in specs:
+            if spec.component not in component_names:
+                raise ConfigSemanticError(
+                    f"Invariant component does not exist: {spec.component}"
+                )
+            if spec.component not in supported:
+                raise BackendCapabilityError(
+                    f"Unsupported invariant component: {spec.component}"
+                )
+            component = network.components[spec.component]
+            if spec.dynamic:
+                if (spec.attribute not in component.defaults.index or
+                        not bool(component.defaults.loc[spec.attribute, "varying"])):
+                    raise ConfigSemanticError(
+                        f"Invariant dynamic attribute does not exist: "
+                        f"{spec.component}.{spec.attribute}"
+                    )
+            elif spec.attribute not in component.static.columns:
+                raise ConfigSemanticError(
+                    f"Invariant static attribute is unavailable: "
+                    f"{spec.component}.{spec.attribute}"
+                )
 
     @staticmethod
     def _reject_unknown_dynamic(network: pypsa.Network,
@@ -548,6 +602,17 @@ class MultiVoltageStructuralValidator:
                          specs: tuple[AggregationInvariantSpec, ...]) -> bool:
         """Compare configured attributes at the declared scope and snapshots."""
         component_of_bus: dict[object, int] = {}
+        # PyPSA's public dense accessor may rewrite MultiIndex display metadata.
+        # Network.copy() shares that index, so install independent snapshots on
+        # detached views before asking the accessor for static fallback values.
+        if any(spec.dynamic for spec in specs):
+            source_view = parent.copy()
+            target_view = child.copy()
+            source_view.set_snapshots(parent.snapshots.copy(deep=True))
+            target_view.set_snapshots(child.snapshots.copy(deep=True))
+        else:
+            source_view = parent
+            target_view = child
         graph = _branch_graph(parent, parent_sidecar)
         for index, component in enumerate(sorted(
                 nx.connected_components(graph), key=lambda nodes: min(nodes))):
@@ -562,14 +627,7 @@ class MultiVoltageStructuralValidator:
             target = child.components[spec.component]
             relevant = [row for row in mappings.device_map
                         if row.source_id.component == spec.component]
-            if spec.dynamic:
-                source_frame = source.dynamic.get(spec.attribute)
-                target_frame = target.dynamic.get(spec.attribute)
-                if source_frame is None or source_frame.empty:
-                    continue
-                if target_frame is None:
-                    return False
-            else:
+            if not spec.dynamic:
                 if spec.attribute not in source.static.columns:
                     continue
             snapshots = (parent.snapshots if spec.snapshots is None else
@@ -604,28 +662,32 @@ class MultiVoltageStructuralValidator:
                         len(names) != 1 or len(target_names) != 1):
                     return False
                 if spec.dynamic:
-                    dynamic_names = [name for name in names
-                                     if name in source_frame.columns]
-                    if not dynamic_names:
-                        continue
-                    if any(name not in target_frame.columns for name in target_names):
+                    if (spec.attribute not in source.static.columns or
+                            spec.attribute not in target.static.columns or
+                            any(name not in target.static.index for name in target_names)):
                         return False
-                    source_values = source_frame.reindex(snapshots)[dynamic_names]
-                    actual_values = target_frame.reindex(snapshots)[target_names]
+                    try:
+                        source_values = source_view.get_switchable_as_dense(
+                            spec.component, spec.attribute,
+                            snapshots=snapshots, inds=pd.Index(names),
+                        ).reindex(index=snapshots, columns=names)
+                        actual_values = target_view.get_switchable_as_dense(
+                            spec.component, spec.attribute,
+                            snapshots=snapshots, inds=pd.Index(target_names),
+                        ).reindex(index=snapshots, columns=target_names)
+                    except (KeyError, ValueError, AttributeError):
+                        return False
+                    source_values = source_values.fillna(
+                        source.static.loc[names, spec.attribute]
+                    )
+                    actual_values = actual_values.fillna(
+                        target.static.loc[target_names, spec.attribute]
+                    )
                     if spec.strategy == "sum":
-                        static_names = sorted(set(names) - set(dynamic_names))
-                        baseline = 0.0
-                        if static_names:
-                            if spec.attribute not in source.static.columns:
-                                return False
-                            baseline = _sum_numbers(
-                                source.static.loc[static_names, spec.attribute],
-                                spec.attribute,
-                            )
                         for snapshot in snapshots:
                             expected = _sum_numbers(
                                 source_values.loc[snapshot].tolist(), spec.attribute,
-                            ) + baseline
+                            )
                             actual = _sum_numbers(
                                 actual_values.loc[snapshot].tolist(), spec.attribute,
                             )
@@ -634,7 +696,7 @@ class MultiVoltageStructuralValidator:
                     else:
                         for snapshot in snapshots:
                             if not _exact_equal(
-                                source_values.loc[snapshot, dynamic_names[0]],
+                                source_values.loc[snapshot, names[0]],
                                 actual_values.loc[snapshot, target_names[0]],
                                 spec.attribute, spec.atol,
                             ):

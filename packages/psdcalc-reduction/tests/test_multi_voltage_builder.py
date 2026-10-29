@@ -334,10 +334,12 @@ def test_investment_period_metadata_survives_in_memory() -> None:
     adapter = PypsaAdapter()
     sidecar = adapter.identity_sidecar(network, "n")
     protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    original_snapshots = repr(network.snapshots)
     result = MultiVoltageQuotientBuilder().build(
         network, sidecar, partition(network, sidecar),
         AggregationConfig(aggregate_one_ports=["Load"]), protected,
     )
+    assert repr(network.snapshots) == original_snapshots
 
     assert result.preliminary.checks["snapshots"]
     assert result.preliminary.checks["investment_periods"]
@@ -698,6 +700,185 @@ def test_line_free_colocated_generators_fail_explicitly() -> None:
         MultiVoltageQuotientBuilder().build(
             network, sidecar, plan,
             AggregationConfig(aggregate_one_ports=["Generator"]), protected,
+        )
+
+
+def test_line_free_default_generator_grouping_is_checked() -> None:
+    """An unconfigured Generator collision must not bypass quotient grouping."""
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=110)
+    network.add("Generator", "g1", bus="a", carrier="wind", p_nom=1)
+    network.add("Generator", "g2", bus="a", carrier="wind", p_nom=2)
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    with pytest.raises(BackendCapabilityError, match="Generator"):
+        MultiVoltageQuotientBuilder().build(
+            network, sidecar, identity_partition(network, sidecar),
+            AggregationConfig(aggregate_one_ports=["Load"]), protected,
+        )
+
+
+def test_line_free_distinct_generator_carriers_are_preserved() -> None:
+    """Different carriers are different PyPSA aggregation groups."""
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=110)
+    network.add("Generator", "g1", bus="a", carrier="wind", p_nom=1)
+    network.add("Generator", "g2", bus="a", carrier="solar", p_nom=2)
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    result = MultiVoltageQuotientBuilder().build(
+        network, sidecar, identity_partition(network, sidecar),
+        AggregationConfig(aggregate_one_ports=["Load"]), protected,
+    )
+    assert len(result.network.generators) == 2
+    assert result.preliminary.checks["aggregation_invariants"]
+
+
+def test_line_free_configured_loads_use_bus_and_carrier_groups() -> None:
+    """Different Load carriers do not collide in the identity fallback."""
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=110)
+    network.add("Load", "l1", bus="a", carrier="electricity", p_set=1)
+    network.add("Load", "l2", bus="a", carrier="heat", p_set=2)
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    result = MultiVoltageQuotientBuilder().build(
+        network, sidecar, identity_partition(network, sidecar),
+        AggregationConfig(aggregate_one_ports=["Load"]), protected,
+    )
+    assert len(result.network.loads) == 2
+
+
+def test_dynamic_invariant_uses_static_fallback_for_nan() -> None:
+    """A missing dynamic sample uses its static component value."""
+    network = three_voltage_network()
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    result = MultiVoltageQuotientBuilder().build(
+        network, sidecar, partition(network, sidecar),
+        AggregationConfig(aggregate_one_ports=["Load"]), protected,
+    )
+    source = network.copy()
+    target = result.network.copy()
+    target_id = next(row.target_id for row in result.mappings.device_map
+                     if row.source_id == sidecar.source_id("Load", "demand"))
+    assert target_id is not None
+    target_name = result.target_sidecar.backend_name(target_id)
+    source.loads.loc["demand", "p_set"] = 2.0
+    target.loads.loc[target_name, "p_set"] = 2.0
+    source.loads_t.p_set.loc[source.snapshots[0], "demand"] = float("nan")
+    target.loads_t.p_set.loc[target.snapshots[0], target_name] = 2.0
+    evidence = MultiVoltageStructuralValidator().precheck(
+        source, target, sidecar, result.target_sidecar, result.mappings,
+        (), protected, voltage_layer_map=result.voltage_layer_map,
+    )
+    assert evidence.checks["aggregation_invariants"]
+
+
+@pytest.mark.parametrize("component", ["Line", "Transformer", "Link"])
+def test_inactive_branch_does_not_join_connected_components(component: str) -> None:
+    """Inactive static branches cannot merge source connected components."""
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=110)
+    network.add("Bus", "b", v_nom=10 if component == "Transformer" else 110)
+    kwargs = {"bus0": "a", "bus1": "b", "active": False}
+    if component == "Line":
+        kwargs["x"] = 0.1
+    network.add(component, "ab", **kwargs)
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    child = network.copy()
+    child.remove(component, "ab")
+    child_sidecar = adapter.identity_sidecar(child, "n")
+    busmap = {sidecar.source_id("Bus", name): child_sidecar.source_id("Bus", name)
+              for name in ("a", "b")}
+    assert MultiVoltageStructuralValidator._components_preserved(
+        network, child, sidecar, child_sidecar, busmap,
+    )
+
+
+def test_precheck_independently_checks_all_mandatory_singletons() -> None:
+    """A forged map cannot merge a protected Bus after partition validation."""
+    network = three_voltage_network()
+    network.add("Line", "hca", bus0="hc", bus1="ha", r=0.01, x=0.1)
+    network.add("ShuntImpedance", "sh", bus="hb", g=0.01)
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    result = MultiVoltageQuotientBuilder().build(
+        network, sidecar, identity_partition(network, sidecar),
+        AggregationConfig(aggregate_one_ports=["Load"]), protected,
+    )
+    validator = MultiVoltageStructuralValidator()
+    for name in ("ha", "hb", "hc", "ma"):
+        source = sidecar.source_id("Bus", name)
+        other = next(row.target_id for row in result.mappings.bus_map
+                     if row.source_id == sidecar.source_id("Bus", "mb"))
+        forged = replace(result.mappings, bus_map=tuple(
+            replace(row, target_id=other) if row.source_id == source else row
+            for row in result.mappings.bus_map
+        ))
+        evidence = validator.precheck(
+            network, result.network, sidecar, result.target_sidecar,
+            forged, (), protected, voltage_layer_map=result.voltage_layer_map,
+        )
+        assert not evidence.checks["protected_singletons"], name
+
+
+def test_voltage_layer_gate_checks_link_terminals_and_extra_ports() -> None:
+    """The child Link cannot cross a layer or acquire a third terminal."""
+    network = pypsa.Network()
+    for name, voltage in (("a", 110), ("b", 110), ("c", 10)):
+        network.add("Bus", name, v_nom=voltage)
+    network.add("Link", "ab", bus0="a", bus1="b", p_nom=10)
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    result = MultiVoltageQuotientBuilder().build(
+        network, sidecar, identity_partition(network, sidecar),
+        AggregationConfig(), protected,
+    )
+    validator = MultiVoltageStructuralValidator()
+    link_name = str(result.network.links.index[0])
+    low_target = next(row.target_id for row in result.mappings.bus_map
+                      if row.source_id == sidecar.source_id("Bus", "c"))
+    assert low_target is not None
+    changed = result.network.copy()
+    changed.links.loc[link_name, "bus1"] = result.target_sidecar.backend_name(low_target)
+    evidence = validator.precheck(
+        network, changed, sidecar, result.target_sidecar, result.mappings,
+        (), protected, voltage_layer_map=result.voltage_layer_map,
+    )
+    assert not evidence.checks["voltage_layers"]
+    changed = result.network.copy()
+    changed.links.loc[link_name, "bus2"] = result.target_sidecar.backend_name(low_target)
+    evidence = validator.precheck(
+        network, changed, sidecar, result.target_sidecar, result.mappings,
+        (), protected, voltage_layer_map=result.voltage_layer_map,
+    )
+    assert not evidence.checks["voltage_layers"]
+
+
+@pytest.mark.parametrize("component,attribute", [
+    ("FictionalComponent", "p_set"), ("Load", "nonexistent_attribute"),
+])
+def test_explicit_invariant_missing_reference_is_semantic_error(
+    component: str, attribute: str,
+) -> None:
+    """Mistyped invariant references fail before materialization."""
+    network = three_voltage_network()
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    with pytest.raises(ConfigSemanticError, match="Invariant"):
+        MultiVoltageQuotientBuilder().build(
+            network, sidecar, partition(network, sidecar),
+            AggregationConfig(aggregate_one_ports=["Load"]), protected,
+            invariants=(AggregationInvariantSpec(component, attribute, "sum"),),
         )
 
 

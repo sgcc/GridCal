@@ -43,7 +43,11 @@ class MultiVoltageBuildResult:
 
 def _semantic_hash(network: pypsa.Network) -> str:
     """Hash deterministic in-memory component and snapshot content for records."""
-    chunks = [repr(network.snapshots), repr(network.snapshot_weightings),
+    # MultiIndex.__repr__ can change after PyPSA's dense accessor runs even
+    # when its values and level names remain identical. Hash those semantics.
+    snapshots = network.snapshots
+    chunks = [repr((tuple(snapshots.names), tuple(snapshots.tolist()))),
+              repr(network.snapshot_weightings),
               repr(network.investment_periods),
               repr(network.investment_period_weightings)]
     for component in sorted(network.components, key=lambda item: item.name):

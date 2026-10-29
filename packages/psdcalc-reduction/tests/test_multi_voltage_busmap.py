@@ -182,6 +182,36 @@ def test_cluster_counts_are_validated_and_bool_is_not_integer() -> None:
         validator.allocate_targets(network, sidecar, layers, protection, True)
 
 
+def test_inactive_line_does_not_join_cluster_or_lower_floor() -> None:
+    """A switched-off corridor cannot supply cluster connectivity."""
+    network = pypsa.Network()
+    for name in ("a", "b"):
+        network.add("Bus", name, v_nom=110)
+    network.add("Line", "ab", bus0="a", bus1="b", x=0.1, active=False)
+    sidecar, layers, protection, validator = context(network)
+    with pytest.raises(PartitionError, match="minimum"):
+        validator.allocate_targets(network, sidecar, layers, protection, 1)
+    plan = plan_for(sidecar, {"a": "both", "b": "both"}, requested=1)
+    with pytest.raises(PartitionError, match="disconnected"):
+        validator.validate(network, sidecar, plan, layers, protection)
+    repaired = validator.validate(
+        network, sidecar,
+        PartitionPlan(plan.stable_busmap, plan.backend_busmap, 1, 1,
+                      "split_disconnected"), layers, protection,
+    )
+    assert repaired.actual_cluster_count == 2
+
+
+def test_planned_count_cannot_underfill_request() -> None:
+    """Planning records must not claim fewer clusters than requested."""
+    network = fixture_network()
+    sidecar, layers, protection, validator = context(network)
+    plan = plan_for(sidecar, {"a": "a", "b": "free", "c": "free",
+                              "x": "x", "y": "y"}, requested=5)
+    with pytest.raises(PartitionError, match="requested_cluster_count"):
+        validator.validate(network, sidecar, plan, layers, protection)
+
+
 def test_valid_override_saturation_and_largest_remainder_tie() -> None:
     """Overrides fix one layer; equal free headroom breaks by layer key."""
     network = fixture_network()

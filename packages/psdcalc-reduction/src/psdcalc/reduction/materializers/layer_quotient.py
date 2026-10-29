@@ -182,13 +182,18 @@ class LayerQuotientMaterializer:
                     raise BackendCapabilityError(
                         "Line-free layer cannot aggregate disconnected buses"
                     )
-                for component_name in local_config.aggregate_one_ports:
+                for component_name in sorted(
+                    set(local_config.aggregate_one_ports) | {"Generator"}
+                ):
                     frame = child.components[component_name].static
+                    group_columns = ["bus"]
+                    if "carrier" in frame.columns:
+                        group_columns.append("carrier")
                     if (not frame.empty and "bus" in frame.columns and
-                            frame.groupby("bus").size().max() > 1):
+                            frame.groupby(group_columns, dropna=False).size().max() > 1):
                         raise BackendCapabilityError(
                             f"Line-free layer cannot aggregate co-located "
-                            f"{component_name} devices"
+                            f"{component_name} devices with the same bus/carrier"
                         )
                 renamed = child.copy()
                 renamed.rename_component_names("Bus", **backend)

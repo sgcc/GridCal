@@ -11,6 +11,7 @@ from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.exceptions import PartitionError
 from psdcalc.reduction.planners.base import PartitionPlan
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.active import branch_is_active
 from psdcalc.reduction.topology.cycle_corridors import analyze_cycle_corridors
 from psdcalc.reduction.topology.voltage_layers import VoltageLayer
 
@@ -78,6 +79,8 @@ class MultiVoltageBusmapValidator:
         allowed = set(bus_ids)
         graph.add_nodes_from(bus_ids)
         for _, row in network.lines.iterrows():
+            if not branch_is_active(row):
+                continue
             a = sidecar.source_id("Bus", str(row.bus0))
             b = sidecar.source_id("Bus", str(row.bus1))
             if (a in allowed and b in allowed and
@@ -170,6 +173,11 @@ class MultiVoltageBusmapValidator:
             )
         if partition.connectivity_policy not in {"reject", "split_disconnected"}:
             raise PartitionError("Unsupported connectivity policy")
+        if planned_count < partition.requested_cluster_count:
+            raise PartitionError("planned cluster count is below requested_cluster_count")
+        if (partition.connectivity_policy == "reject" and
+                planned_count != partition.requested_cluster_count):
+            raise PartitionError("reject policy requires planned count to equal requested_cluster_count")
         layer_by_bus = {source: layer.key for layer in layers
                         for source in layer.bus_ids}
         if set(layer_by_bus) != expected:

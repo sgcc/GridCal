@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import networkx as nx
 import pypsa
 
+from psdcalc.reduction.topology.active import branch_is_active
+
 
 Corridor = tuple[str, str]
 
@@ -40,7 +42,7 @@ def analyze_cycle_corridors(
     line_corridors: dict[str, Corridor] = {}
     multiplicity: Counter[Corridor] = Counter()
     for name, row in network.lines.iterrows():
-        if not bool(row.get("active", True)):
+        if not branch_is_active(row):
             continue
         a, b = str(row.bus0), str(row.bus1)
         if a not in nodes or b not in nodes:
