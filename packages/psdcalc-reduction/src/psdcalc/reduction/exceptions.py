@@ -31,3 +31,11 @@ class IdentityError(ReductionError):
 
 class SignatureError(ReductionError):
     """A grid signature cannot be computed from the supplied input."""
+
+
+class BackendIOError(ReductionError):
+    """A backend import or export operation failed."""
+
+
+class RoundTripError(ReductionError):
+    """An exported network could not be restored with stable identity."""
