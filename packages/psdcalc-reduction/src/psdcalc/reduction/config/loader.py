@@ -43,7 +43,7 @@ def _source_mapping(source: Mapping[str, Any] | str | Path) -> dict[str, Any]:
 
 def _gate_features(config: ReductionConfig) -> None:
     """Reject enabled later-stage capabilities without swallowing failures."""
-    if config.pipeline.materialization_family not in {"aggregation", "simplification"}:
+    if config.pipeline.materialization_family not in {"aggregation", "simplification", "multi_voltage_quotient"}:
         raise UnsupportedFeatureError("pipeline.materialization_family is not implemented")
     if config.pipeline.materialize_from != "original":
         raise UnsupportedFeatureError("pipeline.materialize_from=parent requires hierarchy")
@@ -71,8 +71,12 @@ def _gate_features(config: ReductionConfig) -> None:
             config.validation.acceptance.require_hard_constraints or
             config.validation.acceptance.max_mismatch_pu is not None):
         raise UnsupportedFeatureError("validation.acceptance is not implemented")
-    if config.output.save_all_levels or config.output.save_metrics_parquet:
-        raise UnsupportedFeatureError("multi-level or metrics output is not implemented")
+    if config.output.save_all_levels:
+        raise UnsupportedFeatureError(
+            "output.save_all_levels controls optional hierarchy levels; "
+            "multi-voltage L1/L2 are mandatory audit artifacts")
+    if config.output.save_metrics_parquet:
+        raise UnsupportedFeatureError("metrics Parquet output is not implemented")
     if config.plugins.allow_external or config.plugins.modules:
         raise UnsupportedFeatureError("external plugins are not implemented")
     if config.partition is not None and config.partition.target.type == "from_hierarchy_level":
@@ -112,6 +116,18 @@ def _check_semantics(config: ReductionConfig) -> None:
     if config.partition is None:
         raise ConfigSemanticError("partition is required for aggregation")
     target = config.partition.target
+    if config.pipeline.materialization_family == "multi_voltage_quotient":
+        if (len(enabled) != 1 or enabled[0].type != "voltage_aware_topology" or
+                enabled[0].mode != "keep_transformer_interface"):
+            raise ConfigSemanticError("multi_voltage_quotient requires voltage_aware_topology with keep_transformer_interface")
+        if target.type != "count" or target.n_clusters is None:
+            raise ConfigSemanticError("multi_voltage_quotient requires a count target")
+        if config.partition.planner == "custom_busmap":
+            raise ConfigSemanticError("multi_voltage_quotient requires an energy planner")
+        if sum(target.per_layer.values()) > target.n_clusters:
+            raise ConfigSemanticError("per_layer targets exceed global target")
+    elif target.per_layer:
+        raise ConfigSemanticError("per_layer targets require multi_voltage_quotient")
     if target.type == "count" and target.ratio is not None:
         raise ConfigSemanticError("count target cannot also specify ratio")
     if target.type == "ratio" and target.n_clusters is not None:

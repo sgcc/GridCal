@@ -160,10 +160,19 @@ def _transformer_semantics(network: pypsa.Network, name: str,
         terminals.append((busmap[source_id] if busmap is not None else
                           source_id).encode())
     dynamic = {}
-    for attribute, frame in sorted(network.components["Transformer"].dynamic.items()):
-        if not frame.empty and name in frame.columns:
-            dynamic[attribute] = [_normal(value) for value in
-                                  frame[name].reindex(network.snapshots)]
+    transformer = network.components["Transformer"]
+    for attribute in sorted(transformer.defaults.index):
+        declaration = transformer.defaults.loc[attribute]
+        if (attribute not in transformer.static.columns or
+                not bool(declaration["varying"]) or
+                not str(declaration["status"]).startswith("Input")):
+            continue
+        dense = network.get_switchable_as_dense(
+            "Transformer", attribute, snapshots=network.snapshots,
+            inds=pd.Index([name]),
+        ).reindex(index=network.snapshots, columns=[name])
+        values = dense[name].fillna(transformer.static.loc[name, attribute])
+        dynamic[attribute] = [_normal(value) for value in values]
     type_name = str(row.get("type", "") or "")
     type_row = None
     if type_name:

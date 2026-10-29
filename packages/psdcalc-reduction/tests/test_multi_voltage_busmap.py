@@ -155,6 +155,9 @@ def test_cannot_link_rejects_same_target() -> None:
                               "x": "x", "y": "y"})
     with pytest.raises(PartitionError, match="cannot_link"):
         validator.validate(network, sidecar, plan, layers, protected)
+    floors = validator.minimum_required_bus_counts(
+        network, sidecar, layers, protected)
+    assert floors["110"] == 3
 
 
 def test_cluster_counts_are_validated_and_bool_is_not_integer() -> None:

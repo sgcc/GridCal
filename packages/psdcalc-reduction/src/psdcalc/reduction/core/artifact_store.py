@@ -48,16 +48,20 @@ class ArtifactStore:
 
     def write_json(self, relative: str, value: Any) -> Path:
         """Atomically write a JSON artifact under this run directory."""
+        payload = json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+        return self.write_text(relative, payload)
+
+    def write_text(self, relative: str, value: str) -> Path:
+        """Atomically write a UTF-8 text artifact under this run directory."""
         target = self.path(relative)
         if not target.parent.is_dir():
             raise ArtifactError(f"Artifact parent does not exist: {target.parent}")
-        payload = json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
         temporary: str | None = None
         try:
             with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=target.parent,
                                              prefix=f".{target.name}.", delete=False) as stream:
                 temporary = stream.name
-                stream.write(payload)
+                stream.write(value)
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, target)
@@ -82,6 +86,7 @@ class ArtifactStore:
         self._save_manifest()
 
     def set_metadata(self, *, input_hash: str | None = None,
+                     config_hash: str | None = None,
                      topology_signature: str | None = None,
                      output_hash: str | None = None,
                      seed: int | None = None,
@@ -89,6 +94,7 @@ class ArtifactStore:
         """Persist reproducibility fields once their evidence is available."""
         changes: dict[str, object] = {"updated_at": utc_now()}
         for key, value in (("input_hash", input_hash),
+                           ("config_hash", config_hash),
                            ("topology_signature", topology_signature),
                            ("output_hash", output_hash), ("seed", seed),
                            ("software_versions", software_versions)):
@@ -116,6 +122,16 @@ class ArtifactStore:
         self._manifest = self._manifest.model_copy(update={
             "status": "STRUCTURALLY_VALID" if valid else "STRUCTURALLY_INVALID",
             "operation_status": operation_status,
+            "updated_at": utc_now(),
+        })
+        self._save_manifest()
+
+    def set_multi_voltage_result(self, valid: bool) -> None:
+        """Persist only the final post-reload multi-voltage structural state."""
+        self._manifest = self._manifest.model_copy(update={
+            "status": ("MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID" if valid else
+                       "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID"),
+            "operation_status": None,
             "updated_at": utc_now(),
         })
         self._save_manifest()

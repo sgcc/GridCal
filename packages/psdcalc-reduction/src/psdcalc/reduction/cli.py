@@ -4,7 +4,6 @@ import argparse
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import replace
-from importlib.metadata import version
 import json
 import math
 from pathlib import Path
@@ -14,6 +13,7 @@ import sys
 import pypsa
 import yaml
 
+from psdcalc.reduction import __version__
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.loader import load_config
 from psdcalc.reduction.config.models import ReductionConfig
@@ -29,6 +29,8 @@ from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.materializers.quotient import QuotientMaterializer
 from psdcalc.reduction.planners.custom_busmap import CustomBusmapPlanner
 from psdcalc.reduction.planners.energy import EnergyPartitionPlanner
+from psdcalc.reduction.planners.layer_energy import VoltageLayerEnergyPlanner
+from psdcalc.reduction.pipelines.multi_voltage import MultiVoltageQuotientPipeline
 from psdcalc.reduction.protection.engine import ProtectionEngine, ProtectionSet
 from psdcalc.reduction.topology.simplifier import (
     TopologySimplificationResult, VoltageAwareTopologySimplifier,
@@ -168,6 +170,20 @@ def _build(config: ReductionConfig, config_path: Path,
         if not output_root.is_absolute():
             output_root = config_path.parent / output_root
         store = ArtifactStore(output_root, config.run.id)
+    if config.pipeline.materialization_family == "multi_voltage_quotient":
+        with store.capture("input"):
+            network, sidecar, _ = _context(config, config_path)
+        resolved = config.model_copy(update={
+            "input": config.input.model_copy(update={
+                "path": str(_input_path(config, config_path).resolve()),
+            }),
+        })
+        MultiVoltageQuotientPipeline(
+            protection_base_dir=config_path.parent).run(
+            original_network=network, source_sidecar=sidecar,
+            config=resolved, store=store,
+        )
+        return store.run_dir
     with store.capture("build"):
         network, sidecar, protection = _context(config, config_path)
         adapter = PypsaAdapter()
@@ -180,7 +196,7 @@ def _build(config: ReductionConfig, config_path: Path,
             seed=config.run.seed,
             software_versions={"python": sys.version.split()[0],
                                "pypsa": pypsa.__version__,
-                               "psdcalc-reduction": version("psdcalc-reduction")},
+                               "psdcalc-reduction": __version__},
         )
         store.write_json("input/source_ids.json", sidecar.to_rows())
         store.record_artifact("source_ids", "input/source_ids.json")
@@ -327,7 +343,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 encoding="utf-8"
             ))
             payload: dict[str, object] = {"manifest": manifest}
-            for name in ("structural", "topology_structural", "failure"):
+            for name in ("structural", "topology_structural",
+                         "multi_voltage_structural", "preliminary",
+                         "opportunity", "failure"):
                 path = run_dir / "validation" / f"{name}.json"
                 if path.exists():
                     payload[name] = json.loads(path.read_text(encoding="utf-8"))
@@ -338,7 +356,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 run_dir = _build_from_path(config_path)
                 print(run_dir)
                 status = json.loads((run_dir / "run_manifest.json").read_text())["status"]
-                return 0 if status == "STRUCTURALLY_VALID" else 1
+                return 0 if status in {"STRUCTURALLY_VALID",
+                                       "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"} else 1
             config = load_config(config_path)
             if args.command == "validate-config":
                 print(f"VALID {config.schema_version}: {config.run.id}")
@@ -351,6 +370,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                 }, sort_keys=True))
             elif args.command == "plan":
                 network, sidecar, protection = _context(config, config_path)
+                if config.pipeline.materialization_family == "multi_voltage_quotient":
+                    topology = VoltageAwareTopologySimplifier().simplify(
+                        network, sidecar, protection,
+                        mode="keep_transformer_interface",
+                    )
+                    parent_sidecar = PypsaAdapter().identity_sidecar(
+                        topology.network, config.input.source_namespace)
+                    target = config.partition.target
+                    planned = VoltageLayerEnergyPlanner().plan(
+                        topology.network, parent_sidecar, protection,
+                        planner=config.partition.planner,
+                        n_clusters=target.n_clusters, seed=config.run.seed,
+                        builders=config.features.builders,
+                        options=config.partition.options,
+                        connectivity_policy=config.partition.connectivity_policy,
+                        aliases=config.voltage_layers.aliases,
+                        per_layer=target.per_layer,
+                        min_cluster_size=config.partition.min_cluster_size,
+                        max_cluster_size=config.partition.max_cluster_size,
+                    )
+                    print(json.dumps({
+                        "requested_cluster_count": planned.requested_cluster_count,
+                        "planned_cluster_count": len(set(planned.stable_busmap.values())),
+                        "actual_cluster_count": planned.actual_cluster_count,
+                    }, sort_keys=True))
+                    return 0
                 ring_edges = frozenset()
                 if any(op.enabled and op.type == "voltage_aware_topology"
                        for op in config.simplification.operations):

@@ -64,10 +64,12 @@ def _check_archives(sdist: Path, wheel: Path) -> dict[str, object]:
     resources = {
         "psdcalc/reduction/resources/reduction.schema.json",
         "psdcalc/reduction/resources/reduction.first-batch.yaml",
+        "psdcalc/reduction/resources/reduction.three-voltage.yaml",
     }
     expected_source = {f"src/{name}" for name in modules | resources} | {
         "pyproject.toml", "README.md", "LICENSE.md", "MANIFEST.in",
         "schema/reduction.schema.json", "examples/reduction.first-batch.yaml",
+        "examples/reduction.three-voltage.yaml",
         "tests/test_package_resources.py", "tools/packaging_gate.py",
     }
     expected_wheel = modules | resources | {
@@ -90,6 +92,8 @@ def _check_archives(sdist: Path, wheel: Path) -> dict[str, object]:
             ("reduction.schema.json", PACKAGE / "schema/reduction.schema.json"),
             ("reduction.first-batch.yaml",
              PACKAGE / "examples/reduction.first-batch.yaml"),
+            ("reduction.three-voltage.yaml",
+             PACKAGE / "examples/reduction.three-voltage.yaml"),
         ):
             if archive.read(f"psdcalc/reduction/resources/{name}") != source.read_bytes():
                 raise PackagingGateError(f"Wheel resource differs from {source}")
@@ -103,7 +107,7 @@ def run_gate(output_dir: Path) -> dict[str, object]:
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     summary: dict[str, object] = {
-        "gate": "PR-013 Packaging Gate", "status": "FAILED", "steps": [],
+        "gate": "PSDCalc Packaging Gate", "status": "FAILED", "steps": [],
         "python": sys.version.split()[0],
         "build_requirement": "setuptools>=70",
         "source_commit": subprocess.run(
@@ -120,8 +124,10 @@ def run_gate(output_dir: Path) -> dict[str, object]:
     try:
         summary["uv"] = _run("uv_version", ["uv", "--version"], summary,
                              cwd=outside, env=env).strip()
+        test_env = {**env, "PYTHONPATH": str(PACKAGE / "src")}
         pytest_output = _run("package_tests", [sys.executable, "-m", "pytest", "-q",
-                                               "tests"], summary, cwd=PACKAGE, env=env)
+                                               "tests"], summary, cwd=PACKAGE,
+                             env=test_env)
         match = re.search(r"(\d+) passed", pytest_output)
         if match is None:
             raise PackagingGateError("pytest did not report a passed-test count")
@@ -157,9 +163,12 @@ assert "site-packages" in str(Path(package.__file__).resolve())
 resources = files("psdcalc.reduction.resources")
 schema = resources.joinpath("reduction.schema.json").read_text(encoding="utf-8")
 example = resources.joinpath("reduction.first-batch.yaml").read_text(encoding="utf-8")
+multi_example = resources.joinpath("reduction.three-voltage.yaml").read_text(encoding="utf-8")
 assert json.loads(schema) == ReductionConfig.model_json_schema()
 assert "schema_version" in example
+assert "multi_voltage_quotient" in multi_example
 (root / "installed-example.yaml").write_text(example, encoding="utf-8")
+(root / "installed-three-voltage.yaml").write_text(multi_example, encoding="utf-8")
 print(json.dumps({"module": package.__file__, "pypsa": version("pypsa"),
                   "pydantic": version("pydantic"),
                   "psdcalc_reduction": version("psdcalc-reduction")}))'''
@@ -172,6 +181,9 @@ print(json.dumps({"module": package.__file__, "pypsa": version("pypsa"),
         _run("cli_validate_config", [cli, "validate-config",
                                      str(output_dir / "installed-example.yaml")],
              summary, cwd=outside, env=env)
+        _run("cli_validate_multi_voltage", [cli, "validate-config",
+                                            str(output_dir / "installed-three-voltage.yaml")],
+             summary, cwd=outside, env=env)
         exported = output_dir / "exported-schema.json"
         _run("cli_dump_schema", [cli, "dump-schema", str(exported)],
              summary, cwd=outside, env=env)
@@ -179,13 +191,70 @@ print(json.dumps({"module": package.__file__, "pypsa": version("pypsa"),
             (PACKAGE / "schema/reduction.schema.json").read_text(encoding="utf-8")
         ):
             raise PackagingGateError("Installed CLI exported a different schema")
-        manifest_dir = output_dir / "smoke-run"
-        manifest_dir.mkdir(exist_ok=True)
-        (manifest_dir / "run_manifest.json").write_text(
-            json.dumps({"status": "STRUCTURALLY_VALID"}), encoding="utf-8"
-        )
-        _run("cli_report", [cli, "report", str(manifest_dir)],
+        multi_smoke = r'''from pathlib import Path
+import pandas as pd
+import pypsa
+import yaml
+root = Path.cwd().parent
+n = pypsa.Network()
+n.set_snapshots(pd.date_range("2030-01-01", periods=2, freq="h"))
+for name, voltage in (("a", 110), ("b", 110), ("c", 110),
+                      ("x", 35), ("z1", 35), ("z2", 35), ("y", 35),
+                      ("u", 10), ("v", 10)):
+    n.add("Bus", name, v_nom=voltage)
+for name, left, right in (("ab", "a", "b"), ("bc", "b", "c"),
+                          ("ca", "c", "a"), ("xz1", "x", "z1"),
+                          ("z1z2", "z1", "z2"), ("z2y", "z2", "y"),
+                          ("uv", "u", "v")):
+    n.add("Line", name, bus0=left, bus1=right,
+          r=0.01, x=0.1, s_nom=100)
+n.add("Transformer", "tx1", bus0="a", bus1="x",
+      r=0.01, x=0.1, s_nom=100)
+n.add("Transformer", "tx2", bus0="y", bus1="u",
+      r=0.01, x=0.1, s_nom=100)
+n.add("Generator", "slack", bus="a", control="Slack", p_nom=100)
+n.add("Generator", "pv", bus="c", control="PV", p_nom=20)
+n.add("ShuntImpedance", "sh", bus="x", g=0.01)
+n.add("Load", "demand", bus="v", p_set=5.0)
+n.add("Load", "mid1", bus="z1", p_set=2.0)
+n.add("Load", "mid2", bus="z2", p_set=3.0)
+source = root / "smoke-three-voltage.nc"
+n.export_to_netcdf(source)
+config = {
+    "schema_version": "0.1.0",
+    "run": {"id": "smoke-three-voltage", "seed": 17,
+            "output_dir": str(root / "smoke-runs")},
+    "input": {"backend": "pypsa", "path": str(source),
+              "format": "netcdf", "source_namespace": "smoke"},
+    "task": {"type": "planning", "profile": "planning_aggregation",
+             "reduction_role": "candidate", "final_authority": "original"},
+    "pipeline": {"materialization_family": "multi_voltage_quotient"},
+    "simplification": {"operations": [{"id": "topology",
+                    "type": "voltage_aware_topology", "enabled": True,
+                    "mode": "keep_transformer_interface"}]},
+    "partition": {"planner": "pypsa_kmeans",
+                  "target": {"type": "count", "n_clusters": 7,
+                             "per_layer": {"10": 1, "35": 3, "110": 3}},
+                  "connectivity_policy": "reject"},
+    "aggregation": {"backend": "pypsa", "aggregate_one_ports": ["Load"]},
+}
+(root / "smoke-three-voltage.yaml").write_text(
+    yaml.safe_dump(config), encoding="utf-8")'''
+        _run("create_multi_voltage_fixture", [str(clean_python), "-I", "-c",
+                                              multi_smoke], summary,
+             cwd=outside, env=env)
+        smoke_config = output_dir / "smoke-three-voltage.yaml"
+        _run("cli_plan", [cli, "plan", str(smoke_config)],
              summary, cwd=outside, env=env)
+        _run("cli_build", [cli, "build", str(smoke_config)],
+             summary, cwd=outside, env=env)
+        manifest_dir = output_dir / "smoke-runs/smoke-three-voltage"
+        report_output = _run("cli_report", [cli, "report", str(manifest_dir)],
+                             summary, cwd=outside, env=env)
+        report_payload = json.loads(report_output)
+        if report_payload["manifest"]["status"] != (
+                "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"):
+            raise PackagingGateError("Installed CLI did not build a valid multi-voltage quotient")
         summary["status"] = "PASSED"
     except Exception as exc:
         summary["error"] = f"{type(exc).__name__}: {exc}"
