@@ -1,8 +1,8 @@
 # ADR-009: Protected parallel circuit identity through multi-voltage quotient
 
-_Design for Phase 1.5 follow-up; proposed for review, 2026-10-30._
+_Design for Phase 1.5 follow-up; accepted, 2026-10-30._
 
-Status: proposed for review.
+Status: accepted, 2026-10-30
 This is an **opt-in enhancement** of
 [ADR-008](008-multi-voltage-quotient.md), not a replacement for its default
 quotient contract. It authorizes no implementation until reviewed and does
