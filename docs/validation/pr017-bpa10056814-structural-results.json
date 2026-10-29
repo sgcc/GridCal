@@ -1,0 +1,513 @@
+{
+  "accepted_compression_fraction": null,
+  "boundary": "PHYSICAL_FIDELITY_NOT_YET_EVALUATED",
+  "package_version": "0.2.0",
+  "parallel_only_bridge_corridors_in_base_L1": 91,
+  "scenarios": {
+    "BASE": {
+      "candidate_compression_fraction": 0.08840864440078586,
+      "control_endpoint_count": 56,
+      "failed_checks": {
+        "cycle_corridors": "In-memory cycle_corridors check failed"
+      },
+      "final_candidate_bus_count": 1392,
+      "manifest_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+      "minimum_required_bus_count": 1391,
+      "per_layer": {
+        "1": {
+          "actual_cluster_count": 416,
+          "final_bus_count": 416,
+          "planned_cluster_count": 416,
+          "requested_cluster_count": 416,
+          "simplified_bus_count": 416,
+          "source_bus_count": 416
+        },
+        "16": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "18": {
+          "actual_cluster_count": 9,
+          "final_bus_count": 9,
+          "planned_cluster_count": 9,
+          "requested_cluster_count": 9,
+          "simplified_bus_count": 9,
+          "source_bus_count": 9
+        },
+        "20": {
+          "actual_cluster_count": 22,
+          "final_bus_count": 22,
+          "planned_cluster_count": 22,
+          "requested_cluster_count": 22,
+          "simplified_bus_count": 22,
+          "source_bus_count": 22
+        },
+        "37": {
+          "actual_cluster_count": 32,
+          "final_bus_count": 32,
+          "planned_cluster_count": 32,
+          "requested_cluster_count": 32,
+          "simplified_bus_count": 32,
+          "source_bus_count": 32
+        },
+        "66": {
+          "actual_cluster_count": 40,
+          "final_bus_count": 40,
+          "planned_cluster_count": 40,
+          "requested_cluster_count": 40,
+          "simplified_bus_count": 40,
+          "source_bus_count": 40
+        },
+        "115": {
+          "actual_cluster_count": 186,
+          "final_bus_count": 186,
+          "planned_cluster_count": 186,
+          "requested_cluster_count": 186,
+          "simplified_bus_count": 186,
+          "source_bus_count": 315
+        },
+        "230": {
+          "actual_cluster_count": 231,
+          "final_bus_count": 231,
+          "planned_cluster_count": 231,
+          "requested_cluster_count": 231,
+          "simplified_bus_count": 231,
+          "source_bus_count": 235
+        },
+        "525": {
+          "actual_cluster_count": 44,
+          "final_bus_count": 44,
+          "planned_cluster_count": 44,
+          "requested_cluster_count": 44,
+          "simplified_bus_count": 44,
+          "source_bus_count": 44
+        },
+        "0.32": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "0.6": {
+          "actual_cluster_count": 5,
+          "final_bus_count": 5,
+          "planned_cluster_count": 5,
+          "requested_cluster_count": 5,
+          "simplified_bus_count": 5,
+          "source_bus_count": 5
+        },
+        "0.69": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "0.8": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "1.14": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "10.5": {
+          "actual_cluster_count": 376,
+          "final_bus_count": 376,
+          "planned_cluster_count": 376,
+          "requested_cluster_count": 376,
+          "simplified_bus_count": 376,
+          "source_bus_count": 378
+        },
+        "13.8": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "15.8": {
+          "actual_cluster_count": 4,
+          "final_bus_count": 4,
+          "planned_cluster_count": 4,
+          "requested_cluster_count": 4,
+          "simplified_bus_count": 4,
+          "source_bus_count": 4
+        },
+        "27.5": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        }
+      },
+      "radial_tree_opportunities": 149,
+      "rejection_reason_counts": {
+        "complex_branch_model": 12,
+        "cross_region": 1,
+        "interface_count=2": 1
+      },
+      "ring_endpoint_count": 200,
+      "runtime_s": 54.03,
+      "series_node_opportunities": 0,
+      "shunt_endpoint_count": 128,
+      "simplified_bus_count": 1392,
+      "source_bus_count": 1527,
+      "status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+      "transformer_endpoint_count": 1341
+    },
+    "LOW_115": {
+      "candidate_compression_fraction": 0.08644400785854617,
+      "control_endpoint_count": 56,
+      "failed_checks": {
+        "cycle_corridors": "In-memory cycle_corridors check failed"
+      },
+      "final_candidate_bus_count": 1395,
+      "manifest_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+      "minimum_required_bus_count": 1395,
+      "per_layer": {
+        "1": {
+          "actual_cluster_count": 416,
+          "final_bus_count": 416,
+          "planned_cluster_count": 416,
+          "requested_cluster_count": 416,
+          "simplified_bus_count": 416,
+          "source_bus_count": 416
+        },
+        "16": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "18": {
+          "actual_cluster_count": 9,
+          "final_bus_count": 9,
+          "planned_cluster_count": 9,
+          "requested_cluster_count": 9,
+          "simplified_bus_count": 9,
+          "source_bus_count": 9
+        },
+        "20": {
+          "actual_cluster_count": 22,
+          "final_bus_count": 22,
+          "planned_cluster_count": 22,
+          "requested_cluster_count": 22,
+          "simplified_bus_count": 22,
+          "source_bus_count": 22
+        },
+        "37": {
+          "actual_cluster_count": 32,
+          "final_bus_count": 32,
+          "planned_cluster_count": 32,
+          "requested_cluster_count": 32,
+          "simplified_bus_count": 32,
+          "source_bus_count": 32
+        },
+        "66": {
+          "actual_cluster_count": 40,
+          "final_bus_count": 40,
+          "planned_cluster_count": 40,
+          "requested_cluster_count": 40,
+          "simplified_bus_count": 40,
+          "source_bus_count": 40
+        },
+        "115": {
+          "actual_cluster_count": 185,
+          "final_bus_count": 185,
+          "planned_cluster_count": 185,
+          "requested_cluster_count": 185,
+          "simplified_bus_count": 186,
+          "source_bus_count": 315
+        },
+        "230": {
+          "actual_cluster_count": 235,
+          "final_bus_count": 235,
+          "planned_cluster_count": 235,
+          "requested_cluster_count": 235,
+          "simplified_bus_count": 235,
+          "source_bus_count": 235
+        },
+        "525": {
+          "actual_cluster_count": 44,
+          "final_bus_count": 44,
+          "planned_cluster_count": 44,
+          "requested_cluster_count": 44,
+          "simplified_bus_count": 44,
+          "source_bus_count": 44
+        },
+        "0.32": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "0.6": {
+          "actual_cluster_count": 5,
+          "final_bus_count": 5,
+          "planned_cluster_count": 5,
+          "requested_cluster_count": 5,
+          "simplified_bus_count": 5,
+          "source_bus_count": 5
+        },
+        "0.69": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "0.8": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "1.14": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "10.5": {
+          "actual_cluster_count": 376,
+          "final_bus_count": 376,
+          "planned_cluster_count": 376,
+          "requested_cluster_count": 376,
+          "simplified_bus_count": 376,
+          "source_bus_count": 378
+        },
+        "13.8": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "15.8": {
+          "actual_cluster_count": 4,
+          "final_bus_count": 4,
+          "planned_cluster_count": 4,
+          "requested_cluster_count": 4,
+          "simplified_bus_count": 4,
+          "source_bus_count": 4
+        },
+        "27.5": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        }
+      },
+      "radial_tree_opportunities": 132,
+      "rejection_reason_counts": {
+        "interface_count=2": 1
+      },
+      "ring_endpoint_count": 200,
+      "runtime_s": 54.02,
+      "series_node_opportunities": 0,
+      "shunt_endpoint_count": 128,
+      "simplified_bus_count": 1396,
+      "source_bus_count": 1527,
+      "status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+      "transformer_endpoint_count": 1341
+    },
+    "LT110": {
+      "candidate_compression_fraction": 0.0013097576948264572,
+      "control_endpoint_count": 56,
+      "failed_checks": {
+        "cycle_corridors": "In-memory cycle_corridors check failed"
+      },
+      "final_candidate_bus_count": 1525,
+      "manifest_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+      "minimum_required_bus_count": 1525,
+      "per_layer": {
+        "1": {
+          "actual_cluster_count": 416,
+          "final_bus_count": 416,
+          "planned_cluster_count": 416,
+          "requested_cluster_count": 416,
+          "simplified_bus_count": 416,
+          "source_bus_count": 416
+        },
+        "16": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "18": {
+          "actual_cluster_count": 9,
+          "final_bus_count": 9,
+          "planned_cluster_count": 9,
+          "requested_cluster_count": 9,
+          "simplified_bus_count": 9,
+          "source_bus_count": 9
+        },
+        "20": {
+          "actual_cluster_count": 22,
+          "final_bus_count": 22,
+          "planned_cluster_count": 22,
+          "requested_cluster_count": 22,
+          "simplified_bus_count": 22,
+          "source_bus_count": 22
+        },
+        "37": {
+          "actual_cluster_count": 32,
+          "final_bus_count": 32,
+          "planned_cluster_count": 32,
+          "requested_cluster_count": 32,
+          "simplified_bus_count": 32,
+          "source_bus_count": 32
+        },
+        "66": {
+          "actual_cluster_count": 40,
+          "final_bus_count": 40,
+          "planned_cluster_count": 40,
+          "requested_cluster_count": 40,
+          "simplified_bus_count": 40,
+          "source_bus_count": 40
+        },
+        "115": {
+          "actual_cluster_count": 315,
+          "final_bus_count": 315,
+          "planned_cluster_count": 315,
+          "requested_cluster_count": 315,
+          "simplified_bus_count": 315,
+          "source_bus_count": 315
+        },
+        "230": {
+          "actual_cluster_count": 235,
+          "final_bus_count": 235,
+          "planned_cluster_count": 235,
+          "requested_cluster_count": 235,
+          "simplified_bus_count": 235,
+          "source_bus_count": 235
+        },
+        "525": {
+          "actual_cluster_count": 44,
+          "final_bus_count": 44,
+          "planned_cluster_count": 44,
+          "requested_cluster_count": 44,
+          "simplified_bus_count": 44,
+          "source_bus_count": 44
+        },
+        "0.32": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "0.6": {
+          "actual_cluster_count": 5,
+          "final_bus_count": 5,
+          "planned_cluster_count": 5,
+          "requested_cluster_count": 5,
+          "simplified_bus_count": 5,
+          "source_bus_count": 5
+        },
+        "0.69": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "0.8": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "1.14": {
+          "actual_cluster_count": 1,
+          "final_bus_count": 1,
+          "planned_cluster_count": 1,
+          "requested_cluster_count": 1,
+          "simplified_bus_count": 1,
+          "source_bus_count": 1
+        },
+        "10.5": {
+          "actual_cluster_count": 376,
+          "final_bus_count": 376,
+          "planned_cluster_count": 376,
+          "requested_cluster_count": 376,
+          "simplified_bus_count": 376,
+          "source_bus_count": 378
+        },
+        "13.8": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        },
+        "15.8": {
+          "actual_cluster_count": 4,
+          "final_bus_count": 4,
+          "planned_cluster_count": 4,
+          "requested_cluster_count": 4,
+          "simplified_bus_count": 4,
+          "source_bus_count": 4
+        },
+        "27.5": {
+          "actual_cluster_count": 6,
+          "final_bus_count": 6,
+          "planned_cluster_count": 6,
+          "requested_cluster_count": 6,
+          "simplified_bus_count": 6,
+          "source_bus_count": 6
+        }
+      },
+      "radial_tree_opportunities": 2,
+      "rejection_reason_counts": {},
+      "ring_endpoint_count": 200,
+      "runtime_s": 47.26,
+      "series_node_opportunities": 0,
+      "shunt_endpoint_count": 128,
+      "simplified_bus_count": 1525,
+      "source_bus_count": 1527,
+      "status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+      "transformer_endpoint_count": 1341
+    }
+  },
+  "source_case": "BPA10056814"
+}
