@@ -43,3 +43,7 @@ class RoundTripError(ReductionError):
 
 class ProtectionError(ReductionError):
     """A protection selector or action cannot be applied safely."""
+
+
+class PartitionError(ReductionError):
+    """A busmap is incomplete or violates hard topology constraints."""
