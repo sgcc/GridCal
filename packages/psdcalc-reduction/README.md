@@ -14,7 +14,7 @@ directory. Run the package tests with `uv run --locked pytest tests`.
 Run the PR-013 distribution Gate from the package directory with:
 
 ```bash
-.venv/bin/python tools/packaging_gate.py --output-dir /tmp/psdcalc-pr013
+.venv/bin/python tools/packaging_gate.py --output-dir "$(mktemp -d)"
 ```
 
 This runs the package tests, builds an isolated sdist and wheel with
