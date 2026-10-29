@@ -47,3 +47,7 @@ class ProtectionError(ReductionError):
 
 class PartitionError(ReductionError):
     """A busmap is incomplete or violates hard topology constraints."""
+
+
+class MaterializationError(ReductionError):
+    """A quotient network could not be built without losing required identity."""
