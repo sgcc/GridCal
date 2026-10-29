@@ -1,8 +1,9 @@
 """Complete first-batch quotient mapping bundle."""
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
-from typing import Mapping
+import tempfile
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -116,6 +117,17 @@ class MappingBundle:
                 continue
             target = root / f"{name}.parquet"
             table = pa.Table.from_pylist([row.to_row() for row in rows])
-            pq.write_table(table, target)
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=root, prefix=f".{name}.",
+                                                 suffix=".parquet", delete=False) as stream:
+                    temporary = Path(stream.name)
+                pq.write_table(table, temporary)
+                os.replace(temporary, target)
+            except (OSError, pa.ArrowException) as exc:
+                raise MappingError(f"Cannot write mapping {target}: {exc}") from exc
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
             output[name] = target
         return output

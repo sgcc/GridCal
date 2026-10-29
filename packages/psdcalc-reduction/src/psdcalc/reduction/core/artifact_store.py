@@ -81,6 +81,22 @@ class ArtifactStore:
                                                     "updated_at": utc_now()})
         self._save_manifest()
 
+    def set_metadata(self, *, input_hash: str | None = None,
+                     topology_signature: str | None = None,
+                     output_hash: str | None = None,
+                     seed: int | None = None,
+                     software_versions: dict[str, str] | None = None) -> None:
+        """Persist reproducibility fields once their evidence is available."""
+        changes: dict[str, object] = {"updated_at": utc_now()}
+        for key, value in (("input_hash", input_hash),
+                           ("topology_signature", topology_signature),
+                           ("output_hash", output_hash), ("seed", seed),
+                           ("software_versions", software_versions)):
+            if value is not None:
+                changes[key] = value
+        self._manifest = self._manifest.model_copy(update=changes)
+        self._save_manifest()
+
     def fail(self, stage: str, error: BaseException) -> None:
         """Persist failure evidence and mark the run failed."""
         evidence = {"stage": stage, "error_type": type(error).__name__,
@@ -94,6 +110,9 @@ class ArtifactStore:
     def set_structural_result(self, valid: bool,
                               operation_status: str | None = None) -> None:
         """Persist the structural gate outcome without physical acceptance."""
+        if operation_status not in {None, "STRUCTURALLY_SIMPLIFIED",
+                                    "PLANNING_APPROXIMATION"}:
+            raise ArtifactError(f"Invalid operation status: {operation_status}")
         self._manifest = self._manifest.model_copy(update={
             "status": "STRUCTURALLY_VALID" if valid else "STRUCTURALLY_INVALID",
             "operation_status": operation_status,

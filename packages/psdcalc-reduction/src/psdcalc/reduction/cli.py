@@ -1,12 +1,18 @@
 """First-batch inspection, custom planning, build, and structural reporting."""
 
 import argparse
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import replace
+from importlib.metadata import version
 import json
 import math
 from pathlib import Path
+import re
 import sys
+
+import pypsa
+import yaml
 
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.loader import load_config
@@ -14,8 +20,10 @@ from psdcalc.reduction.config.models import ReductionConfig
 from psdcalc.reduction.config.schema_export import export_schema
 from psdcalc.reduction.core.artifact_store import ArtifactStore
 from psdcalc.reduction.core.records import ReductionRecord
-from psdcalc.reduction.core.signatures import hash_file
-from psdcalc.reduction.exceptions import ReductionError, UnsupportedFeatureError
+from psdcalc.reduction.core.signatures import hash_file, hash_path
+from psdcalc.reduction.exceptions import (
+    PartitionError, ReductionError, UnsupportedFeatureError,
+)
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.materializers.quotient import QuotientMaterializer
@@ -59,20 +67,35 @@ def _plan(config: ReductionConfig, config_path: Path,
                  math.ceil(len(network.buses) * (target.ratio or 0.0)))
         if count is None:
             raise UnsupportedFeatureError("Energy planner requires a count or ratio target")
-        return EnergyPartitionPlanner().plan(
+        result = EnergyPartitionPlanner().plan(
             network, sidecar, protection, planner=config.partition.planner,
             n_clusters=count, seed=config.run.seed,
             builders=config.features.builders, options=config.partition.options,
             connectivity_policy=config.partition.connectivity_policy,
             ring_edges=tuple(sorted(ring_edges)),
         )
+        return _enforce_cluster_sizes(result, config)
     path = Path(config.partition.custom_busmap.path or "")
     if not path.is_absolute():
         path = config_path.parent / path
-    return CustomBusmapPlanner().plan(
+    result = CustomBusmapPlanner().plan(
         network, sidecar, path, protection,
         connectivity_policy=config.partition.connectivity_policy,
     )
+    return _enforce_cluster_sizes(result, config)
+
+
+def _enforce_cluster_sizes(plan: object, config: ReductionConfig) -> object:
+    """Reject planner output outside declared cluster-size bounds."""
+    if config.partition is None:
+        raise PartitionError("Cluster size requires a partition configuration")
+    sizes = Counter(plan.stable_busmap.values())
+    minimum = config.partition.min_cluster_size
+    maximum = config.partition.max_cluster_size
+    if any(size < minimum or maximum is not None and size > maximum
+           for size in sizes.values()):
+        raise PartitionError("Partition violates min_cluster_size or max_cluster_size")
+    return plan
 
 
 def _protect_ring(protection: ProtectionSet, sidecar: object,
@@ -118,6 +141,7 @@ def _save_topology(store: ArtifactStore,
     target = store.path("levels/L1.nc")
     adapter.export(result.network, target, "netcdf")
     store.record_artifact("simplified_network", "levels/L1.nc")
+    store.set_metadata(output_hash=hash_file(target))
 
 
 def _build_topology(store: ArtifactStore, config: ReductionConfig,
@@ -136,21 +160,34 @@ def _build_topology(store: ArtifactStore, config: ReductionConfig,
     )
 
 
-def _build(config: ReductionConfig, config_path: Path) -> Path:
+def _build(config: ReductionConfig, config_path: Path,
+           store: ArtifactStore | None = None) -> Path:
     """Build one quotient and persist maps, record, and structural evidence."""
-    output_root = Path(config.run.output_dir)
-    if not output_root.is_absolute():
-        output_root = config_path.parent / output_root
-    store = ArtifactStore(output_root, config.run.id)
+    if store is None:
+        output_root = Path(config.run.output_dir)
+        if not output_root.is_absolute():
+            output_root = config_path.parent / output_root
+        store = ArtifactStore(output_root, config.run.id)
     with store.capture("build"):
         network, sidecar, protection = _context(config, config_path)
         adapter = PypsaAdapter()
         source_signature = adapter.topology_signature(network, sidecar)
         original_snapshot = adapter.clone(network)
         input_path = _input_path(config, config_path)
-        input_hash = hash_file(input_path) if input_path.is_file() else source_signature
+        input_hash = hash_path(input_path)
+        store.set_metadata(
+            input_hash=input_hash, topology_signature=source_signature,
+            seed=config.run.seed,
+            software_versions={"python": sys.version.split()[0],
+                               "pypsa": pypsa.__version__,
+                               "psdcalc-reduction": version("psdcalc-reduction")},
+        )
         store.write_json("input/source_ids.json", sidecar.to_rows())
         store.record_artifact("source_ids", "input/source_ids.json")
+        if config.output.save_original_snapshot:
+            adapter.export(adapter.clone(network), store.path("input/original.nc"),
+                           "netcdf")
+            store.record_artifact("original_snapshot", "input/original.nc")
         if config.pipeline.materialization_family == "simplification":
             _build_topology(store, config, network, sidecar, protection)
             return store.run_dir
@@ -203,6 +240,7 @@ def _build(config: ReductionConfig, config_path: Path) -> Path:
         target = store.path(target_relative)
         adapter.export(quotient.network, target, "netcdf")
         store.record_artifact("quotient", target_relative)
+        store.set_metadata(output_hash=hash_file(target))
         evidence = StructuralValidator().validate(
             network, quotient.network, sidecar, mapping, protection,
             original_topology_signature=source_signature,
@@ -247,6 +285,27 @@ def _build(config: ReductionConfig, config_path: Path) -> Path:
     return store.run_dir
 
 
+def _build_from_path(config_path: Path) -> Path:
+    """Create failure evidence before validating a potentially invalid config."""
+    try:
+        raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        raw = None
+    run = raw.get("run", {}) if isinstance(raw, dict) else {}
+    run = run if isinstance(run, dict) else {}
+    run_id = run.get("id") if isinstance(run.get("id"), str) else None
+    if not run_id or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", run_id) is None:
+        run_id = f"config-error-{hash_file(config_path)[:12]}"
+    output = run.get("output_dir") if isinstance(run.get("output_dir"), str) else "runs"
+    root = Path(output)
+    if not root.is_absolute():
+        root = config_path.parent / root
+    store = ArtifactStore(root, run_id)
+    with store.capture("config"):
+        config = load_config(config_path)
+    return _build(config, config_path, store)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Execute one CLI command and return its process exit status."""
     parser = argparse.ArgumentParser(prog="psdcalc-reduction")
@@ -268,6 +327,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                              ensure_ascii=False, indent=2))
         else:
             config_path = Path(args.config).resolve()
+            if args.command == "build":
+                run_dir = _build_from_path(config_path)
+                print(run_dir)
+                status = json.loads((run_dir / "run_manifest.json").read_text())["status"]
+                return 0 if status == "STRUCTURALLY_VALID" else 1
             config = load_config(config_path)
             if args.command == "validate-config":
                 print(f"VALID {config.schema_version}: {config.run.id}")
@@ -299,11 +363,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(json.dumps({"requested_cluster_count": plan.requested_cluster_count,
                                   "actual_cluster_count": plan.actual_cluster_count},
                                  sort_keys=True))
-            elif args.command == "build":
-                run_dir = _build(config, config_path)
-                print(run_dir)
-                status = json.loads((run_dir / "run_manifest.json").read_text())["status"]
-                return 0 if status == "STRUCTURALLY_VALID" else 1
     except (ReductionError, OSError, ValueError) as exc:
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
         return 2

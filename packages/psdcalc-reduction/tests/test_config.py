@@ -104,11 +104,36 @@ def test_unknown_voltage_aware_mode_is_schema_error() -> None:
         load_config(data)
 
 
+def test_voltage_lift_is_planning_only_and_explicitly_unsupported() -> None:
+    data = minimal_config()
+    data["simplification"]["operations"][0]["mode"] = "lift_to_target_voltage"
+    with pytest.raises(ConfigSemanticError, match="planning_aggregation"):
+        load_config(data)
+    data["task"]["type"] = "planning"
+    data["task"]["profile"] = "planning_aggregation"
+    with pytest.raises(UnsupportedFeatureError, match="voltage lift"):
+        load_config(data)
+
+
 def test_conflicting_partition_fields_are_semantic_error() -> None:
     data = minimal_config()
     data["partition"]["planner"] = "custom_busmap"
 
     with pytest.raises(ConfigSemanticError, match="custom_busmap.path"):
+        load_config(data)
+
+
+def test_required_evidence_cannot_be_disabled() -> None:
+    data = minimal_config()
+    data["output"] = {"save_maps": False}
+    with pytest.raises(ConfigSemanticError, match="evidence are required"):
+        load_config(data)
+
+
+def test_count_target_rejects_ratio_field() -> None:
+    data = minimal_config()
+    data["partition"]["target"]["ratio"] = 0.5
+    with pytest.raises(ConfigSemanticError, match="cannot also specify ratio"):
         load_config(data)
 
 

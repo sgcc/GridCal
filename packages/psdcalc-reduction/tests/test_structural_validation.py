@@ -56,3 +56,28 @@ def test_missing_branch_mapping_is_invalid() -> None:
                                             bundle, protected)
     assert result.status == "STRUCTURALLY_INVALID"
     assert result.checks["mapping_coverage"] is False
+
+
+def test_wrong_device_terminal_is_structurally_invalid() -> None:
+    original = _two_component_network()
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(original, "source")
+    bundle = MappingBundle(
+        bus_map=tuple(MapEntry(sidecar.source_id("Bus", name),
+                               sidecar.source_id("Bus", name), "preserved", "step")
+                      for name in original.buses.index),
+        branch_map=tuple(MapEntry(sidecar.source_id("Line", name),
+                                  sidecar.source_id("Line", name), "preserved", "step")
+                         for name in original.lines.index),
+        device_map=(MapEntry(sidecar.source_id("Load", "demand"),
+                             sidecar.source_id("Load", "demand"), "preserved", "step"),),
+    )
+    reduced = original.copy()
+    reduced.loads.at["demand", "bus"] = "a"
+    protected = ProtectionEngine().compile(adapter.inventory(original, sidecar), [])
+
+    result = StructuralValidator().validate(original, reduced, sidecar,
+                                            bundle, protected)
+
+    assert result.status == "STRUCTURALLY_INVALID"
+    assert result.checks["device_ownership"] is False

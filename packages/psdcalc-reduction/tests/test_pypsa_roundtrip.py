@@ -7,6 +7,18 @@ import pandas as pd
 import pytest
 
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
+from psdcalc.reduction.exceptions import BackendCapabilityError
+
+
+def test_unsupported_control_component_fails_explicitly() -> None:
+    adapter = PypsaAdapter()
+    network = small_network()
+    network.add("GlobalConstraint", "co2", type="primary_energy",
+                sense="<=", constant=10.0)
+    sidecar = adapter.identity_sidecar(network, "sample")
+
+    with pytest.raises(BackendCapabilityError, match="GlobalConstraint"):
+        adapter.validate_model(network, sidecar)
 
 
 def small_network() -> pypsa.Network:

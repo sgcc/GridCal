@@ -91,6 +91,18 @@ def _gate_features(config: ReductionConfig) -> None:
 
 def _check_semantics(config: ReductionConfig) -> None:
     """Reject well-formed but inconsistent first-batch settings."""
+    if not config.run.deterministic:
+        raise ConfigSemanticError("run.deterministic must be true in the first phase")
+    if not config.validation.structural.enabled:
+        raise ConfigSemanticError("validation.structural.enabled is required")
+    if not (config.mapping.require_complete_bus_map and
+            config.mapping.preserve_source_ids and
+            config.mapping.record_device_ownership and
+            config.mapping.record_control_ownership):
+        raise ConfigSemanticError("complete source-ID mapping is required")
+    if not (config.output.save_maps and config.output.save_records and
+            config.output.save_validation_evidence):
+        raise ConfigSemanticError("mapping, records, and structural evidence are required")
     enabled = [op for op in config.simplification.operations if op.enabled]
     if config.pipeline.materialization_family == "simplification":
         if len(enabled) != 1 or enabled[0].type != "voltage_aware_topology":
@@ -100,6 +112,10 @@ def _check_semantics(config: ReductionConfig) -> None:
     if config.partition is None:
         raise ConfigSemanticError("partition is required for aggregation")
     target = config.partition.target
+    if target.type == "count" and target.ratio is not None:
+        raise ConfigSemanticError("count target cannot also specify ratio")
+    if target.type == "ratio" and target.n_clusters is not None:
+        raise ConfigSemanticError("ratio target cannot also specify n_clusters")
     if (config.partition.planner != "custom_busmap" and
             not any(op.type == "voltage_aware_topology" for op in enabled)):
         raise ConfigSemanticError("energy planners require preceding voltage_aware_topology")

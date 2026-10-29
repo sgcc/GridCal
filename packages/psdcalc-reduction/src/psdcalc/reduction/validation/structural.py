@@ -33,6 +33,13 @@ def _target_name(row: MapEntry, target_frame: pd.DataFrame) -> str | None:
     return next((name for name in candidates if name in target_frame.index), None)
 
 
+def _bus_name(target: StableId | None, reduced_buses: set[str]) -> str | None:
+    """Resolve one mapped target bus to its reduced-network name."""
+    if target is None:
+        return None
+    return target.encode() if target.encode() in reduced_buses else target.source_key
+
+
 def _graph(network: pypsa.Network) -> nx.Graph:
     """Build a structural graph, retaining isolated buses."""
     graph = nx.Graph()
@@ -157,9 +164,7 @@ class StructuralValidator:
         bus_targets = {row.source_id: row.target_id for row in mappings.bus_map}
         reduced_buses = set(str(name) for name in reduced.buses.index)
         checks["bus_targets"] = all(
-            row.target_id is not None and
-            (row.target_id.encode() in reduced_buses or
-             row.target_id.source_key in reduced_buses)
+            _bus_name(row.target_id, reduced_buses) in reduced_buses
             for row in mappings.bus_map
         )
         checks["branch_targets"] = True
@@ -172,7 +177,14 @@ class StructuralValidator:
                 valid = target_bus0 == target_bus1 and row.target_id is None
             else:
                 target_frame = _component_frame(reduced, row.source_id.component)
-                valid = _target_name(row, target_frame) is not None
+                target_name = _target_name(row, target_frame)
+                valid = target_name is not None
+                if valid:
+                    target_branch = target_frame.loc[target_name]
+                    valid = {
+                        _bus_name(target_bus0, reduced_buses),
+                        _bus_name(target_bus1, reduced_buses),
+                    } == {str(target_branch.bus0), str(target_branch.bus1)}
             if not valid:
                 checks["branch_targets"] = False
                 details["branch_targets"] = f"Invalid branch mapping: {row.source_id.encode()}"
@@ -180,6 +192,29 @@ class StructuralValidator:
         checks["device_targets"] = all(
             _target_name(row, _component_frame(reduced, row.source_id.component)) is not None
             for row in mappings.device_map
+        )
+        checks["device_ownership"] = True
+        for row in mappings.device_map:
+            source_name = sidecar.backend_name(row.source_id)
+            source_device = _component_frame(original, row.source_id.component).loc[source_name]
+            target_frame = _component_frame(reduced, row.source_id.component)
+            target_name = _target_name(row, target_frame)
+            if target_name is None or "bus" not in source_device.index:
+                continue
+            source_bus = sidecar.source_id("Bus", str(source_device.bus))
+            mapped_bus = _bus_name(bus_targets.get(source_bus), reduced_buses)
+            if mapped_bus != str(target_frame.loc[target_name].bus):
+                checks["device_ownership"] = False
+                details["device_ownership"] = f"Wrong device bus: {row.source_id.encode()}"
+                break
+        control_ids = {item.source_id for item in inventory.items if item.controllable}
+        checks["control_mapping"] = (
+            {row.source_id for row in mappings.control_map} == control_ids and
+            len(mappings.control_map) == len(control_ids) and
+            all(row.target_id == next(
+                (device.target_id for device in mappings.device_map
+                 if device.source_id == row.source_id), None
+            ) for row in mappings.control_map)
         )
         checks["protected_identity"] = all(
             row.target_id == row.source_id
@@ -210,8 +245,7 @@ class StructuralValidator:
                 source = sidecar.source_id("Bus", name)
                 target = bus_targets.get(source)
                 if target is not None:
-                    target_names.add(target.encode() if target.encode() in reduced_buses
-                                     else target.source_key)
+                    target_names.add(_bus_name(target, reduced_buses))
             original_component_targets.append(
                 {reduced_components[name] for name in target_names
                  if name in reduced_components}

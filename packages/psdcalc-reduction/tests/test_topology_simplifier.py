@@ -34,6 +34,7 @@ def test_ring_feeder_and_transformer_interface() -> None:
     assert {"ab", "bc", "ca"}.issubset(result.cycle_edges)
     assert adapter.topology_signature(original, sidecar) == before
     assert len(result.records) >= 1
+    assert result.records[0].parent_grid_hash != result.records[0].input_signature
 
 
 def test_zero_injection_series_chain_collapses() -> None:
@@ -57,4 +58,36 @@ def test_zero_injection_series_chain_collapses() -> None:
     line = result.network.lines.iloc[0]
     assert {line.bus0, line.bus1} == {"a", "b"}
     assert abs(line.r - 0.03) < 1e-12
+    assert result.structural.status == "STRUCTURALLY_VALID"
+
+
+def test_cross_region_feeder_is_retained_with_reason() -> None:
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=110, country="west")
+    network.add("Bus", "b", v_nom=110, country="east")
+    network.add("Line", "ab", bus0="a", bus1="b", r=0.01, x=0.1)
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protection = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+
+    result = VoltageAwareTopologySimplifier().simplify(network, sidecar, protection)
+
+    assert set(result.network.buses.index) == {"a", "b"}
+    assert any(row.get("reason") == "cross_region" for row in result.topology_roles)
+
+
+def test_three_port_link_terminal_is_an_anchor() -> None:
+    network = pypsa.Network()
+    for name in ("a", "b", "c", "d"):
+        network.add("Bus", name, v_nom=110)
+    network.add("Line", "cd", bus0="c", bus1="d", r=0.01, x=0.1)
+    network.add("Link", "link", bus0="a", bus1="b", bus2="c")
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protection = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+
+    result = VoltageAwareTopologySimplifier().simplify(network, sidecar, protection)
+
+    assert "c" in result.network.buses.index
+    assert result.network.links.loc["link", "bus2"] == "c"
     assert result.structural.status == "STRUCTURALLY_VALID"

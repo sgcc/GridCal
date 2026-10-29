@@ -27,27 +27,37 @@ def busmap_by_kmeans(
     bus_weightings: object,
     n_clusters: int,
     seed: int,
+    *,
+    buses_i: object | None = None,
+    n_init: int = 10,
 ) -> Any:
     """Build a busmap through PyPSA's public K-means accessor with a seed."""
+    kwargs = {"bus_weightings": bus_weightings, "n_clusters": n_clusters,
+              "random_state": seed, "n_init": n_init}
+    if buses_i is not None:
+        kwargs["buses_i"] = buses_i
     return _spatial_method(network, "busmap_by_kmeans")(
-        bus_weightings=bus_weightings,
-        n_clusters=n_clusters,
-        random_state=seed,
-        n_init=10,
+        **kwargs,
     )
 
 
-def busmap_by_hac(network: object, n_clusters: int, linkage: str = "ward") -> Any:
+def busmap_by_hac(network: object, n_clusters: int, linkage: str = "ward",
+                  *, buses_i: object | None = None,
+                  branch_components: object | None = None,
+                  feature: object | None = None,
+                  affinity: str = "euclidean") -> Any:
     """Build a busmap through PyPSA's public HAC accessor."""
     return _spatial_method(network, "busmap_by_hac")(
-        n_clusters=n_clusters, linkage=linkage
+        n_clusters=n_clusters, linkage=linkage, buses_i=buses_i,
+        branch_components=branch_components, feature=feature, affinity=affinity,
     )
 
 
-def busmap_by_greedy_modularity(network: object, n_clusters: int) -> Any:
+def busmap_by_greedy_modularity(network: object, n_clusters: int,
+                                *, buses_i: object | None = None) -> Any:
     """Build a busmap through PyPSA's public modularity accessor."""
     return _spatial_method(network, "busmap_by_greedy_modularity")(
-        n_clusters=n_clusters
+        n_clusters=n_clusters, buses_i=buses_i,
     )
 
 

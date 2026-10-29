@@ -42,6 +42,10 @@ def test_build_persists_structural_evidence(tmp_path: Path, capsys) -> None:
     assert main(["build", str(path)]) == 0
     manifest = json.loads((tmp_path / "runs/case/run_manifest.json").read_text())
     assert manifest["status"] == "STRUCTURALLY_VALID"
+    assert manifest["seed"] == 7
+    assert len(manifest["input_hash"]) == 64
+    assert len(manifest["output_hash"]) == 64
+    assert "pypsa" in manifest["software_versions"]
     assert (tmp_path / "runs/case/maps/branch_map.parquet").exists()
     assert main(["report", str(tmp_path / "runs/case")]) == 0
     assert "STRUCTURALLY_VALID" in capsys.readouterr().out
@@ -117,3 +121,22 @@ def test_energy_build_runs_after_topology_stage(tmp_path: Path) -> None:
     assert (run / "levels/L1.nc").exists()
     assert (run / "levels/L2.nc").exists()
     assert (run / "maps/bus_map.parquet").exists()
+
+
+def test_build_config_error_writes_failure_manifest(tmp_path: Path) -> None:
+    config = {
+        "schema_version": "0.1.0",
+        "run": {"id": "invalid", "seed": 7, "output_dir": "runs"},
+        "task": {"profile": "planning_aggregation"},
+        "unknown_field": True,
+    }
+    path = tmp_path / "bad.yaml"
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["build", str(path)]) == 2
+    run = tmp_path / "runs/invalid"
+    manifest = json.loads((run / "run_manifest.json").read_text())
+    failure = json.loads((run / "validation/failure.json").read_text())
+    assert manifest["status"] == "FAILED"
+    assert failure["stage"] == "config"
+    assert failure["error_type"] == "ConfigSchemaError"

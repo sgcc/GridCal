@@ -2,13 +2,15 @@
 
 from pathlib import Path
 
+import pypsa
 import pytest
 from hypothesis import given, strategies as st
 
 from psdcalc.reduction.core.ids import IdentityBinding, IdentitySidecar, StableId
 from psdcalc.reduction.core.inventory import GridInventory, InventoryItem
 from psdcalc.reduction.core.signatures import (
-    TopologyBranch, TopologyBus, hash_file, topology_signature,
+    TopologyBranch, TopologyBus, hash_file, hash_path, network_content_hash,
+    topology_signature,
 )
 from psdcalc.reduction.exceptions import IdentityError
 
@@ -55,6 +57,25 @@ def test_file_hash_changes_with_bytes(tmp_path: Path) -> None:
     before = hash_file(path)
     path.write_bytes(b"second")
     assert hash_file(path) != before
+
+
+def test_csv_folder_hash_covers_names_and_bytes(tmp_path: Path) -> None:
+    folder = tmp_path / "csv"
+    folder.mkdir()
+    (folder / "b.csv").write_text("x\n2\n")
+    (folder / "a.csv").write_text("x\n1\n")
+    before = hash_path(folder)
+    (folder / "b.csv").write_text("x\n3\n")
+    assert hash_path(folder) != before
+
+
+def test_network_content_hash_covers_device_values() -> None:
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=110)
+    network.add("Load", "demand", bus="a", p_set=1.0)
+    before = network_content_hash(network)
+    network.loads.at["demand", "p_set"] = 2.0
+    assert network_content_hash(network) != before
 
 
 def test_inventory_counts_by_component() -> None:

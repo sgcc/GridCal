@@ -77,3 +77,16 @@ def test_unknown_preserve_component_is_explicit_error() -> None:
         QuotientMaterializer().materialize(
             network, sidecar, partition(sidecar), config, protected
         )
+
+
+def test_multi_terminal_link_is_rejected_before_quotient() -> None:
+    network = chain_network()
+    network.add("Link", "three-port", bus0="b0", bus1="b1", bus2="b2")
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protected = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+
+    with pytest.raises(BackendCapabilityError, match="multi-terminal Link"):
+        QuotientMaterializer().materialize(
+            network, sidecar, partition(sidecar), AggregationConfig(), protected
+        )

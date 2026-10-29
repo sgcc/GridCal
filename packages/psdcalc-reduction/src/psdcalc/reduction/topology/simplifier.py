@@ -1,6 +1,7 @@
 """Selective same-voltage simplification with transformer interfaces retained."""
 
 from dataclasses import dataclass
+import re
 from typing import Literal
 
 import networkx as nx
@@ -10,6 +11,7 @@ import pypsa
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.core.records import ReductionRecord
+from psdcalc.reduction.core.signatures import network_content_hash
 from psdcalc.reduction.exceptions import BackendCapabilityError
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.rows import MapEntry
@@ -61,12 +63,22 @@ def _simple_line(network: pypsa.Network, name: str) -> bool:
     return True
 
 
+def _different_terminal(left: object, right: object) -> bool:
+    """Compare optional PyPSA bus names including pandas missing values."""
+    left_missing = bool(pd.isna(left))
+    right_missing = bool(pd.isna(right))
+    if left_missing or right_missing:
+        return left_missing != right_missing
+    return bool(left != right)
+
+
 def _record(operation_id: str, before: str, after: str,
+            before_hash: str, after_hash: str,
             removed: list[str], created: list[str], parameters: dict[str, object]) -> ReductionRecord:
     """Create one deterministic simplification operation record."""
     return ReductionRecord(
         operation_id=operation_id, operation_type="simplification",
-        parent_grid_hash=before, child_grid_hash=after,
+        parent_grid_hash=before_hash, child_grid_hash=after_hash,
         input_signature=before, output_signature=after,
         removed_objects=tuple(removed), created_objects=tuple(created),
         parameters=parameters,
@@ -141,7 +153,9 @@ class VoltageAwareTopologySimplifier:
                     anchors.add(sidecar.backend_name(terminal))
         for component in ("Transformer", "Link"):
             for _, row in original.components[component].static.iterrows():
-                anchors.update((str(row.bus0), str(row.bus1)))
+                anchors.update(str(value) for column, value in row.items()
+                               if re.fullmatch(r"bus\d+", str(column)) and
+                               pd.notna(value) and str(value) != "")
         anchors.update(sidecar.backend_name(source) for source in
                        protection.terminal_buses | protection.singleton_buses)
         for source in protection.preserved_components:
@@ -188,17 +202,33 @@ class VoltageAwareTopologySimplifier:
                 boundary = {neighbor for node in members for neighbor in graph.neighbors(node)
                             if neighbor in layer_anchors}
                 if len(boundary) != 1:
+                    roles.append({
+                        "source_ids": [sidecar.source_id("Bus", name).encode()
+                                       for name in sorted(members)],
+                        "voltage_kv": voltage, "role": "not_single_interface_radial_tree",
+                        "reason": f"interface_count={len(boundary)}",
+                    })
                     continue
                 anchor = next(iter(boundary))
                 names = sorted(str(data["name"]) for a, b, data in graph.edges(data=True)
                                if (a in members or b in members) and
                                (a in members | {anchor} and b in members | {anchor}))
-                if not self._safe_tree(original, members, anchor, names, attached,
-                                       sidecar, protection, cycle_lines):
+                reason = self._unsafe_tree_reason(
+                    original, members, anchor, names, attached,
+                    sidecar, protection, cycle_lines,
+                )
+                if reason is not None:
+                    roles.append({
+                        "source_ids": [sidecar.source_id("Bus", name).encode()
+                                       for name in sorted(members)],
+                        "voltage_kv": voltage, "role": "retained_radial_candidate",
+                        "reason": reason,
+                    })
                     continue
                 before = adapter.topology_signature(
                     working, adapter.identity_sidecar(working, sidecar.source_id("Bus", anchor).namespace)
                 )
+                before_hash = network_content_hash(working)
                 removed: list[str] = []
                 for name in names:
                     working.remove("Line", name)
@@ -216,7 +246,9 @@ class VoltageAwareTopologySimplifier:
                 after = adapter.topology_signature(
                     working, adapter.identity_sidecar(working, sidecar.source_id("Bus", anchor).namespace)
                 )
+                after_hash = network_content_hash(working)
                 records.append(_record(f"radial-{len(records)+1}", before, after,
+                                       before_hash, after_hash,
                                        removed, [], {"anchor": sidecar.source_id("Bus", anchor).encode(),
                                                      "voltage_kv": voltage}))
 
@@ -238,14 +270,25 @@ class VoltageAwareTopologySimplifier:
             ) for name in all_cycles
         )
         checks["transformer_identity"] = original.transformers.equals(working.transformers)
-        checks["control_terminals"] = all(
-            original.components[item.component].static.loc[
-                sidecar.backend_name(item.source_id), "bus"] ==
-            working.components[item.component].static.loc[
-                sidecar.backend_name(item.source_id), "bus"]
-            for item in inventory.items if item.controllable and
-            "bus" in original.components[item.component].static.columns
-        )
+        checks["control_terminals"] = True
+        for item in inventory.items:
+            if not item.controllable:
+                continue
+            name = sidecar.backend_name(item.source_id)
+            original_frame = original.components[item.component].static
+            target_frame = working.components[item.component].static
+            columns = [column for column in original_frame.columns
+                       if re.fullmatch(r"bus(?:\d+)?", str(column))]
+            changed = any(
+                _different_terminal(original_frame.at[name, column],
+                                    target_frame.at[name, column])
+                for column in columns
+            ) if name in target_frame.index else True
+            if (name not in target_frame.index or
+                    changed):
+                checks["control_terminals"] = False
+                details["control_terminals"] = f"Control terminal changed: {item.source_id.encode()}"
+                break
         status = "STRUCTURALLY_VALID" if all(checks.values()) else "STRUCTURALLY_INVALID"
         structural = StructuralResult(status, checks, details)
         voltage_map = tuple({
@@ -267,26 +310,33 @@ class VoltageAwareTopologySimplifier:
         )
 
     @staticmethod
-    def _safe_tree(original: pypsa.Network, members: set[str], anchor: str,
-                   lines: list[str], attached: dict[str, list[object]],
-                   sidecar: IdentitySidecar, protection: ProtectionSet,
-                   cycle_lines: set[str]) -> bool:
-        """Reject protected, multi-region, controlled, or complex feeder trees."""
-        if any(name in cycle_lines or not _simple_line(original, name) or
-               sidecar.source_id("Line", name) in protection.preserved_components
+    def _unsafe_tree_reason(original: pypsa.Network, members: set[str], anchor: str,
+                            lines: list[str], attached: dict[str, list[object]],
+                            sidecar: IdentitySidecar, protection: ProtectionSet,
+                            cycle_lines: set[str]) -> str | None:
+        """Explain why a candidate feeder tree must remain unchanged."""
+        if any(name in cycle_lines for name in lines):
+            return "cycle_edge"
+        if any(not _simple_line(original, name) for name in lines):
+            return "complex_branch_model"
+        if any(sidecar.source_id("Line", name) in protection.preserved_components
                for name in lines):
-            return False
+            return "protected_branch"
         countries = {str(original.buses.loc[name].get("country", ""))
                      for name in members | {anchor}}
         if len(countries) > 1:
-            return False
+            return "cross_region"
         for name in members:
             if sidecar.source_id("Bus", name) in protection.preserved_components:
-                return False
-            if any(item.controllable or item.source_id in protection.preserved_components
-                   or item.component == "ShuntImpedance" for item in attached[name]):
-                return False
-        return True
+                return "protected_bus"
+            if any(item.controllable for item in attached[name]):
+                return "control_device"
+            if any(item.source_id in protection.preserved_components
+                   for item in attached[name]):
+                return "protected_device"
+            if any(item.component == "ShuntImpedance" for item in attached[name]):
+                return "shunt_device"
+        return None
 
     @staticmethod
     def _collapse_series(
@@ -332,6 +382,7 @@ class VoltageAwareTopologySimplifier:
                 before = adapter.topology_signature(
                     working, adapter.identity_sidecar(working, sidecar.source_id("Bus", a).namespace)
                 )
+                before_hash = network_content_hash(working)
                 line_rows = working.lines.loc[names]
                 new_name = f"series-{len(records)+1}"
                 while new_name in working.lines.index:
@@ -352,7 +403,9 @@ class VoltageAwareTopologySimplifier:
                 after = adapter.topology_signature(
                     working, adapter.identity_sidecar(working, sidecar.source_id("Bus", a).namespace)
                 )
+                after_hash = network_content_hash(working)
                 records.append(_record(f"series-{len(records)+1}", before, after,
+                                       before_hash, after_hash,
                                        [sidecar.source_id("Line", name).encode()
                                         for name in names] +
                                        [sidecar.source_id("Bus", name).encode()

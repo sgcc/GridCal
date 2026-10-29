@@ -13,12 +13,17 @@ from psdcalc.reduction.core.inventory import GridInventory, InventoryItem
 from psdcalc.reduction.core.signatures import (
     TopologyBranch, TopologyBus, topology_signature as canonical_topology_signature,
 )
-from psdcalc.reduction.exceptions import BackendIOError, IdentityError, RoundTripError
+from psdcalc.reduction.exceptions import (
+    BackendCapabilityError, BackendIOError, IdentityError, RoundTripError,
+)
 
 
 _SOURCE_COMPONENTS = frozenset({
     "Bus", "Line", "Transformer", "Link", "Generator", "Load", "StorageUnit",
     "Store", "ShuntImpedance",
+})
+_METADATA_COMPONENTS = frozenset({
+    "Carrier", "SubNetwork", "Shape", "LineType", "TransformerType",
 })
 _BRANCH_COMPONENTS = frozenset({"Line", "Transformer", "Link"})
 _TERMINAL_COLUMN = re.compile(r"^bus(?:\d+)?$")
@@ -142,6 +147,12 @@ class PypsaAdapter:
         """Reject missing buses, sidecar bindings, or dangling terminals."""
         if network.buses.empty:
             raise IdentityError("PyPSA network has no buses")
+        for component in network.components:
+            if (component.name not in _SOURCE_COMPONENTS | _METADATA_COMPONENTS
+                    and not component.static.empty):
+                raise BackendCapabilityError(
+                    f"Unsupported nonempty PyPSA component: {component.name}"
+                )
         self.inventory(network, sidecar)
 
     def round_trip(self, network: pypsa.Network, sidecar: IdentitySidecar,

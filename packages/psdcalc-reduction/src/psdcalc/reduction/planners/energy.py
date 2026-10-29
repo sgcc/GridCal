@@ -8,6 +8,9 @@ import pandas as pd
 import pypsa
 
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
+from psdcalc.reduction.backends.pypsa.compat import (
+    busmap_by_greedy_modularity, busmap_by_hac, busmap_by_kmeans,
+)
 from psdcalc.reduction.config.models import FeatureBuilder, PartitionOptions
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.exceptions import BackendCapabilityError, PartitionError
@@ -106,14 +109,23 @@ class EnergyPartitionPlanner:
                             if builder.type in {"load_generation", "renewable_time"}]
             if energy_types:
                 raw = EnergyFeatureBuilder().build(working, energy_types)
-                magnitude = raw.abs().sum(axis=1).reindex(bus_index).fillna(0.0)
+                scales = {}
+                for column in raw.columns:
+                    feature_type = ("renewable_time" if column.startswith("renewable_")
+                                    else "load_generation")
+                    builder = next(item for item in enabled
+                                   if item.type == feature_type)
+                    scales[column] = (builder.weight if builder.weight is not None
+                                      else 1.0)
+                magnitude = (raw.abs() * pd.Series(scales)).sum(axis=1)
+                magnitude = magnitude.reindex(bus_index).fillna(0.0)
                 maximum = max(1.0, float(magnitude.max()))
                 weights = (1 + (magnitude / maximum * 9).round()).astype(int)
             else:
                 weights = pd.Series(1, index=bus_index, dtype=int)
-            return working.cluster.spatial.busmap_by_kmeans(
-                weights, n_clusters, buses_i=bus_index,
-                random_state=seed, n_init=options.n_init,
+            return busmap_by_kmeans(
+                working, weights, n_clusters, seed,
+                buses_i=bus_index, n_init=options.n_init,
             )
         if planner == "pypsa_hac":
             feature_types = [builder.type for builder in enabled]
@@ -133,12 +145,13 @@ class EnergyPartitionPlanner:
                                 item.type == "renewable_time"), None)
                 weight = builder.weight if builder and builder.weight is not None else 1.0
                 feature[column] = normalized * weight
-            return working.cluster.spatial.busmap_by_hac(
-                n_clusters, buses_i=bus_index, branch_components=["Line"],
+            return busmap_by_hac(
+                working, n_clusters, buses_i=bus_index,
+                branch_components=["Line"],
                 feature=feature, affinity=options.affinity, linkage=options.linkage,
             )
         if planner == "pypsa_modularity":
-            return working.cluster.spatial.busmap_by_greedy_modularity(
-                n_clusters, buses_i=bus_index,
+            return busmap_by_greedy_modularity(
+                working, n_clusters, buses_i=bus_index,
             )
         raise PartitionError(f"Unknown energy planner: {planner}")

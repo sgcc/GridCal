@@ -46,6 +46,11 @@ class QuotientMaterializer:
             raise BackendCapabilityError("transformer quotient is not supported in the first batch")
         if original.buses.v_nom.nunique(dropna=False) > 1:
             raise BackendCapabilityError("multi-voltage quotient is not supported in the first batch")
+        for column in original.links.columns:
+            if str(column).startswith("bus") and str(column) not in {"bus0", "bus1"}:
+                values = original.links[column]
+                if (values.notna() & values.astype(str).ne("")).any():
+                    raise BackendCapabilityError("multi-terminal Link quotient is not supported")
         if set(partition.backend_busmap) != set(original.buses.index):
             raise MaterializationError("Partition does not cover every source bus")
         self._check_protection(partition, protection)
