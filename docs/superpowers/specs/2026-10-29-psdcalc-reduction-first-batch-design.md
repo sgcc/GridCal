@@ -107,3 +107,9 @@ PyPSA 公开 API 随版本演变，wrapper 必须以锁定版集成测试确认�
 `VoltageAwareTopologySimplifier` 在公共基础链完成后、能源 K-means/HAC 前运行。每个 `v_nom` 层独立构图，Transformer 只作层间接口。用 2-core、bridge、articulation point 和 cycle-edge 标记环网骨架；一期不删除受保护环网边。仅单接口径向树、且无受保护设备或控制的区域，以及满足无注入、无控制、同层同区域条件的串联链可作为压缩候选。对多边界、内部环网、跨区域、复杂支路模型的候选，保留原状或显式失败，不能偷偷迁移设备。
 
 默认 `keep_transformer_interface`，低压设备留在原电压侧。`lift_to_target_voltage` 仅作为 `planning_aggregation` 的显式规划近似选项，结果须标记 `PLANNING_APPROXIMATION`，并记录被迁移设备与电压层映射；不得把它称为 AC/无功/OPF 等值。每步写 `ReductionRecord`，包括拓扑角色、锚点、被吸收支路、设备迁移与哈希。结构 Gate 验证原环网骨架、Transformer、控制设备、连通分量、注入守恒和原模型不可变；通过简化步骤只声明 `STRUCTURALLY_SIMPLIFIED`。
+
+## 实现核对（2026-10-29）
+
+公共链落在 `packages/psdcalc-reduction/src/psdcalc/reduction/`。PR-011 实际文件为 `topology/simplifier.py`；PR-012 的特征与规划器分别为 `features/energy.py` 和 `planners/energy.py`。`build` 的单独简化模式可保留 Transformer 和多电压层；后置 quotient 对这两类网络仍执行 capability gate。后置能源聚类必须先在配置中启用 `voltage_aware_topology`，使用公开 `n.cluster.spatial.*` accessor。保护环网边的端点在聚类时作为 singleton；若目标簇数不足，显式失败。`lift_to_target_voltage` 当前仅可被配置模型识别：非规划 profile 报 `ConfigSemanticError`，规划 profile 报 `UnsupportedFeatureError`，因此当前不产出 `PLANNING_APPROXIMATION` 结果。
+
+运行目录分别保存 L1 拓扑网络、可选 L2 商图、sidecar、Parquet 映射、各步记录、候选保留理由和结构证据。manifest 包含输入/输出 SHA-256、拓扑签名、seed 与版本号。IEEE-14 测试是离线程序化拓扑夹具，线路参数为测试用合成值；它验证环网与 Transformer 的结构保持，不是 IEEE-14 潮流基准复现。

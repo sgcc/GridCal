@@ -22,6 +22,18 @@ pipeline:
   materialization_family: "aggregation"
   materialize_from: "original"
 
+simplification:
+  operations:
+    - id: "selective-topology"
+      type: "voltage_aware_topology"
+      enabled: true
+      mode: "keep_transformer_interface"
+
+features:
+  builders:
+    - type: "load_generation"
+      enabled: true
+
 protection:
   rules: []
 

@@ -2,13 +2,33 @@
 
 Standalone `psdcalc.reduction` package for replayable PyPSA network reduction.
 
-PR-001 establishes package metadata, a locked dependency set, domain errors,
-architecture decisions, and a single compatibility boundary for PyPSA's public
-spatial clustering accessor. Planning, materialization, mappings, CLI and
-validation are delivered in later first-batch increments.
+The first phase includes strict Pydantic configuration, source-ID sidecars,
+custom busmaps, PyPSA quotient construction, complete structural maps, and a
+structural Gate. It also includes selective voltage-aware topology
+simplification before energy K-means, HAC, or greedy modularity planning.
 
 Install the locked development environment with `uv sync --locked` from this
 directory. Run the package tests with `uv run --locked pytest tests`.
 
-The first batch can report structural validity only. It does not certify
-power-flow convergence or full-grid physical acceptance.
+The CLI commands are `validate-config`, `inspect`, `plan`, `build`, `report`, and
+`dump-schema`. For example:
+
+```bash
+uv run --locked psdcalc-reduction validate-config examples/reduction.first-batch.yaml
+# Set input.path to an existing local PyPSA NetCDF or CSV artifact before build.
+uv run --locked psdcalc-reduction build examples/reduction.first-batch.yaml
+uv run --locked psdcalc-reduction report examples/runs/small-pypsa-kmeans
+```
+
+The topology stage retains Transformer interfaces and source voltage levels.
+It collapses only eligible single-interface feeders and zero-injection series
+chains; it records retained candidate reasons, voltage mappings, roles, moved
+devices, absorbed branches, and one record per change. `lift_to_target_voltage`
+is recognized but fails explicitly until a planning approximation is
+implemented. Quotient construction with Transformer or multiple voltage levels
+also fails explicitly.
+
+The manifest Gate reports only `STRUCTURALLY_VALID` or
+`STRUCTURALLY_INVALID`; a topology operation can additionally report
+`STRUCTURALLY_SIMPLIFIED`. No result certifies AC power-flow convergence,
+reactive-power or OPF equivalence, or full-grid physical acceptance.

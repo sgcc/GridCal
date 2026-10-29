@@ -252,6 +252,7 @@
         "weight": {
           "anyOf": [
             {
+              "minimum": 0,
               "type": "number"
             },
             {
@@ -1283,7 +1284,15 @@
       "$ref": "#/$defs/OutputConfig"
     },
     "partition": {
-      "$ref": "#/$defs/PartitionConfig"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PartitionConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "pipeline": {
       "$ref": "#/$defs/PipelineConfig"
@@ -1320,7 +1329,6 @@
     "run",
     "input",
     "task",
-    "partition",
     "aggregation"
   ],
   "title": "ReductionConfig",
