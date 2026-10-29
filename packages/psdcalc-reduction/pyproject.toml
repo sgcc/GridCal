@@ -18,6 +18,9 @@ dependencies = [
   "scikit-learn>=1.5,<2",
 ]
 
+[project.scripts]
+psdcalc-reduction = "psdcalc.reduction.cli:main"
+
 [dependency-groups]
 dev = ["pytest>=9,<10", "hypothesis>=6,<7"]
 

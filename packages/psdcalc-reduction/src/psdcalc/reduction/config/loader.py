@@ -1,0 +1,130 @@
+"""Safe YAML loading, profile resolution, and first-batch gates."""
+
+from collections.abc import Mapping
+from copy import deepcopy
+from pathlib import Path
+from typing import Any
+
+from pydantic import ValidationError
+import yaml
+
+from psdcalc.reduction.config.models import ReductionConfig
+from psdcalc.reduction.config.profiles import profile_defaults
+from psdcalc.reduction.exceptions import (
+    ConfigSchemaError,
+    ConfigSemanticError,
+    UnsupportedFeatureError,
+)
+
+
+def _merge(base: dict[str, Any], patch: Mapping[str, Any]) -> dict[str, Any]:
+    """Recursively merge configuration mappings without mutating inputs."""
+    result = deepcopy(base)
+    for key, value in patch.items():
+        if isinstance(value, Mapping) and isinstance(result.get(key), dict):
+            result[key] = _merge(result[key], value)
+        else:
+            result[key] = deepcopy(value)
+    return result
+
+
+def _source_mapping(source: Mapping[str, Any] | str | Path) -> dict[str, Any]:
+    """Read a mapping or YAML file without executing custom YAML tags."""
+    if isinstance(source, Mapping):
+        return deepcopy(dict(source))
+    try:
+        raw = yaml.safe_load(Path(source).read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        raise ConfigSchemaError(f"Cannot read configuration: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ConfigSchemaError("Configuration root must be a mapping")
+    return raw
+
+
+def _gate_features(config: ReductionConfig) -> None:
+    """Reject enabled later-stage capabilities without swallowing failures."""
+    if config.pipeline.materialization_family != "aggregation":
+        raise UnsupportedFeatureError("pipeline.materialization_family is not first-batch aggregation")
+    if config.pipeline.materialize_from != "original":
+        raise UnsupportedFeatureError("pipeline.materialize_from=parent requires hierarchy")
+    if config.pipeline.hierarchy.nested or config.pipeline.hierarchy.levels:
+        raise UnsupportedFeatureError("pipeline.hierarchy is not implemented")
+    if any(op.enabled for op in config.simplification.operations):
+        raise UnsupportedFeatureError("simplification operation is not implemented")
+    if config.equivalence.enabled:
+        raise UnsupportedFeatureError("equivalence is not implemented")
+    if (config.lifting.state.method is not None or
+            config.lifting.control.method is not None):
+        raise UnsupportedFeatureError("lifting is not implemented")
+    if config.refinement.enabled:
+        raise UnsupportedFeatureError("refinement is not implemented")
+    if config.validation.full_grid.enabled:
+        raise UnsupportedFeatureError("validation.full_grid is not implemented")
+    if (config.validation.acceptance.require_convergence or
+            config.validation.acceptance.require_hard_constraints or
+            config.validation.acceptance.max_mismatch_pu is not None):
+        raise UnsupportedFeatureError("validation.acceptance is not implemented")
+    if config.output.save_all_levels or config.output.save_metrics_parquet:
+        raise UnsupportedFeatureError("multi-level or metrics output is not implemented")
+    if config.plugins.allow_external or config.plugins.modules:
+        raise UnsupportedFeatureError("external plugins are not implemented")
+    if config.partition.target.type == "from_hierarchy_level":
+        raise UnsupportedFeatureError("hierarchy target is not implemented")
+    if any(b.enabled and b.type not in {"geographic_xy", "load_generation"}
+           for b in config.features.builders):
+        raise UnsupportedFeatureError("requested feature builder is not implemented")
+    if any(getattr(config.cost_accounting, name) for name in (
+        "include_solve", "include_lifting", "include_correction", "include_refinement",
+        "include_validation", "report_amortization",
+    )):
+        raise UnsupportedFeatureError("full-chain cost accounting is not implemented")
+    if config.task.profile in {"var_control_strict", "ac_opf_warmstart", "dc_security_screening"}:
+        raise UnsupportedFeatureError(f"task.profile={config.task.profile} is not implemented")
+
+
+def _check_semantics(config: ReductionConfig) -> None:
+    """Reject well-formed but inconsistent first-batch settings."""
+    target = config.partition.target
+    if config.partition.planner == "custom_busmap":
+        if not config.partition.custom_busmap.path:
+            raise ConfigSemanticError("custom_busmap.path is required for custom_busmap planner")
+    elif target.type == "count" and target.n_clusters is None:
+        raise ConfigSemanticError("partition.target.n_clusters is required")
+    elif target.type == "ratio" and target.ratio is None:
+        raise ConfigSemanticError("partition.target.ratio is required")
+    maximum = config.partition.max_cluster_size
+    if maximum is not None and maximum < config.partition.min_cluster_size:
+        raise ConfigSemanticError("max_cluster_size must be >= min_cluster_size")
+
+
+def load_config(
+    source: Mapping[str, Any] | str | Path,
+    *,
+    scenario: Mapping[str, Any] | None = None,
+    overrides: Mapping[str, Any] | None = None,
+) -> ReductionConfig:
+    """Resolve and validate a first-batch configuration.
+
+    Raises ConfigSchemaError, UnsupportedFeatureError, or ConfigSemanticError.
+    """
+    project = _source_mapping(source)
+    task = project.get("task")
+    if not isinstance(task, Mapping):
+        raise ConfigSchemaError("task must be a mapping with a profile")
+    profile = task.get("profile")
+    try:
+        base = profile_defaults(profile)
+    except (KeyError, TypeError) as exc:
+        raise ConfigSchemaError(f"Unknown or missing task.profile: {profile}") from exc
+    resolved = _merge(base, project)
+    if scenario:
+        resolved = _merge(resolved, scenario)
+    if overrides:
+        resolved = _merge(resolved, overrides)
+    try:
+        config = ReductionConfig.model_validate(resolved)
+    except ValidationError as exc:
+        raise ConfigSchemaError(str(exc)) from exc
+    _gate_features(config)
+    _check_semantics(config)
+    return config

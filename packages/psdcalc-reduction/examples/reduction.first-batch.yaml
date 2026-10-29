@@ -1,0 +1,43 @@
+schema_version: "0.1.0"
+
+run:
+  id: "small-pypsa-kmeans"
+  seed: 42
+  deterministic: true
+  output_dir: "runs"
+
+input:
+  backend: "pypsa"
+  path: "data/small.nc"
+  format: "netcdf"
+  source_namespace: "example"
+
+task:
+  type: "ac_pf"
+  profile: "ac_pf_strict"
+  reduction_role: "warm_start"
+  final_authority: "full_grid_independent_pf"
+
+pipeline:
+  materialization_family: "aggregation"
+  materialize_from: "original"
+
+protection:
+  rules: []
+
+partition:
+  planner: "pypsa_kmeans"
+  target:
+    type: "count"
+    n_clusters: 2
+  connectivity_policy: "reject"
+
+aggregation:
+  backend: "pypsa"
+  aggregate_one_ports: ["Load"]
+
+validation:
+  structural:
+    enabled: true
+  full_grid:
+    enabled: false

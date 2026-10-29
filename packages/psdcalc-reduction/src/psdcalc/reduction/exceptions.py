@@ -7,3 +7,15 @@ class ReductionError(Exception):
 
 class BackendCapabilityError(ReductionError):
     """A backend lacks a required public capability."""
+
+
+class ConfigSchemaError(ReductionError):
+    """Configuration syntax, type, version, or unknown field is invalid."""
+
+
+class UnsupportedFeatureError(ReductionError):
+    """A recognized future capability was enabled before implementation."""
+
+
+class ConfigSemanticError(ReductionError):
+    """A well-formed configuration has inconsistent values."""

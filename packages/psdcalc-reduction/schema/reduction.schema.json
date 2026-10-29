@@ -1,0 +1,1328 @@
+{
+  "$defs": {
+    "AcceptanceConfig": {
+      "additionalProperties": false,
+      "description": "Known future physical acceptance settings.",
+      "properties": {
+        "max_mismatch_pu": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Mismatch Pu"
+        },
+        "require_convergence": {
+          "default": false,
+          "title": "Require Convergence",
+          "type": "boolean"
+        },
+        "require_hard_constraints": {
+          "default": false,
+          "title": "Require Hard Constraints",
+          "type": "boolean"
+        }
+      },
+      "title": "AcceptanceConfig",
+      "type": "object"
+    },
+    "AggregationConfig": {
+      "additionalProperties": false,
+      "description": "PyPSA quotient options.",
+      "properties": {
+        "aggregate_one_ports": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Aggregate One Ports",
+          "type": "array"
+        },
+        "backend": {
+          "const": "pypsa",
+          "default": "pypsa",
+          "title": "Backend",
+          "type": "string"
+        },
+        "line_length_factor": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "Line Length Factor",
+          "type": "number"
+        },
+        "preserve_components": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Preserve Components",
+          "type": "array"
+        },
+        "strategies": {
+          "$ref": "#/$defs/AggregationStrategies"
+        }
+      },
+      "title": "AggregationConfig",
+      "type": "object"
+    },
+    "AggregationStrategies": {
+      "additionalProperties": false,
+      "description": "Known PyPSA aggregation strategy groups.",
+      "properties": {
+        "generators": {
+          "$ref": "#/$defs/GeneratorStrategies"
+        },
+        "one_ports": {
+          "$ref": "#/$defs/OnePortStrategies"
+        }
+      },
+      "title": "AggregationStrategies",
+      "type": "object"
+    },
+    "ControlLiftingConfig": {
+      "additionalProperties": false,
+      "description": "Known future control lifting settings.",
+      "properties": {
+        "allow_discrete_aggregation": {
+          "default": false,
+          "title": "Allow Discrete Aggregation",
+          "type": "boolean"
+        },
+        "allow_unit_aggregation": {
+          "default": false,
+          "title": "Allow Unit Aggregation",
+          "type": "boolean"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        }
+      },
+      "title": "ControlLiftingConfig",
+      "type": "object"
+    },
+    "CostAccountingConfig": {
+      "additionalProperties": false,
+      "description": "Known future full-chain cost settings.",
+      "properties": {
+        "include_construction": {
+          "default": false,
+          "title": "Include Construction",
+          "type": "boolean"
+        },
+        "include_correction": {
+          "default": false,
+          "title": "Include Correction",
+          "type": "boolean"
+        },
+        "include_lifting": {
+          "default": false,
+          "title": "Include Lifting",
+          "type": "boolean"
+        },
+        "include_planning": {
+          "default": false,
+          "title": "Include Planning",
+          "type": "boolean"
+        },
+        "include_refinement": {
+          "default": false,
+          "title": "Include Refinement",
+          "type": "boolean"
+        },
+        "include_solve": {
+          "default": false,
+          "title": "Include Solve",
+          "type": "boolean"
+        },
+        "include_validation": {
+          "default": false,
+          "title": "Include Validation",
+          "type": "boolean"
+        },
+        "report_amortization": {
+          "default": false,
+          "title": "Report Amortization",
+          "type": "boolean"
+        }
+      },
+      "title": "CostAccountingConfig",
+      "type": "object"
+    },
+    "CustomBusmapConfig": {
+      "additionalProperties": false,
+      "description": "Custom busmap artifact path.",
+      "properties": {
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        }
+      },
+      "title": "CustomBusmapConfig",
+      "type": "object"
+    },
+    "EquivalenceConfig": {
+      "additionalProperties": false,
+      "description": "Known future electrical equivalence settings.",
+      "properties": {
+        "backend": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backend"
+        },
+        "base_operating_point": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Operating Point"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        }
+      },
+      "title": "EquivalenceConfig",
+      "type": "object"
+    },
+    "FeatureBuilder": {
+      "additionalProperties": false,
+      "description": "Known feature builder declaration.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "geographic_xy",
+            "load_generation",
+            "renewable_profile",
+            "renewable_time",
+            "electrical_distance",
+            "qv_sensitivity"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weight"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "FeatureBuilder",
+      "type": "object"
+    },
+    "FeaturesConfig": {
+      "additionalProperties": false,
+      "description": "Planner feature declarations.",
+      "properties": {
+        "builders": {
+          "items": {
+            "$ref": "#/$defs/FeatureBuilder"
+          },
+          "title": "Builders",
+          "type": "array"
+        }
+      },
+      "title": "FeaturesConfig",
+      "type": "object"
+    },
+    "FullGridValidationConfig": {
+      "additionalProperties": false,
+      "description": "Known future full-grid validation settings.",
+      "properties": {
+        "backend": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backend"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "independent_solver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Independent Solver"
+        },
+        "require_candidate_materialization": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Require Candidate Materialization"
+        },
+        "solver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Solver"
+        }
+      },
+      "title": "FullGridValidationConfig",
+      "type": "object"
+    },
+    "GeneratorStrategies": {
+      "additionalProperties": false,
+      "description": "Allowlisted generator aggregation strategy names.",
+      "properties": {
+        "committable": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Committable"
+        },
+        "marginal_cost": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marginal Cost"
+        },
+        "p_nom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Nom"
+        },
+        "p_nom_max": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Nom Max"
+        },
+        "p_nom_min": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Nom Min"
+        }
+      },
+      "title": "GeneratorStrategies",
+      "type": "object"
+    },
+    "HierarchyConfig": {
+      "additionalProperties": false,
+      "description": "Known future hierarchy settings.",
+      "properties": {
+        "levels": {
+          "items": {
+            "$ref": "#/$defs/HierarchyLevel"
+          },
+          "title": "Levels",
+          "type": "array"
+        },
+        "nested": {
+          "default": false,
+          "title": "Nested",
+          "type": "boolean"
+        }
+      },
+      "title": "HierarchyConfig",
+      "type": "object"
+    },
+    "HierarchyLevel": {
+      "additionalProperties": false,
+      "description": "Known future level specification.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "ratio": {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Ratio",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "ratio"
+      ],
+      "title": "HierarchyLevel",
+      "type": "object"
+    },
+    "InputConfig": {
+      "additionalProperties": false,
+      "description": "PyPSA input artifact and source namespace.",
+      "properties": {
+        "backend": {
+          "const": "pypsa",
+          "title": "Backend",
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "netcdf",
+            "csv"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "source_namespace": {
+          "title": "Source Namespace",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend",
+        "path",
+        "format",
+        "source_namespace"
+      ],
+      "title": "InputConfig",
+      "type": "object"
+    },
+    "LiftingConfig": {
+      "additionalProperties": false,
+      "description": "Disabled future lifting declarations.",
+      "properties": {
+        "control": {
+          "$ref": "#/$defs/ControlLiftingConfig"
+        },
+        "state": {
+          "$ref": "#/$defs/StateLiftingConfig"
+        }
+      },
+      "title": "LiftingConfig",
+      "type": "object"
+    },
+    "LoadStrategies": {
+      "additionalProperties": false,
+      "description": "Allowlisted load aggregation strategy names.",
+      "properties": {
+        "p_set": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Set"
+        },
+        "q_set": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Q Set"
+        }
+      },
+      "title": "LoadStrategies",
+      "type": "object"
+    },
+    "MappingConfig": {
+      "additionalProperties": false,
+      "description": "Persistent mapping artifact settings.",
+      "properties": {
+        "preserve_source_ids": {
+          "default": true,
+          "title": "Preserve Source Ids",
+          "type": "boolean"
+        },
+        "record_control_ownership": {
+          "default": true,
+          "title": "Record Control Ownership",
+          "type": "boolean"
+        },
+        "record_device_ownership": {
+          "default": true,
+          "title": "Record Device Ownership",
+          "type": "boolean"
+        },
+        "require_complete_bus_map": {
+          "default": true,
+          "title": "Require Complete Bus Map",
+          "type": "boolean"
+        },
+        "storage_format": {
+          "const": "parquet",
+          "default": "parquet",
+          "title": "Storage Format",
+          "type": "string"
+        }
+      },
+      "title": "MappingConfig",
+      "type": "object"
+    },
+    "MatchConfig": {
+      "additionalProperties": false,
+      "description": "Declarative protection selector.",
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "eq",
+            "ne",
+            "in",
+            "ge",
+            "gt",
+            "le",
+            "lt"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value"
+        }
+      },
+      "required": [
+        "field",
+        "op",
+        "value"
+      ],
+      "title": "MatchConfig",
+      "type": "object"
+    },
+    "OnePortStrategies": {
+      "additionalProperties": false,
+      "description": "Known one-port strategy groups.",
+      "properties": {
+        "Load": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LoadStrategies"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "OnePortStrategies",
+      "type": "object"
+    },
+    "OutputConfig": {
+      "additionalProperties": false,
+      "description": "First-batch and known future output toggles.",
+      "properties": {
+        "save_all_levels": {
+          "default": false,
+          "title": "Save All Levels",
+          "type": "boolean"
+        },
+        "save_maps": {
+          "default": true,
+          "title": "Save Maps",
+          "type": "boolean"
+        },
+        "save_metrics_parquet": {
+          "default": false,
+          "title": "Save Metrics Parquet",
+          "type": "boolean"
+        },
+        "save_original_snapshot": {
+          "default": true,
+          "title": "Save Original Snapshot",
+          "type": "boolean"
+        },
+        "save_records": {
+          "default": true,
+          "title": "Save Records",
+          "type": "boolean"
+        },
+        "save_validation_evidence": {
+          "default": true,
+          "title": "Save Validation Evidence",
+          "type": "boolean"
+        }
+      },
+      "title": "OutputConfig",
+      "type": "object"
+    },
+    "PartitionConfig": {
+      "additionalProperties": false,
+      "description": "Planner selection and connectivity policy.",
+      "properties": {
+        "connectivity_policy": {
+          "default": "reject",
+          "enum": [
+            "reject",
+            "split_disconnected"
+          ],
+          "title": "Connectivity Policy",
+          "type": "string"
+        },
+        "custom_busmap": {
+          "$ref": "#/$defs/CustomBusmapConfig"
+        },
+        "max_cluster_size": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cluster Size"
+        },
+        "min_cluster_size": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "title": "Min Cluster Size",
+          "type": "integer"
+        },
+        "options": {
+          "$ref": "#/$defs/PartitionOptions"
+        },
+        "planner": {
+          "enum": [
+            "custom_busmap",
+            "pypsa_kmeans",
+            "pypsa_hac",
+            "pypsa_modularity"
+          ],
+          "title": "Planner",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/PartitionTarget"
+        }
+      },
+      "required": [
+        "planner",
+        "target"
+      ],
+      "title": "PartitionConfig",
+      "type": "object"
+    },
+    "PartitionOptions": {
+      "additionalProperties": false,
+      "description": "Allowlisted PyPSA clustering options.",
+      "properties": {
+        "affinity": {
+          "default": "euclidean",
+          "title": "Affinity",
+          "type": "string"
+        },
+        "linkage": {
+          "default": "ward",
+          "title": "Linkage",
+          "type": "string"
+        },
+        "n_init": {
+          "default": 10,
+          "exclusiveMinimum": 0,
+          "title": "N Init",
+          "type": "integer"
+        }
+      },
+      "title": "PartitionOptions",
+      "type": "object"
+    },
+    "PartitionTarget": {
+      "additionalProperties": false,
+      "description": "Single-level target cluster count or ratio.",
+      "properties": {
+        "n_clusters": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Clusters"
+        },
+        "ratio": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ratio"
+        },
+        "type": {
+          "default": "count",
+          "enum": [
+            "count",
+            "ratio",
+            "from_hierarchy_level"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "PartitionTarget",
+      "type": "object"
+    },
+    "PipelineConfig": {
+      "additionalProperties": false,
+      "description": "Construction family and future hierarchy placeholders.",
+      "properties": {
+        "hierarchy": {
+          "$ref": "#/$defs/HierarchyConfig"
+        },
+        "materialization_family": {
+          "default": "aggregation",
+          "enum": [
+            "aggregation",
+            "simplification",
+            "equivalencing",
+            "hybrid"
+          ],
+          "title": "Materialization Family",
+          "type": "string"
+        },
+        "materialize_from": {
+          "default": "original",
+          "enum": [
+            "original",
+            "parent"
+          ],
+          "title": "Materialize From",
+          "type": "string"
+        }
+      },
+      "title": "PipelineConfig",
+      "type": "object"
+    },
+    "PluginsConfig": {
+      "additionalProperties": false,
+      "description": "Disabled external plugin configuration.",
+      "properties": {
+        "allow_external": {
+          "default": false,
+          "title": "Allow External",
+          "type": "boolean"
+        },
+        "modules": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Modules",
+          "type": "array"
+        }
+      },
+      "title": "PluginsConfig",
+      "type": "object"
+    },
+    "ProtectionConfig": {
+      "additionalProperties": false,
+      "description": "Protection rule collection.",
+      "properties": {
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/ProtectionRule"
+          },
+          "title": "Rules",
+          "type": "array"
+        }
+      },
+      "title": "ProtectionConfig",
+      "type": "object"
+    },
+    "ProtectionRule": {
+      "additionalProperties": false,
+      "description": "One protection rule with explicit action semantics.",
+      "properties": {
+        "action": {
+          "enum": [
+            "trace_only",
+            "preserve_component_identity",
+            "preserve_terminal_bus",
+            "preserve_bus_as_singleton",
+            "cannot_link"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "component": {
+          "title": "Component",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "ids_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ids File"
+        },
+        "match": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MatchConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "component",
+        "action"
+      ],
+      "title": "ProtectionRule",
+      "type": "object"
+    },
+    "RefinementConfig": {
+      "additionalProperties": false,
+      "description": "Disabled future refinement settings.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "max_rounds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Rounds"
+        },
+        "policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy"
+        },
+        "r_states": {
+          "items": {
+            "type": "string"
+          },
+          "title": "R States",
+          "type": "array"
+        }
+      },
+      "title": "RefinementConfig",
+      "type": "object"
+    },
+    "RunConfig": {
+      "additionalProperties": false,
+      "description": "Run identity and reproducibility settings.",
+      "properties": {
+        "deterministic": {
+          "default": true,
+          "title": "Deterministic",
+          "type": "boolean"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "output_dir": {
+          "default": "runs",
+          "title": "Output Dir",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "seed"
+      ],
+      "title": "RunConfig",
+      "type": "object"
+    },
+    "SimplificationConfig": {
+      "additionalProperties": false,
+      "description": "Future transforms are parsed but cannot execute in this batch.",
+      "properties": {
+        "operations": {
+          "items": {
+            "$ref": "#/$defs/SimplificationOperation"
+          },
+          "title": "Operations",
+          "type": "array"
+        }
+      },
+      "title": "SimplificationConfig",
+      "type": "object"
+    },
+    "SimplificationOperation": {
+      "additionalProperties": false,
+      "description": "Known but unsupported simplification operation.",
+      "properties": {
+        "across_regions": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Across Regions"
+        },
+        "base_kv": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Kv"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "min_mean_power_mw": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Mean Power Mw"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "keep_and_report",
+                "keep_transformer_interface",
+                "lift_to_target_voltage"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode"
+        },
+        "preserve_if_has_control": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preserve If Has Control"
+        },
+        "preserve_if_has_injection": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preserve If Has Injection"
+        },
+        "preserve_if_protected": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preserve If Protected"
+        },
+        "target_voltage_kv": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Voltage Kv"
+        },
+        "type": {
+          "enum": [
+            "isolated_components",
+            "remove_stubs",
+            "map_voltage_layer",
+            "simplify_dc_chains",
+            "series_collapse",
+            "parallel_aggregation",
+            "voltage_aware_topology"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "SimplificationOperation",
+      "type": "object"
+    },
+    "StateLiftingConfig": {
+      "additionalProperties": false,
+      "description": "Known future state lifting settings.",
+      "properties": {
+        "boundary_state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boundary State"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Method"
+        }
+      },
+      "title": "StateLiftingConfig",
+      "type": "object"
+    },
+    "StructuralValidationConfig": {
+      "additionalProperties": false,
+      "description": "Structural validation toggles.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "reject_dangling_devices": {
+          "default": true,
+          "title": "Reject Dangling Devices",
+          "type": "boolean"
+        },
+        "reject_missing_protected_objects": {
+          "default": true,
+          "title": "Reject Missing Protected Objects",
+          "type": "boolean"
+        },
+        "require_connected_retained_network": {
+          "default": true,
+          "title": "Require Connected Retained Network",
+          "type": "boolean"
+        }
+      },
+      "title": "StructuralValidationConfig",
+      "type": "object"
+    },
+    "TaskConfig": {
+      "additionalProperties": false,
+      "description": "Task context without granting physical acceptance authority.",
+      "properties": {
+        "final_authority": {
+          "title": "Final Authority",
+          "type": "string"
+        },
+        "profile": {
+          "enum": [
+            "planning_aggregation",
+            "ac_pf_strict",
+            "var_control_strict",
+            "ac_opf_warmstart",
+            "dc_security_screening",
+            "custom"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "reduction_role": {
+          "title": "Reduction Role",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "ac_pf",
+            "planning",
+            "var_control",
+            "ac_opf",
+            "dc_security"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "profile",
+        "reduction_role",
+        "final_authority"
+      ],
+      "title": "TaskConfig",
+      "type": "object"
+    },
+    "ValidationConfig": {
+      "additionalProperties": false,
+      "description": "Structural checks and disabled physical validation declarations.",
+      "properties": {
+        "acceptance": {
+          "$ref": "#/$defs/AcceptanceConfig"
+        },
+        "full_grid": {
+          "$ref": "#/$defs/FullGridValidationConfig"
+        },
+        "structural": {
+          "$ref": "#/$defs/StructuralValidationConfig"
+        }
+      },
+      "title": "ValidationConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Resolved first-batch reduction configuration.",
+  "properties": {
+    "aggregation": {
+      "$ref": "#/$defs/AggregationConfig"
+    },
+    "cost_accounting": {
+      "$ref": "#/$defs/CostAccountingConfig"
+    },
+    "equivalence": {
+      "$ref": "#/$defs/EquivalenceConfig"
+    },
+    "features": {
+      "$ref": "#/$defs/FeaturesConfig"
+    },
+    "input": {
+      "$ref": "#/$defs/InputConfig"
+    },
+    "lifting": {
+      "$ref": "#/$defs/LiftingConfig"
+    },
+    "mapping": {
+      "$ref": "#/$defs/MappingConfig"
+    },
+    "output": {
+      "$ref": "#/$defs/OutputConfig"
+    },
+    "partition": {
+      "$ref": "#/$defs/PartitionConfig"
+    },
+    "pipeline": {
+      "$ref": "#/$defs/PipelineConfig"
+    },
+    "plugins": {
+      "$ref": "#/$defs/PluginsConfig"
+    },
+    "protection": {
+      "$ref": "#/$defs/ProtectionConfig"
+    },
+    "refinement": {
+      "$ref": "#/$defs/RefinementConfig"
+    },
+    "run": {
+      "$ref": "#/$defs/RunConfig"
+    },
+    "schema_version": {
+      "const": "0.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "simplification": {
+      "$ref": "#/$defs/SimplificationConfig"
+    },
+    "task": {
+      "$ref": "#/$defs/TaskConfig"
+    },
+    "validation": {
+      "$ref": "#/$defs/ValidationConfig"
+    }
+  },
+  "required": [
+    "schema_version",
+    "run",
+    "input",
+    "task",
+    "partition",
+    "aggregation"
+  ],
+  "title": "ReductionConfig",
+  "type": "object"
+}
