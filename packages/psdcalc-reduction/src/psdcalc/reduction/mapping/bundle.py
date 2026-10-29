@@ -33,6 +33,18 @@ class MappingBundle:
     boundary_map: tuple[MapEntry, ...] = ()
     equivalent_component_map: tuple[MapEntry, ...] = ()
 
+    @property
+    def line_map(self) -> tuple[MapEntry, ...]:
+        """Return the authoritative Line rows from the branch map."""
+        return tuple(row for row in self.branch_map
+                     if row.source_id.component == "Line")
+
+    @property
+    def transformer_map(self) -> tuple[MapEntry, ...]:
+        """Return the authoritative Transformer rows from the branch map."""
+        return tuple(row for row in self.branch_map
+                     if row.source_id.component == "Transformer")
+
     @classmethod
     def from_quotient(
         cls,
