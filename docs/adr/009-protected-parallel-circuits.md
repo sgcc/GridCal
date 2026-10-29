@@ -2,10 +2,13 @@
 
 _Design for Phase 1.5 follow-up; proposed for review, 2026-10-30._
 
-Status: proposed for review. This ADR authorizes no implementation until reviewed.
-It refines [ADR-008](008-multi-voltage-quotient.md) for protected parallel
-Lines. It does not change the existing quotient or `cycle_corridors` Gate in
-this design-only submission.
+Status: proposed for review, with required clarifications incorporated.
+This is an **opt-in enhancement** of
+[ADR-008](008-multi-voltage-quotient.md), not a replacement for its default
+quotient contract. It authorizes no implementation until reviewed and does
+not change the existing quotient, `cycle_corridors`, or
+`simple_ring_topology` Gate
+in this design-only submission.
 
 ## Context and decision
 
@@ -27,12 +30,15 @@ the final state is `MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID` with reason
 PSDCase-to-PyPSA structural projection pass; physical fidelity has not been
 evaluated.
 
-**Decision:** The first implementation of this ADR may use only
-`preserve_protected_members`. It must preserve every member of a protected
-parallel corridor as a distinct Line with the same source and target StableId.
-It may continue the existing ordinary quotient behavior for unprotected
-corridors. `preserve_all_members` and an explicitly selected
-`aggregate_corridor` policy remain unsupported until separate review.
+**Decision:** The 0.2.0-compatible default remains `aggregate_corridor` with
+ADR-008's existing quotient and structural Gate behavior. A strict profile
+may opt in to `preserve_protected_members` after that strategy is implemented;
+the first implementation of this ADR adds only that opt-in strategy. It must
+preserve every member of a protected parallel corridor as a distinct Line
+with the same source and target StableId. Until it is implemented, selecting
+it must raise `UnsupportedFeatureError`. `preserve_all_members` also raises
+`UnsupportedFeatureError` when enabled. No strategy selection may silently
+fall back to ordinary aggregation.
 
 ## Terms and topology predicates
 
@@ -47,7 +53,7 @@ not create an AC Line corridor. L+ is never a corridor member.
 | Term | Contract |
 |---|---|
 | `parallel_corridor` | A same-layer endpoint pair with at least two distinct source Line StableIds, irrespective of active state. A source card or name resemblance alone does not establish membership. |
-| `member` | One source Line StableId, original ordered terminals, circuit ID if supplied by an authoritative source ledger, and its complete Line attributes. Duplicate StableIds or duplicate raw source-card identities fail preflight. |
+| `member` | One source Line StableId, original ordered terminals, circuit ID if supplied by an authoritative source ledger, and its complete Line attributes. Count distinct Line StableIds, not `num_parallel`. Duplicate StableIds or duplicate raw source-card identities fail preflight. |
 | `active_member` | A member whose static `active` value is true. Only these members contribute to the current active topology and cycle classification. |
 | `inactive_member` | A member whose static `active` value is false. It remains an inventory object and mapping obligation but does not create an active edge. |
 | `parallel_only_cycle` | At least two active members connect a pair that is a bridge in the active simple Line graph. Removing parallel multiplicity destroys this multigraph cycle. |
@@ -61,15 +67,35 @@ is `parallel_only_cycle`. The audit label `both` means active multiplicity is
 at least two and `simple_graph_cycle` is true. An active single Line in a
 triangle is `simple_graph_cycle` only. Inactive members never turn a bridge
 into a cycle. Classification is recomputed at the Builder input and after
-reload, without changing the existing `cycle_corridors` predicate.
+reload, without changing the existing `cycle_corridors` predicate. The
+PyPSA `num_parallel` field is a Line attribute: a single Line row with
+`num_parallel=2` remains one member and never creates a second StableId or a
+parallel-only cycle by itself. Corridor grouping uses unordered StableId
+endpoints; each member's ordered `bus0`/`bus1` direction is still preserved
+and checked by `LineSemanticHash`.
 
 ## Strategy contract and first authorization
 
-| Strategy | Meaning | First implementation |
+| Strategy | Meaning | Compatibility and authorization |
 |---|---|---|
-| `preserve_protected_members` | Keep all members of each protected corridor as separate target Lines. Unprotected corridors continue through the existing ordinary quotient and many-to-one branch map. | **Only authorized strategy.** It becomes the multi-voltage protected-parallel policy when implemented. |
-| `preserve_all_members` | Keep all members of every parallel corridor, including inactive members, with singleton endpoints. | Parseable future option, but enabling it raises `UnsupportedFeatureError`. |
-| `aggregate_corridor` | Explicitly permit corridor-level Line aggregation, subject to the existing cycle Gate and future proof of all affected asset semantics. | Parseable future option, but enabling it raises `UnsupportedFeatureError`. Ordinary aggregation of unprotected corridors under the first strategy is still allowed. |
+| `aggregate_corridor` | Use ADR-008's existing ordinary quotient and many-to-one branch map, subject to unchanged structural Gates. | 0.2.0-compatible default, including after the opt-in enhancement is added. It can remain structurally invalid on parallel-only cycles; it gains no waiver. |
+| `preserve_protected_members` | Keep all members of each protected corridor as separate target Lines. Unprotected corridors continue through the existing ordinary quotient. | Strict-profile opt-in and the **only new strategy** authorized for a first implementation. While absent, enabling it raises `UnsupportedFeatureError`. |
+| `preserve_all_members` | Keep all members of every parallel corridor, including inactive members, with singleton endpoints. | Future option; enabling it raises `UnsupportedFeatureError` until separately reviewed and implemented. |
+
+The 0.2.0 configuration has no parallel-strategy selector, so its actual
+behavior is the `aggregate_corridor` row above. A later configuration model
+may expose an explicit selector and strict profile; its default must remain
+`aggregate_corridor` for compatibility. A known but unimplemented selected
+value is a typed `UnsupportedFeatureError`, never a successful no-op. The
+strict profile must record its selected strategy in resolved config,
+manifest, and `ReductionRecord`.
+
+The handler, additional singleton requirements, Line/L+ identity contract,
+and new named Gates below apply only when the strict
+`preserve_protected_members` profile is selected. The default
+`aggregate_corridor` path retains ADR-008's existing mapping and Gate
+behavior, including an invalid result when it loses protected cycle
+multiplicity. Opting in cannot weaken any ADR-008 check.
 
 For `preserve_protected_members`, a corridor is protected if it is a
 `parallel_only_cycle`, any member has explicit
@@ -89,6 +115,12 @@ distinct, in the same canonical voltage layer and domain, and no other Bus
 shares either target. An invalid plan fails before materialization. The
 shared planner floor and `requested/planned/actual` cluster accounting must
 include these new singletons; no silent count adjustment is permitted.
+Partition domains, mandatory singleton sets, cluster floors, and
+`PartitionPlan` validity are computed from the **complete original active
+topology of the Builder input**, with protected Lines still present. The
+validated plan is frozen before any Line is detached. Removing Lines from a
+detached clone must never alter the plan's connected-component or singleton
+calculation.
 
 ## Builder and Pipeline ownership
 
@@ -104,9 +136,9 @@ flowchart LR
     accTitle: Protected Parallel Line Quotient Flow
     accDescr: Protected Line members are detached from a cloned layer, ordinary Lines pass through the existing quotient, and preserved members are reconnected before persistence and final validation.
 
-    source["Simplified layer and sidecar"] --> classify["Classify active corridors"]
-    classify --> singleton["Validate singleton endpoints"]
-    singleton --> detach["Detach protected Lines and linked L+ Shunts"]
+    source["Simplified layer and sidecar"] --> classify["Classify complete active topology"]
+    classify --> plan["Validate PartitionPlan and singletons"]
+    plan --> detach["Detach all protected Lines and linked L+ Shunts"]
     detach --> quotient["Existing public PyPSA quotient on remainder"]
     quotient --> reconnect["Reconnect exact members and associations"]
     reconnect --> preliminary["Builder preliminary checks"]
@@ -116,20 +148,25 @@ flowchart LR
 
 The handler's steps are deterministic and fail closed:
 
-1. Derive corridors from source Bus and Line StableIds, static active state,
-   exact canonical voltage layers, and source circuit ledger. Reject missing
+1. Derive corridors and partition constraints from the complete active
+   topology using source Bus and Line StableIds, static active state, exact
+   canonical voltage layers, and source circuit ledger. Reject missing
    bindings, duplicate member identities, unsupported populated dynamic
    fields, ambiguous circuit IDs in a source that promises them, and
    unresolvable L+ ownership.
-2. Compute protected members and enforce singleton endpoints before calling
-   any quotient. Record each protected source Line's ordered target Bus
-   StableIds and `LineSemanticHash` input digest.
-3. Clone each layer through public PyPSA APIs. Detach all protected members,
+2. Compute protected members, validate the complete `PartitionPlan`, and
+   enforce singleton endpoints before calling any quotient or detaching any
+   Line. Record each protected source Line's ordered target Bus StableIds and
+   `LineSemanticHash` input digest.
+3. Clone each layer through public PyPSA APIs. Only after plan validation,
+   detach **all** members of each protected corridor,
    including inactive members of a protected corridor, and all Shunts owned
    by their L+ associations from that clone. Keep an immutable in-memory
    ledger of complete static rows, supported dynamic tables, type references,
    sidecar bindings, active state, and external circuit/association metadata.
-   The caller's network and sidecar remain unchanged.
+   The caller's network and sidecar remain unchanged. No protected member or
+   ordinary aggregated Line for that protected corridor remains in the
+   quotient input; the handler rejects partial detachment.
 4. Run the existing `LayerQuotientMaterializer` and public
    `network.cluster.spatial.*` wrapper on the remaining layer. Its mapping
    handles unprotected Lines, including many-to-one and
@@ -142,6 +179,8 @@ The handler's steps are deterministic and fail closed:
    public APIs. Generate collision-free backend names deterministically from
    StableIds; backend names need not equal source names. Restore linked L+
    Shunts at the translated terminal Buses and restore their sidecar bindings.
+   A backend-name collision fails explicitly before insertion; no existing
+   Line is overwritten or silently renamed after evidence is calculated.
 6. Add one `branch_map` row per protected source Line with
    `source_id == target_id` and `mapping_type="preserved"`. Add one preserved
    `device_map` row per linked L+ Shunt. The target sidecar binds those exact
@@ -158,10 +197,16 @@ reloads NetCDF and Parquet, then computes the final structural result.
 
 ## Line identity and complete semantic hash
 
-The authoritative source Line StableId is the sidecar ID, not a DataFrame
-position, PyPSA backend name, or inferred equipment name. For a preserved
-member, the target sidecar must carry the identical StableId. The Parquet
-`branch_map` and its read-only `line_map` projection must contain exactly one
+Three identities are kept separate: the Line StableId is the authoritative
+logical component ID in `IdentitySidecar`; the PyPSA backend name is only the
+current network-table key; and BPA raw-card provenance is source evidence
+(DAT line/card bytes, circuit ID, and exact parser association) in a separate
+provenance sidecar persisted as Parquet. No StableId or circuit relationship
+depends on a custom PyPSA column surviving NetCDF or CSV. The authoritative
+source Line StableId is not a DataFrame position, backend name, or inferred
+equipment name. For a preserved member, the target sidecar must carry the
+identical StableId. The Parquet `branch_map` and its read-only `line_map`
+projection must contain exactly one
 row with `mapping_type="preserved"`; composed L0-to-final mappings must also
 resolve that source to the same target ID. A renamed backend Line is allowed
 only when these identities and the complete semantics match.
@@ -172,7 +217,7 @@ field names and types:
 | Input | Canonical rule |
 |---|---|
 | Identity and terminals | Source Line StableId; ordered `bus0`, `bus1` translated through the singleton busmap to target Bus StableIds. The output uses target-sidecar Bus StableIds in the same order. Compare direction as well as endpoint identity. |
-| Static Line row | Every public static Line attribute, including `active`, r/x/g/b, length, rating, geometry or other supported fields, and `type`. Exclude only regenerated `sub_network` and documented nonsemantic serializer metadata; unknown populated fields are preserved or rejected. |
+| Static Line row | Every public static Line attribute, including `active`, `num_parallel`, r/x/g/b, length, rating, geometry or other supported fields, and `type`. Exclude only regenerated `sub_network` and documented nonsemantic serializer metadata; unknown populated fields are preserved or rejected. |
 | Dynamic Line data | Every populated supported input attribute, exact snapshot and investment-period index/order, explicit value-presence mask, static fallback, and effective dense values. Dense access runs on detached views so it cannot mutate the caller's network. Unknown populated dynamic attributes fail. |
 | Type reference | Exact `LineType` name and canonical hash of its full referenced row; missing or conflicting type rows fail. Referenced `Carrier` metadata, if present for a supported Line field, is copied and verified under the same rule. |
 | Circuit provenance | Exact external circuit ID and authoritative source-card identity when supplied. Missing and blank IDs are distinct; real BPA `L ` sources require a nonblank, unique circuit ID within their corridor. Programmatic PyPSA fixtures may explicitly mark circuit ID unavailable. |
@@ -180,9 +225,11 @@ field names and types:
 Canonical encoding sorts attribute keys, preserves terminal and snapshot
 order, normalizes equivalent finite numeric representations and a typed
 missing-value marker, and includes value type for strings, booleans, enums,
-and numbers. It does not round or use a physical tolerance to hide changed
-Line parameters. The input digest is compared with the reconnected in-memory
-Line and again with the clean NetCDF reload. Snapshot and investment
+and numbers. The hash is derived from complete static and populated dynamic
+semantics, not a fixed electrical-field whitelist. It does not round or use
+a physical tolerance to hide changed Line parameters. The input digest is
+compared with the reconnected in-memory Line and again with the clean NetCDF
+reload. Snapshot and investment
 weightings remain separate whole-network Gate checks from ADR-008. A dynamic
 `active` value that changes topology relative to static `active` is an
 unsupported feature until a snapshot-topology Gate is designed; other
@@ -192,10 +239,14 @@ comparison.
 ## L+ association and state preservation
 
 `LPlusAssociation` is an external ledger, separate from the Line multiplicity
-graph. Each row binds one base Line StableId, the source L+ card identity,
-terminal side `FROM` or `TO`, the corresponding Shunt StableId, signed source
-reactor value, and the Shunt's full supported static/dynamic semantics. It is
-created from exact source keys and parser provenance, never device names.
+graph. Each row binds one base Line StableId, source L+ card identity,
+terminal side `FROM` or `TO`, the corresponding **terminal Bus StableId**,
+the derived `ShuntImpedance` StableId, signed source reactor value, and the
+Shunt's full supported static/dynamic semantics. Every derived L+ Shunt has
+the explicit `preserve_component_identity` protection action: its source and
+target StableIds are equal and its `device_map` row has
+`mapping_type="preserved"`. It is created from exact source keys and parser
+provenance, never device names.
 There may be zero, one, or two terminal rows for a base Line; a duplicated
 side or orphan association fails. L+ is never counted as an active Line or
 used to increase corridor multiplicity.
@@ -203,9 +254,11 @@ used to increase corridor multiplicity.
 After reconnect and again after NetCDF, sidecar, association-ledger, and
 Parquet-map reload, the Gate verifies that each association still names its
 base Line and Shunt StableIds, that the Shunt exists exactly once, and that
-its Bus equals the base Line's translated `bus0` for `FROM` or `bus1` for
-`TO`. It verifies the Shunt semantic hash and signed value; reversing Line
-orientation without translating terminal side fails. If a nonprotected
+its recorded terminal Bus StableId equals the base Line's translated `bus0`
+for `FROM` or `bus1` for `TO`, and that the reloaded Shunt is attached to
+that same Bus. It verifies the Shunt semantic hash, signed value, preserved
+device-map row, and protection action; reversing Line orientation without
+translating terminal side fails. If a nonprotected
 Line's L+ association cannot be represented after ordinary aggregation, the
 Line and Shunts are preserved or preflight fails. No L+ Shunt is silently
 merged, moved across voltage, or dropped.
@@ -222,19 +275,21 @@ from saving inactive equipment.
 
 ## Structural Gates and evidence
 
-The existing `cycle_corridors` check remains a hard Gate with unchanged
-meaning. The new named checks supplement it, first as Builder preliminary
-evidence and then against the reloaded network, Parquet maps, sidecars, and
-external ledgers in the Pipeline:
+The existing `cycle_corridors` and `simple_ring_topology` (ring-topology)
+checks remain hard Gates with unchanged meanings. The new named checks
+supplement them, first as Builder preliminary evidence and then against the
+reloaded network, Parquet maps, sidecars, and external ledgers in the
+Pipeline:
 
 | Check | Failure condition |
 |---|---|
 | `protected_parallel_singleton_endpoints` | A protected endpoint shares a target Bus, disappears, crosses a voltage/domain boundary, or the two endpoints collapse. |
-| `protected_parallel_member_coverage` | A source protected member is missing, duplicated, absorbed, aggregated, or mapped to a different StableId. |
-| `protected_parallel_multiplicity` | Any protected corridor loses an active member or its target active multiplicity; compare member StableId multisets and active-state counts, not only cycle rank. |
+| `protected_parallel_member_coverage` | The exact source and target protected-member StableId sets differ, or a source member is missing, duplicated, substituted, absorbed, aggregated, or mapped to a different StableId. Equal counts are insufficient. |
+| `protected_parallel_active_state_sets` | The exact active-member and inactive-member StableId sets differ separately for any protected corridor, even when total and active counts match. |
+| `protected_parallel_multiplicity` | Any protected corridor loses or gains a member or active edge; compare exact member identities and active-state sets, not only counts or cycle rank. |
 | `protected_parallel_line_semantics` | Any input, in-memory, or reloaded `LineSemanticHash` differs, including ordered terminals, circuit ID, type, status, and dynamic data. |
 | `protected_parallel_type_references` | Referenced `LineType` or supported Carrier rows are absent or semantically changed. |
-| `l_plus_association_coverage` | A source association, base Line, Shunt, or preserved device-map row is absent or duplicated. |
+| `l_plus_association_coverage` | A source association, base Line, derived Shunt, `preserve_component_identity` action, or preserved device-map row is absent, duplicated, or aggregated. |
 | `l_plus_terminal_owner_consistency` | Terminal side, translated Bus, signed reactor semantics, or Shunt ownership differs after reload. |
 | `parallel_evidence_round_trip` | Persisted/reloaded branch map, line projection, sidecar, circuit ledger, or L+ association differs canonically from the Builder output. |
 
@@ -247,6 +302,11 @@ complete final Gate may write
 state. The original network's input SHA-256 and canonical semantic signature
 are checked before and after the Pipeline; arbitrary in-memory byte identity
 is not required. No check can be waived because another check passes.
+The final Gate compares each protected Line's full semantic hash as well as
+the exact per-corridor member, active, and inactive StableId sets. A target
+member replacing another with the same count and parameters still fails.
+Passing these new checks never overrides a failure of `cycle_corridors` or
+`simple_ring_topology`.
 
 `CompressionOpportunityReport` adds per-layer and global counts for parallel
 corridors by multiplicity, `parallel_only_cycle`, `simple_graph_cycle`, and
@@ -269,16 +329,23 @@ StableIds are not committed.
 | Programmatic case | Required assertion |
 |---|---|
 | Two active parallel Lines are the only cycle | Both members and their IDs survive; existing `cycle_corridors` and new multiplicity checks pass. |
+| 0.2.0-compatible default | Without a strategy selector, ordinary `aggregate_corridor` output and existing Gate result remain unchanged; a lost parallel-only cycle is still invalid. |
+| Strict or future strategy enabled before implementation | `preserve_protected_members` and `preserve_all_members` each raise `UnsupportedFeatureError`, never silently use the default. |
 | Three active parallel Lines | Three distinct preserved map rows, target Lines, and circuit IDs survive. |
 | Active plus inactive member | Both survive with distinct identities and exact active states; only the active member enters the static cycle graph. |
+| One Line with `num_parallel=2` | It remains one member and one StableId; no parallel-only cycle is inferred. Its attribute survives the semantic hash. |
 | Different r/x/rating/LineType | Each complete row and referenced type survives; no parameter averaging. |
 | Supported dynamic Line attribute and MultiIndex snapshots | Values, presence masks, snapshot indexes and weightings round-trip through NetCDF. |
-| Non-singleton endpoint plan | Builder preflight fails before quotient with a named singleton reason. |
+| Non-singleton endpoint or invalid `PartitionPlan` | Builder preflight fails before detach or quotient with a named reason; the complete active topology remains the validation input. |
 | Changed Line parameter, type, status, direction, or circuit ID | In-memory or final semantic Gate fails. |
+| Reversed backend `bus0`/`bus1` with unchanged unordered corridor | Ordered terminal StableId hash fails even if cycle counts match. |
+| Reconnect backend-name collision | Handler fails explicitly without overwriting or renaming an existing Line. |
+| Member replacement with equal member and active counts | Exact StableId-set Gate fails despite matching counts and parameters. |
 | Source/target Line StableId differs | Identity and mapping Gate fails even if backend names and electrical rows match. |
 | Parquet map corruption or dropped protected row | Reloaded mapping Gate fails with evidence. |
 | NetCDF drops or changes protected Line/dynamic data | Final round-trip and Line semantic checks fail. |
 | L+ on both terminals | Base Line, `FROM`/`TO` Shunt StableIds, signed values, and exact terminal Buses survive reload. |
+| L+ derived Shunt is aggregated or its protection action removed | `preserve_component_identity`, device-map, and association Gate fail after reload. |
 | Nonprotected parallel corridor in a simple ring | Existing ordinary quotient may aggregate; many-to-one branch map is complete and existing cycle Gate still passes. |
 | Original network mutation attempt | Input SHA and semantic signature detect a change; the normal run leaves the source unchanged. |
 | Deterministic rerun | Same seed and input produce identical StableId maps, member/association ledgers, checks, and final structural status. |
