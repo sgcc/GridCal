@@ -63,3 +63,37 @@ report `STRUCTURALLY_SIMPLIFIED`. The multi-voltage Pipeline reports only
 `MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID`, or `FAILED`. These are structural
 statuses; they do not certify AC power-flow convergence, reactive-power or OPF
 equivalence, or full-grid physical acceptance.
+
+## PSDCase AC readiness boundary
+
+`psdcalc.reduction.readiness` provides a read-only BPA DAT card inventory and a
+strict adapter for the existing `VeraGridEngine.IO.psd.api.load_psd_case`
+object. The VeraGrid parser is an optional external dependency and is not
+copied into this package. Gate the DAT before passing `parse_dc=False` to the
+parser:
+
+```python
+from VeraGridEngine.IO.psd.api import load_psd_case
+from VeraGridEngine.IO.psd.options import PSDImportOptions
+from psdcalc.reduction.readiness.bpa_ac import scan_bpa_dat
+from psdcalc.reduction.readiness.psdcase_ac import PsdCaseAcAdapter
+
+inventory = scan_bpa_dat(dat_path)
+inventory.require_supported_ac()
+case = load_psd_case(dat_path, ref_path, map_path,
+                     PSDImportOptions(parse_dc=False))
+projection = PsdCaseAcAdapter().adapt(case, inventory, namespace="case-id")
+# projection.network and projection.sidecar enter the Phase 1.5 Pipeline.
+# projection.three_winding_groups is a separate required audit ledger.
+```
+
+The adapter preserves BE as PV control, both L+ terminal reactors, and every
+grouped three-winding device as its original three star legs with a protected
+center Bus. It rejects unmatched active REF three-winding records, nonzero +H
+equivalents, constant-current loads, `R ` regulator controls, generic `+ `
+continuations, inactive Buses, DAT parse diagnostics, and source-card/parsed-object
+count mismatches. Source zone labels feed the existing regional clustering Gate.
+Its output is a structural
+projection; electrical parameters have not been validated against a solver.
+The local BPA10056814 acceptance evidence is in
+`../../docs/validation/2026-10-29-pr017-bpa10056814-ac-readiness.md`.
