@@ -1,0 +1,10 @@
+include LICENSE.md
+include README.md
+recursive-include examples *.yaml
+recursive-include schema *.json
+recursive-include tests test_*.py
+include tools/packaging_gate.py
+recursive-include src/psdcalc/reduction/resources *.json *.yaml
+prune .venv
+prune .pytest_cache
+prune .hypothesis
