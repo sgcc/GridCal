@@ -1,10 +1,14 @@
 """Quotient mapping and composition tests."""
 
 import pypsa
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
 
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.models import AggregationConfig
 from psdcalc.reduction.core.ids import StableId
+from psdcalc.reduction.exceptions import MappingError
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.mapping.rows import MapEntry
@@ -59,3 +63,39 @@ def test_map_composition_preserves_absorbed_branch() -> None:
 
     absorbed = [MapEntry(source, None, "absorbed_internal", operation_id="a")]
     assert compose_maps(absorbed, second)[0].target_id is None
+
+
+def test_mapping_bundle_parquet_readback_and_corruption(tmp_path) -> None:
+    """Persisted maps decode exactly and reject damaged StableId cells."""
+    bus = StableId("n", "Bus", "b")
+    line = StableId("n", "Line", "l")
+    bundle = MappingBundle(
+        (MapEntry(bus, bus, "preserved", "op"),),
+        (MapEntry(line, line, "preserved", "op"),), (), (),
+    )
+    files = bundle.save_parquet(tmp_path)
+    expected = tuple(files)
+    assert MappingBundle.load_parquet(tmp_path, expected_files=expected) == bundle
+    table = pq.read_table(files["bus_map"])
+    rows = table.to_pylist()
+    rows[0]["target_id"] = "corrupt"
+    pq.write_table(pa.Table.from_pylist(rows), files["bus_map"])
+    with pytest.raises(MappingError):
+        MappingBundle.load_parquet(tmp_path, expected_files=expected)
+
+
+@pytest.mark.parametrize("component", ["Line", "Transformer"])
+def test_branch_projection_must_match_authoritative_map(tmp_path, component) -> None:
+    """Damaged read-only branch projections cannot pass readback."""
+    bus = StableId("n", "Bus", "b")
+    line = StableId("n", component, "l")
+    bundle = MappingBundle((MapEntry(bus, bus, "preserved", "op"),),
+                           (MapEntry(line, line, "preserved", "op"),), ())
+    bundle.save_parquet(tmp_path)
+    wrong = MapEntry(line, StableId("n", component, "wrong"), "aggregated", "op")
+    name = "line_map" if component == "Line" else "transformer_map"
+    pq.write_table(pa.Table.from_pylist([wrong.to_row()]),
+                   tmp_path / f"{name}.parquet")
+    with pytest.raises(MappingError, match="differs from branch_map"):
+        MappingBundle.load_parquet(
+            tmp_path, expected_files=("bus_map", "branch_map", name))

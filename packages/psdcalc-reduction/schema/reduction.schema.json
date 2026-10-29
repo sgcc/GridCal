@@ -696,7 +696,7 @@
     },
     "OutputConfig": {
       "additionalProperties": false,
-      "description": "First-batch and known future output toggles.",
+      "description": "Optional output toggles; MV L1/L2 are mandatory audit artifacts.",
       "properties": {
         "save_all_levels": {
           "default": false,

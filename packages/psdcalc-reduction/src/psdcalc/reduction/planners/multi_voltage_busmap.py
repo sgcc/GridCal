@@ -89,6 +89,27 @@ class MultiVoltageBusmapValidator:
                 graph.add_edge(a, b)
         return graph
 
+    def minimum_required_bus_counts(
+        self, network: pypsa.Network, sidecar: IdentitySidecar,
+        layers: tuple[VoltageLayer, ...], protection: ProtectionSet,
+    ) -> dict[str, int]:
+        """Return the shared active-topology structural floor for each layer."""
+        fixed = set(self.mandatory_singletons(network, sidecar, protection))
+        fixed.update(bus for bus in protection.preserved_components
+                     if bus.component == "Bus")
+        floors: dict[str, int] = {}
+        for layer in layers:
+            graph = self._graph(network, sidecar, layer.bus_ids)
+            layer_fixed = fixed.intersection(layer.bus_ids)
+            free = graph.subgraph(set(layer.bus_ids) - layer_fixed)
+            free_components = list(nx.connected_components(free))
+            floors[layer.key] = len(layer_fixed) + sum(
+                2 if any(pair <= component for pair in protection.cannot_link)
+                else 1
+                for component in free_components
+            )
+        return dict(sorted(floors.items()))
+
     def allocate_targets(self, network: pypsa.Network,
                          sidecar: IdentitySidecar,
                          layers: tuple[VoltageLayer, ...],
@@ -104,14 +125,9 @@ class MultiVoltageBusmapValidator:
         overrides = dict(per_layer or {})
         if set(overrides) - keys:
             raise PartitionError("per_layer contains an unknown voltage layer")
-        mandatory = self.mandatory_singletons(network, sidecar, protection)
-        floors: dict[str, int] = {}
+        floors = self.minimum_required_bus_counts(network, sidecar, layers, protection)
         capacity: dict[str, int] = {}
         for layer in layers:
-            graph = self._graph(network, sidecar, layer.bus_ids)
-            fixed = mandatory.intersection(layer.bus_ids)
-            free = graph.subgraph(set(layer.bus_ids) - fixed)
-            floors[layer.key] = len(fixed) + nx.number_connected_components(free)
             capacity[layer.key] = len(layer.bus_ids)
         if global_target < sum(floors.values()):
             raise PartitionError("Global target is below the minimum cluster count")

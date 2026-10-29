@@ -61,6 +61,17 @@ def _frame_values(frame: pd.DataFrame) -> tuple[object, ...]:
     )
 
 
+def _detached_dense_view(network: pypsa.Network) -> pypsa.Network:
+    """Clone public network state and install an independent snapshot index."""
+    view = network.copy()
+    snapshots = network.snapshots.copy(deep=True)
+    view.set_snapshots(snapshots)
+    view.snapshot_weightings = network.snapshot_weightings.copy(deep=True)
+    view.investment_period_weightings = (
+        network.investment_period_weightings.copy(deep=True))
+    return view
+
+
 def network_persistence_difference(left: pypsa.Network,
                                    right: pypsa.Network) -> str | None:
     """Find the first semantic change in supported NetCDF-persisted input data.
@@ -79,6 +90,8 @@ def network_persistence_difference(left: pypsa.Network,
             right.investment_period_weightings):
         return "investment_period_weightings"
     ignored_static = {"sub_network", "obj"}
+    left_view: pypsa.Network | None = None
+    right_view: pypsa.Network | None = None
     for component in sorted(left.components, key=lambda item: item.name):
         name = component.name
         if name == "SubNetwork":
@@ -99,10 +112,13 @@ def network_persistence_difference(left: pypsa.Network,
         for attribute in sorted(attributes):
             if attribute not in a.columns or attribute not in b.columns:
                 return f"{name}.{attribute} static fallback"
+            if left_view is None:
+                left_view = _detached_dense_view(left)
+                right_view = _detached_dense_view(right)
             try:
-                dense_a = left.get_switchable_as_dense(
+                dense_a = left_view.get_switchable_as_dense(
                     name, attribute, snapshots=left.snapshots, inds=names)
-                dense_b = right.get_switchable_as_dense(
+                dense_b = right_view.get_switchable_as_dense(
                     name, attribute, snapshots=right.snapshots, inds=names)
             except (KeyError, ValueError, AttributeError) as exc:
                 return f"{name}.{attribute} dense accessor: {exc}"
@@ -193,6 +209,9 @@ class MultiVoltageFinalValidator:
             checks['target_sidecar_coverage'] = bindings == {sid.encode() for sid in actual}
             checks['composed_target_existence'] = all(
                 r.target_id is None or r.target_id in actual for r in rows)
+            checks['target_provenance_coverage'] = actual <= {
+                row.target_id for row in rows if row.target_id is not None
+            }
             checks['composed_bus_targets'] = all(
                 r.target_id in actual for r in composed_mappings.bus_map)
             original_controls = {

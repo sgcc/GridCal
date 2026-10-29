@@ -1,10 +1,12 @@
 """A uniform persistent mapping row contract."""
 
 from dataclasses import dataclass
+import math
+from collections.abc import Mapping
 from typing import Literal
 
 from psdcalc.reduction.core.ids import StableId
-from psdcalc.reduction.exceptions import MappingError
+from psdcalc.reduction.exceptions import IdentityError, MappingError
 
 
 MappingType = Literal[
@@ -46,3 +48,35 @@ class MapEntry:
             "operation_id": self.operation_id,
             "reason": self.reason,
         }
+
+    @classmethod
+    def from_row(cls, row: Mapping[str, object]) -> "MapEntry":
+        """Decode one strict Parquet row to authoritative StableIds."""
+        required = {"source_id", "target_id", "mapping_type", "weight",
+                    "level_from", "level_to", "operation_id", "reason"}
+        if set(row) != required:
+            raise MappingError("Persistent map row has missing or unknown columns")
+        source = row["source_id"]
+        target = row["target_id"]
+        kind = row["mapping_type"]
+        weight = row["weight"]
+        reason = row["reason"]
+        if (not isinstance(source, str) or
+                target is not None and not isinstance(target, str) or
+                kind not in {"preserved", "clustered", "aggregated",
+                             "absorbed_internal", "moved"} or
+                isinstance(weight, bool) or not isinstance(weight, (int, float)) or
+                not math.isfinite(float(weight)) or
+                reason is not None and not isinstance(reason, str) or
+                any(not isinstance(row[key], str) or not row[key]
+                    for key in ("level_from", "level_to", "operation_id"))):
+            raise MappingError("Persistent map row contains an invalid value")
+        try:
+            return cls(
+                StableId.decode(source),
+                StableId.decode(target) if target is not None else None,
+                kind, row["operation_id"], float(weight),
+                row["level_from"], row["level_to"], reason,
+            )
+        except (IdentityError, MappingError) as exc:
+            raise MappingError(f"Cannot decode persistent map row: {exc}") from exc

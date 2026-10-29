@@ -41,3 +41,34 @@ def test_final_clean_reload_and_corruption(tmp_path):
     assert validate().status == 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID'
     child.transformers.loc['tx_hm', 'x'] = 99
     assert validate().status == 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID'
+
+
+def test_final_rejects_target_without_source_provenance(tmp_path):
+    """Every final non-metadata object must have a source mapping row."""
+    from test_multi_voltage_builder import three_voltage_network, partition
+    from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
+    from psdcalc.reduction.config.models import AggregationConfig
+    from psdcalc.reduction.core.ids import IdentitySidecar, StableId
+    from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
+    from psdcalc.reduction.protection.engine import ProtectionEngine
+    from psdcalc.reduction.validation.multi_voltage_final import MultiVoltageFinalValidator
+    network = three_voltage_network()
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, 'n')
+    protection = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    built = MultiVoltageQuotientBuilder().build(
+        network, sidecar, partition(network, sidecar),
+        AggregationConfig(aggregate_one_ports=['Load']), protection)
+    child = built.network.copy()
+    child.add('Load', 'orphan', bus=str(child.buses.index[0]), p_set=0.0)
+    rows = built.target_sidecar.to_rows() + [{
+        'component': 'Load', 'backend_name': 'orphan',
+        'source_id': StableId('n', 'Load', 'orphan').encode()}]
+    target_sidecar = IdentitySidecar.from_rows(rows)
+    result = MultiVoltageFinalValidator().validate(
+        network, child, sidecar, target_sidecar, built.mappings, (), protection,
+        voltage_layer_map=built.voltage_layer_map, original_network=network,
+        original_sidecar=sidecar, composed_mappings=built.mappings,
+        original_input_signature=network_semantic_signature(network))
+    assert result.checks['target_provenance_coverage'] is False
+    assert result.status == 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID'

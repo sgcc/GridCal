@@ -71,8 +71,12 @@ def _gate_features(config: ReductionConfig) -> None:
             config.validation.acceptance.require_hard_constraints or
             config.validation.acceptance.max_mismatch_pu is not None):
         raise UnsupportedFeatureError("validation.acceptance is not implemented")
-    if config.output.save_all_levels or config.output.save_metrics_parquet:
-        raise UnsupportedFeatureError("multi-level or metrics output is not implemented")
+    if config.output.save_all_levels:
+        raise UnsupportedFeatureError(
+            "output.save_all_levels controls optional hierarchy levels; "
+            "multi-voltage L1/L2 are mandatory audit artifacts")
+    if config.output.save_metrics_parquet:
+        raise UnsupportedFeatureError("metrics Parquet output is not implemented")
     if config.plugins.allow_external or config.plugins.modules:
         raise UnsupportedFeatureError("external plugins are not implemented")
     if config.partition is not None and config.partition.target.type == "from_hierarchy_level":

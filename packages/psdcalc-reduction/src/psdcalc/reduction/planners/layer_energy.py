@@ -26,12 +26,17 @@ class VoltageLayerEnergyPlanner:
     def _component_targets(
         graph: nx.Graph, groups: tuple[tuple[StableId, ...], ...],
         mandatory: frozenset[StableId], total: int,
+        cannot_link: frozenset[frozenset[StableId]],
     ) -> tuple[int, ...]:
         """Allocate a layer budget across active, same-domain components."""
-        floors = [len(set(group) & mandatory) +
-                  nx.number_connected_components(
-                      graph.subgraph(set(group) - mandatory))
-                  for group in groups]
+        floors = []
+        for group in groups:
+            fixed = set(group) & mandatory
+            free_components = nx.connected_components(
+                graph.subgraph(set(group) - fixed))
+            floors.append(len(fixed) + sum(
+                2 if any(pair <= component for pair in cannot_link) else 1
+                for component in free_components))
         capacities = [len(group) for group in groups]
         if total < sum(floors) or total > sum(capacities):
             raise PartitionError("Layer target is outside connected-component bounds")
@@ -83,7 +88,8 @@ class VoltageLayerEnergyPlanner:
                                    nx.connected_components(graph)),
                                   key=lambda group: group[0]))
             budgets = self._component_targets(
-                graph, groups, mandatory, allocated[layer.key])
+                graph, groups, mandatory, allocated[layer.key],
+                protection.cannot_link)
             for component_index, (group, budget) in enumerate(zip(groups, budgets)):
                 component_layer = replace(layer, bus_ids=group)
                 extracted = materializer._layer_copy(

@@ -26,6 +26,7 @@ class RunManifest(BaseModel):
     created_at: str = Field(default_factory=utc_now)
     updated_at: str = Field(default_factory=utc_now)
     input_hash: str | None = None
+    config_hash: str | None = None
     topology_signature: str | None = None
     output_hash: str | None = None
     seed: int | None = None

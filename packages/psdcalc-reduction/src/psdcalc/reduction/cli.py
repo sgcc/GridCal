@@ -4,7 +4,6 @@ import argparse
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import replace
-from importlib.metadata import version
 import json
 import math
 from pathlib import Path
@@ -14,6 +13,7 @@ import sys
 import pypsa
 import yaml
 
+from psdcalc.reduction import __version__
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.loader import load_config
 from psdcalc.reduction.config.models import ReductionConfig
@@ -196,7 +196,7 @@ def _build(config: ReductionConfig, config_path: Path,
             seed=config.run.seed,
             software_versions={"python": sys.version.split()[0],
                                "pypsa": pypsa.__version__,
-                               "psdcalc-reduction": version("psdcalc-reduction")},
+                               "psdcalc-reduction": __version__},
         )
         store.write_json("input/source_ids.json", sidecar.to_rows())
         store.record_artifact("source_ids", "input/source_ids.json")

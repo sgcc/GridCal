@@ -1,19 +1,24 @@
 """Offline three-voltage end-to-end structural acceptance."""
 
 import json
+import hashlib
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pypsa
 import pytest
+import yaml
 
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.loader import load_config
 from psdcalc.reduction.core.artifact_store import ArtifactStore
 from psdcalc.reduction.exceptions import (
-    BackendCapabilityError, PartitionError, SignatureError,
+    BackendCapabilityError, MappingError, PartitionError, SignatureError,
 )
 from psdcalc.reduction.pipelines.multi_voltage import MultiVoltageQuotientPipeline
+from psdcalc.reduction.validation.multi_voltage_final import network_semantic_signature
 
 
 def three_voltage_source() -> pypsa.Network:
@@ -96,15 +101,35 @@ def test_three_voltage_pipeline_persists_final_structural_evidence(
 
     assert result.structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
     assert result.manifest.status == result.structural.status
+    resolved_path = store.run_dir / "resolved_config.yaml"
+    resolved_bytes = resolved_path.read_bytes()
+    resolved = yaml.safe_load(resolved_bytes)
+    assert resolved["input"]["path"] == str(input_path.resolve())
+    assert resolved["voltage_layers"] == {"aliases": {}}
+    assert result.manifest.config_hash == hashlib.sha256(resolved_bytes).hexdigest()
+    assert result.manifest.artifacts["resolved_config"] == "resolved_config.yaml"
+    assert (store.run_dir / "resolved_config.sha256").read_text().strip() == (
+        result.manifest.config_hash)
     assert result.final_network_path.exists()
     assert result.target_sidecar_path.exists()
     assert (store.run_dir / "validation/multi_voltage_structural.json").exists()
     assert (store.run_dir / "validation/opportunity.json").exists()
+    assert (store.run_dir / "levels/L1.nc").exists()
     assert (store.run_dir / "maps/bus_map.parquet").exists()
     assert (store.run_dir / "records").is_dir()
     assert len(result.composed_mappings.bus_map) == len(original.buses)
     assert result.opportunity_report.realized_bus_compression_fraction > 0
+    opportunity = result.opportunity_report
+    assert opportunity.source_bus_count == len(original.buses)
+    assert opportunity.simplified_bus_count >= opportunity.final_bus_count
+    assert opportunity.minimum_required_bus_count <= opportunity.final_bus_count
+    assert set(opportunity.per_layer) == {"10", "35", "110"}
+    assert sum(row["final_bus_count"] for row in opportunity.per_layer.values()) == (
+        opportunity.final_bus_count)
+    assert all(row["requested_cluster_count"] is not None
+               for row in opportunity.per_layer.values())
     reloaded = adapter.load(result.final_network_path, "netcdf")
+    assert opportunity.final_bus_count == len(reloaded.buses)
     assert reloaded.snapshots.equals(original.snapshots)
     assert reloaded.snapshot_weightings.equals(original.snapshot_weightings)
     assert set(reloaded.transformers.index) == {"tx1", "tx2"}
@@ -231,3 +256,93 @@ def test_supplied_network_must_match_hashed_input(tmp_path: Path) -> None:
     assert store.manifest.status == "FAILED"
     failure = json.loads((store.run_dir / "validation/failure.json").read_text())
     assert failure["error_type"] == "SignatureError"
+
+
+def test_corrupted_persisted_mapping_fails_with_evidence(tmp_path: Path) -> None:
+    """The final Gate cannot consume a different on-disk composed map."""
+    class CorruptMapStore(ArtifactStore):
+        """Alter the just-written composed Bus Parquet file."""
+
+        def record_artifact(self, name: str, relative: str) -> None:
+            """Keep the manifest reference, then damage one persisted target."""
+            super().record_artifact(name, relative)
+            if name == "bus_map":
+                path = self.path(relative)
+                rows = pq.read_table(path).to_pylist()
+                rows[0]["target_id"] = rows[1]["target_id"]
+                pq.write_table(pa.Table.from_pylist(rows), path)
+
+    original = three_voltage_source()
+    input_path = tmp_path / "source.nc"
+    original.export_to_netcdf(input_path)
+    config = pipeline_config(input_path, run_id="damaged-map")
+    store = CorruptMapStore(tmp_path / "runs", config.run.id)
+    with pytest.raises(MappingError, match="Parquet readback"):
+        MultiVoltageQuotientPipeline().run(
+            original_network=original,
+            source_sidecar=PypsaAdapter().identity_sidecar(original, "n"),
+            config=config, store=store)
+    assert store.manifest.status == "FAILED"
+    assert (store.run_dir / "validation/failure.json").exists()
+
+
+def test_corrupted_target_sidecar_fails_with_evidence(tmp_path: Path) -> None:
+    """The Builder sidecar must exactly match the persisted binding table."""
+    class CorruptSidecarStore(ArtifactStore):
+        """Alter one target binding before the pipeline reads it back."""
+
+        def write_json(self, relative: str, value: object) -> Path:
+            """Save an altered target binding for one audit artifact."""
+            if relative == "input/target_ids.json":
+                value = [dict(row) for row in value]
+                value[0]["backend_name"] = "damaged-binding"
+            return super().write_json(relative, value)
+
+    original = three_voltage_source()
+    input_path = tmp_path / "source.nc"
+    original.export_to_netcdf(input_path)
+    config = pipeline_config(input_path, run_id="damaged-sidecar")
+    store = CorruptSidecarStore(tmp_path / "runs", config.run.id)
+    with pytest.raises(SignatureError, match="Target identity sidecar"):
+        MultiVoltageQuotientPipeline().run(
+            original_network=original,
+            source_sidecar=PypsaAdapter().identity_sidecar(original, "n"),
+            config=config, store=store)
+    assert store.manifest.status == "FAILED"
+    assert (store.run_dir / "validation/failure.json").exists()
+
+
+def test_multi_period_pipeline_keeps_source_semantics(tmp_path: Path) -> None:
+    """MultiIndex and dynamic input comparison leaves original network intact."""
+    original = three_voltage_source()
+    original.set_investment_periods([2030, 2040])
+    assert isinstance(original.snapshots, pd.MultiIndex)
+    original.snapshot_weightings["objective"] = [1.0, 2.0, 3.0, 4.0]
+    original.investment_period_weightings["objective"] = [1.5, 2.5]
+    original.components["Load"].dynamic["p_set"] = pd.DataFrame(
+        {"demand": [5.0, 7.0, 6.0, 8.0]}, index=original.snapshots)
+    original.components["Transformer"].dynamic["s_max_pu"] = pd.DataFrame(
+        {"tx1": [0.9, 0.8, 0.85, 0.75]}, index=original.snapshots)
+    signature = network_semantic_signature(original)
+    input_path = tmp_path / "source.nc"
+    original.export_to_netcdf(input_path)
+    config = pipeline_config(input_path, run_id="multi-period")
+    result = MultiVoltageQuotientPipeline().run(
+        original_network=original,
+        source_sidecar=PypsaAdapter().identity_sidecar(original, "n"),
+        config=config,
+        store=ArtifactStore(tmp_path / "runs", config.run.id),
+    )
+    assert result.structural.status == (
+        "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID")
+    assert result.structural.checks["input_semantic_immutability"] is True
+    assert result.structural.checks["netcdf_round_trip"] is True
+    assert network_semantic_signature(original) == signature
+    reloaded = PypsaAdapter().load(result.final_network_path, "netcdf")
+    assert reloaded.snapshots.equals(original.snapshots)
+    assert reloaded.snapshot_weightings.equals(original.snapshot_weightings)
+    assert reloaded.investment_periods.equals(original.investment_periods)
+    assert reloaded.investment_period_weightings.equals(
+        original.investment_period_weightings)
+    assert not reloaded.components["Load"].dynamic["p_set"].empty
+    assert not reloaded.components["Transformer"].dynamic["s_max_pu"].empty

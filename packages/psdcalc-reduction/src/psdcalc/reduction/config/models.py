@@ -347,10 +347,10 @@ class CostAccountingConfig(StrictModel):
 
 
 class OutputConfig(StrictModel):
-    """First-batch and known future output toggles."""
+    """Optional output toggles; MV L1/L2 are mandatory audit artifacts."""
 
     save_original_snapshot: bool = True
-    save_all_levels: bool = False
+    save_all_levels: bool = False  # Optional hierarchy, never MV L1/L2.
     save_maps: bool = True
     save_records: bool = True
     save_validation_evidence: bool = True

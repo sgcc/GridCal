@@ -3,7 +3,9 @@
 import pytest
 
 from psdcalc.reduction.config.loader import load_config
-from psdcalc.reduction.exceptions import ConfigSchemaError, ConfigSemanticError
+from psdcalc.reduction.exceptions import (
+    ConfigSchemaError, ConfigSemanticError, UnsupportedFeatureError,
+)
 from test_config import minimal_config
 
 
@@ -40,4 +42,12 @@ def test_multi_voltage_requires_count_and_topology():
     data = valid()
     data['partition']['target'] = {'type': 'ratio', 'ratio': 0.5}
     with pytest.raises(ConfigSemanticError):
+        load_config(data)
+
+
+def test_save_all_levels_only_controls_optional_hierarchy() -> None:
+    """L1/L2 audit levels are mandatory even when the optional flag is false."""
+    data = valid()
+    data['output'] = {'save_all_levels': True}
+    with pytest.raises(UnsupportedFeatureError, match='optional hierarchy'):
         load_config(data)

@@ -1,6 +1,8 @@
 """Complete first-batch quotient mapping bundle."""
 
 from dataclasses import dataclass
+from collections.abc import Iterable
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -143,3 +145,54 @@ class MappingBundle:
                     temporary.unlink(missing_ok=True)
             output[name] = target
         return output
+
+    @classmethod
+    def load_parquet(
+        cls, directory: str | Path, *,
+        expected_files: Iterable[str] | None = None,
+    ) -> "MappingBundle":
+        """Read persisted maps and verify branch projections when present."""
+        root = Path(directory)
+        names = ("bus_map", "branch_map", "device_map", "control_map")
+        expected = set(expected_files) if expected_files is not None else None
+        if expected is not None and expected - set(names) - {
+                "line_map", "transformer_map"}:
+            raise MappingError("Unknown expected map file")
+
+        def read(name: str) -> tuple[MapEntry, ...]:
+            path = root / f"{name}.parquet"
+            if not path.exists():
+                if (name == "bus_map" or
+                        expected is not None and name in expected):
+                    raise MappingError(f"Missing persisted map: {name}")
+                return ()
+            try:
+                rows = tuple(MapEntry.from_row(row) for row in
+                             pq.read_table(path).to_pylist())
+            except (OSError, pa.ArrowException, ValueError, TypeError,
+                    MappingError) as exc:
+                raise MappingError(f"Cannot read persisted map {path}: {exc}") from exc
+            if len({row.source_id for row in rows}) != len(rows):
+                raise MappingError(f"Duplicate source StableId in {name}")
+            return rows
+
+        bundle = cls(*(read(name) for name in names))
+        for name, actual in (("line_map", bundle.line_map),
+                             ("transformer_map", bundle.transformer_map)):
+            projected = read(name)
+            if projected or root.joinpath(f"{name}.parquet").exists() or (
+                    expected is not None and name in expected):
+                if tuple(sorted((json.dumps(row.to_row(), sort_keys=True)
+                                 for row in projected))) != tuple(sorted(
+                        json.dumps(row.to_row(), sort_keys=True)
+                        for row in actual)):
+                    raise MappingError(f"{name} differs from branch_map")
+        return bundle
+
+    def canonical_rows(self) -> dict[str, tuple[str, ...]]:
+        """Return order-independent complete map content for readback checks."""
+        return {
+            name: tuple(sorted(json.dumps(row.to_row(), sort_keys=True)
+                               for row in getattr(self, name)))
+            for name in ("bus_map", "branch_map", "device_map", "control_map")
+        }

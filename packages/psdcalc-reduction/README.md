@@ -38,10 +38,14 @@ uv run --locked psdcalc-reduction report examples/runs/small-pypsa-kmeans
 For the three-voltage structural pipeline, use
 `examples/reduction.three-voltage.yaml` after setting `input.path` to a local
 PyPSA network. `plan` reports requested, planned, and actual cluster counts.
-`build` saves `levels/L1.nc`, `levels/L2.nc`, authoritative sidecars, complete
-bus/branch/device/control maps, line and Transformer map projections, operation
-records, preliminary Builder evidence, post-reload final Gate evidence, and a
-compression opportunity report. `report` reads the persisted evidence.
+`build` saves `levels/L1.nc` and `levels/L2.nc` as mandatory audit artifacts,
+even when `output.save_all_levels` is false. That flag is reserved for optional
+hierarchy levels. The run also saves `resolved_config.yaml` and its SHA-256,
+authoritative sidecars, complete bus/branch/device/control maps, line and
+Transformer map projections, operation records, preliminary Builder evidence,
+post-reload final Gate evidence, and a compression opportunity report. The
+final Gate reads the persisted maps and sidecar back before validation.
+`report` reads the persisted evidence.
 
 The topology stage retains Transformer interfaces and source voltage levels.
 It collapses only eligible single-interface feeders and zero-injection series

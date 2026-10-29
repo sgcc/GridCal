@@ -1,7 +1,6 @@
 """Persist, reload, and finally validate the multi-voltage structural chain."""
 
 from dataclasses import dataclass
-from importlib.metadata import version
 import json
 import os
 from pathlib import Path
@@ -11,7 +10,9 @@ import tempfile
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pypsa
+import yaml
 
+from psdcalc.reduction import __version__
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.models import ReductionConfig
 from psdcalc.reduction.core.artifact_store import ArtifactStore
@@ -19,16 +20,20 @@ from psdcalc.reduction.core.ids import IdentitySidecar
 from psdcalc.reduction.core.manifests import RunManifest
 from psdcalc.reduction.core.records import ReductionRecord
 from psdcalc.reduction.core.signatures import hash_file, hash_path
-from psdcalc.reduction.exceptions import ConfigSemanticError, SignatureError
+from psdcalc.reduction.exceptions import (
+    ConfigSemanticError, MappingError, SignatureError,
+)
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.planners.layer_energy import VoltageLayerEnergyPlanner
+from psdcalc.reduction.planners.multi_voltage_busmap import MultiVoltageBusmapValidator
 from psdcalc.reduction.protection.engine import ProtectionEngine
 from psdcalc.reduction.reporting.opportunity import (
     CompressionOpportunityReport, build_compression_opportunity_report,
 )
 from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
+from psdcalc.reduction.topology.voltage_layers import VoltageLayerClassifier
 from psdcalc.reduction.validation.multi_voltage import AggregationInvariantSpec
 from psdcalc.reduction.validation.multi_voltage_final import (
     MultiVoltageFinalValidator, MultiVoltageStructuralResult,
@@ -101,6 +106,22 @@ class MultiVoltageQuotientPipeline:
     ) -> MultiVoltagePipelineResult:
         """Run the structural pipeline, recording failures and re-raising them."""
         with store.capture("multi_voltage_pipeline"):
+            resolved_input = str(Path(config.input.path).resolve())
+            config = config.model_copy(update={
+                "input": config.input.model_copy(update={"path": resolved_input}),
+            })
+            resolved_yaml = yaml.safe_dump(
+                config.model_dump(mode="json"),
+                allow_unicode=True, sort_keys=True,
+            )
+            resolved_path = store.write_text(
+                "resolved_config.yaml", resolved_yaml)
+            store.record_artifact("resolved_config", "resolved_config.yaml")
+            config_digest = hash_file(resolved_path)
+            store.write_text("resolved_config.sha256", config_digest + "\n")
+            store.record_artifact("resolved_config_sha256",
+                                  "resolved_config.sha256")
+            store.set_metadata(config_hash=config_digest)
             if config.pipeline.materialization_family != "multi_voltage_quotient":
                 raise ConfigSemanticError("Pipeline requires multi_voltage_quotient family")
             if config.partition is None or config.partition.target.n_clusters is None:
@@ -129,7 +150,7 @@ class MultiVoltageQuotientPipeline:
                 seed=config.run.seed,
                 software_versions={"python": sys.version.split()[0],
                                    "pypsa": pypsa.__version__,
-                                   "psdcalc-reduction": version("psdcalc-reduction")},
+                                   "psdcalc-reduction": __version__},
             )
             _write_sidecar(store, "input/source_ids.json", source_sidecar, "source_ids")
             if config.output.save_original_snapshot:
@@ -207,7 +228,14 @@ class MultiVoltageQuotientPipeline:
             })
             store.record_artifact("quotient_voltage_layers",
                                   "validation/quotient_voltage_layers.json")
-            _save_maps(store, built.mappings, "maps/quotient", "quotient_")
+            quotient_files = _save_maps(
+                store, built.mappings, "maps/quotient", "quotient_")
+            persisted_quotient = MappingBundle.load_parquet(
+                store.path("maps/quotient"),
+                expected_files=(Path(path).stem for path in quotient_files),
+            )
+            if persisted_quotient.canonical_rows() != built.mappings.canonical_rows():
+                raise MappingError("Quotient mapping changed during Parquet readback")
             composed = MappingBundle(
                 compose_maps(topology.mappings.bus_map, built.mappings.bus_map),
                 compose_maps(topology.mappings.branch_map, built.mappings.branch_map),
@@ -215,6 +243,12 @@ class MultiVoltageQuotientPipeline:
                 compose_maps(topology.mappings.control_map, built.mappings.control_map),
             )
             map_files = _save_maps(store, composed, "maps")
+            persisted_composed = MappingBundle.load_parquet(
+                store.path("maps"),
+                expected_files=(Path(path).stem for path in map_files),
+            )
+            if persisted_composed.canonical_rows() != composed.canonical_rows():
+                raise MappingError("Composed mapping changed during Parquet readback")
             final_path = store.path("levels/L2.nc")
             adapter.export(built.network, final_path, "netcdf")
             store.record_artifact("quotient", "levels/L2.nc")
@@ -224,15 +258,17 @@ class MultiVoltageQuotientPipeline:
             reloaded = adapter.load(final_path, "netcdf")
             target_sidecar = IdentitySidecar.from_rows(json.loads(
                 final_sidecar_path.read_text(encoding="utf-8")))
+            if target_sidecar.to_rows() != built.target_sidecar.to_rows():
+                raise SignatureError("Target identity sidecar changed during readback")
             if hash_path(source_path) != input_hash:
                 raise SignatureError("Original input SHA changed during pipeline")
             structural = MultiVoltageFinalValidator().validate(
                 topology.network, reloaded, loaded_parent, target_sidecar,
-                built.mappings, invariants, protection,
+                persisted_quotient, invariants, protection,
                 voltage_layer_map=built.voltage_layer_map,
                 original_network=original_network,
                 original_sidecar=source_sidecar,
-                composed_mappings=composed,
+                composed_mappings=persisted_composed,
                 original_input_signature=source_semantics,
                 built_network=built.network,
             )
@@ -242,9 +278,21 @@ class MultiVoltageQuotientPipeline:
             })
             store.record_artifact("multi_voltage_structural",
                                   "validation/multi_voltage_structural.json")
+            layers = VoltageLayerClassifier().classify(
+                topology.network, loaded_parent,
+                aliases=config.voltage_layers.aliases)
+            requested_by_layer = MultiVoltageBusmapValidator().allocate_targets(
+                topology.network, loaded_parent, layers, protection,
+                target.n_clusters, target.per_layer)
+            layer_counts = {
+                key: (requested_by_layer[key], *built.layer_cluster_counts[key])
+                for key in requested_by_layer
+            }
             opportunity = build_compression_opportunity_report(
                 original_network, source_sidecar, topology, reloaded,
-                composed, protection,
+                persisted_composed, protection,
+                layer_counts=layer_counts,
+                voltage_aliases=config.voltage_layers.aliases,
             )
             store.write_json("validation/opportunity.json", opportunity.__dict__)
             store.record_artifact("opportunity", "validation/opportunity.json")
@@ -262,7 +310,7 @@ class MultiVoltageQuotientPipeline:
                     "netcdf_round_trip": True,
                 },
                 removed_objects=tuple(row.source_id.encode()
-                                      for row in composed.branch_map
+                                      for row in persisted_composed.branch_map
                                       if row.mapping_type == "absorbed_internal"),
                 mapping_files=map_files,
             )
@@ -274,6 +322,6 @@ class MultiVoltageQuotientPipeline:
             store.set_multi_voltage_result(
                 structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID")
             return MultiVoltagePipelineResult(
-                final_path, final_sidecar_path, composed, structural,
+                final_path, final_sidecar_path, persisted_composed, structural,
                 store.manifest, opportunity, records,
             )
