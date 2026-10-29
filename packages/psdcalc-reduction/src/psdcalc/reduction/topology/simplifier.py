@@ -16,6 +16,8 @@ from psdcalc.reduction.exceptions import BackendCapabilityError
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.rows import MapEntry
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.active import branch_is_active
+from psdcalc.reduction.topology.cycle_corridors import analyze_cycle_corridors
 from psdcalc.reduction.validation.structural import StructuralResult, StructuralValidator
 
 
@@ -25,34 +27,22 @@ def _line_graph(network: pypsa.Network, voltage: float) -> nx.Graph:
     graph.add_nodes_from(str(name) for name, row in network.buses.iterrows()
                          if float(row.v_nom) == voltage)
     for name, row in network.lines.iterrows():
-        if bool(row.get("active", True)) and row.bus0 in graph and row.bus1 in graph:
+        if branch_is_active(row) and row.bus0 in graph and row.bus1 in graph:
             graph.add_edge(str(row.bus0), str(row.bus1), name=str(name))
     return graph
 
 
 def _cycle_lines(network: pypsa.Network, graph: nx.Graph) -> set[str]:
-    """Mark every line whose removal leaves its terminals connected."""
-    result: set[str] = set()
-    for name, row in network.lines.iterrows():
-        a, b = str(row.bus0), str(row.bus1)
-        if a not in graph or b not in graph or not bool(row.get("active", True)):
-            continue
-        trial = graph.copy()
-        trial.remove_edge(a, b)
-        parallel = sum(
-            1 for other_name, other in network.lines.iterrows()
-            if other_name != name and bool(other.get("active", True)) and
-            {str(other.bus0), str(other.bus1)} == {a, b}
-        )
-        if parallel or nx.has_path(trial, a, b):
-            result.add(str(name))
-    return result
+    """Mark active layer cycle edges through the shared bridge helper."""
+    return set(analyze_cycle_corridors(
+        network, allowed_buses={str(node) for node in graph.nodes}
+    ).cycle_lines)
 
 
 def _simple_line(network: pypsa.Network, name: str) -> bool:
     """Accept only static, active, plain series-impedance line models."""
     row = network.lines.loc[name]
-    if not bool(row.get("active", True)) or str(row.get("type", "")) not in {"", "nan"}:
+    if not branch_is_active(row) or str(row.get("type", "")) not in {"", "nan"}:
         return False
     if any(abs(float(row.get(field, 0.0) or 0.0)) > 1e-12
            for field in ("b", "g")):
@@ -153,6 +143,8 @@ class VoltageAwareTopologySimplifier:
                     anchors.add(sidecar.backend_name(terminal))
         for component in ("Transformer", "Link"):
             for _, row in original.components[component].static.iterrows():
+                # Inactive branches do not enter the topology graph, but their
+                # terminal references still require the Bus row to survive.
                 anchors.update(str(value) for column, value in row.items()
                                if re.fullmatch(r"bus\d+", str(column)) and
                                pd.notna(value) and str(value) != "")

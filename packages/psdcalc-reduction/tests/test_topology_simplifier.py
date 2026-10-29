@@ -4,7 +4,9 @@ import pypsa
 
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.protection.engine import ProtectionEngine
+from psdcalc.reduction.topology.cycle_corridors import analyze_cycle_corridors
 from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
+from psdcalc.reduction.topology.simplifier import _cycle_lines, _line_graph
 
 
 def test_ring_feeder_and_transformer_interface() -> None:
@@ -91,3 +93,19 @@ def test_three_port_link_terminal_is_an_anchor() -> None:
     assert "c" in result.network.buses.index
     assert result.network.links.loc["link", "bus2"] == "c"
     assert result.structural.status == "STRUCTURALLY_VALID"
+
+
+def test_inactive_line_is_excluded_from_ring_and_simplifier_graph() -> None:
+    """A switched-off closing edge cannot create a ring or protect a feeder."""
+    network = pypsa.Network()
+    for name in ("a", "b", "c"):
+        network.add("Bus", name, v_nom=110)
+    network.add("Line", "ab", bus0="a", bus1="b", x=0.1)
+    network.add("Line", "bc", bus0="b", bus1="c", x=0.1)
+    network.add("Line", "ca", bus0="c", bus1="a", x=0.1, active=False)
+    graph = _line_graph(network, 110.0)
+    assert {frozenset(edge) for edge in graph.edges} == {
+        frozenset(("a", "b")), frozenset(("b", "c")),
+    }
+    assert not _cycle_lines(network, graph)
+    assert not analyze_cycle_corridors(network).cycle_lines
