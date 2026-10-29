@@ -1,7 +1,7 @@
 # ADR-008: Multi-voltage quotient construction and acceptance boundary
 
-Status: proposed for review, 2026-10-29. This ADR is the design-only PR-014.
-PR-015 implementation is blocked until this ADR is approved.
+Status: accepted, 2026-10-29. This ADR is the design-only PR-014.
+PR-015 begins only after PR-014 is merged.
 
 ## Context and decision
 
@@ -19,7 +19,8 @@ Two APIs have separate ownership:
   stable-ID partition, aggregation settings, protection, voltage aliases, and
   invariant specifications. It never writes files and never receives the raw
   original network. It returns a new network, mappings relative to its parent,
-  target sidecar, records, and in-memory structural evidence.
+  target sidecar, records, and `PreliminaryStructuralEvidence` with no final
+  success or invalid status.
 - **PR-016 `MultiVoltageQuotientPipeline`** owns orchestration, source-input
   SHA-256 and semantic-signature checks, topology/quotient map composition,
   persistence, export/reload, final structural Gate, manifest, failure evidence,
@@ -86,7 +87,9 @@ custom components, unknown control references, and unsupported branch models
 fail rather than being silently dropped. `Carrier`, `LineType`, and
 `TransformerType` tables are copied completely when referenced; `SubNetwork`
 is regenerated from the assembled topology and never copied as an identity
-table.
+table. A nonempty `Shape` table is rejected in PR-015 with a typed capability
+error until a public-API copy and reference-validation contract is implemented;
+an empty `Shape` table needs no copy.
 
 ## Cluster budget contract
 
@@ -111,6 +114,9 @@ by largest remainder, weighted by their remaining capacity
 `bus_count - structural_minimum`. Saturated layers are removed and the
 remainder is redistributed. Equal remainders break ties by canonical layer
 key. An explicit per-layer target is fixed, never silently adjusted.
+If `per_layer` specifies **every** classified layer, its target counts must
+sum exactly to the global requested cluster count; no residual budget is
+implicitly allocated.
 
 Within each layer, K-means, HAC, or greedy modularity receives an explicit
 seed. Connectivity policy is only `reject` or deterministic
@@ -148,9 +154,16 @@ Transformer validation uses a canonical semantic hash of the **complete**
 static Transformer row, every populated Transformer dynamic attribute and
 snapshot, and all referenced `TransformerType` rows. It includes references
 and their resolved types, not a fixed hand-picked electrical-field whitelist.
-Canonicalization sorts component and attribute keys, preserves ordered
-snapshot indexes, normalizes missing values and numeric representation, and
-excludes only explicitly documented nonsemantic serialization metadata.
+Before hashing, source `bus0` and `bus1` backend names are resolved through
+`parent_sidecar` and the singleton busmap to their mapped target Bus
+`StableId`s; output `bus0` and `bus1` backend names are resolved through the
+target sidecar to target Bus `StableId`s. Compare these **ordered** endpoint
+pairs, so both identity and direction are validated. The hash uses the ordered
+StableId pair in place of raw PyPSA bus strings; a deterministic bus rename
+cannot cause a false mismatch. Canonicalization sorts other component and
+attribute keys, preserves ordered snapshot indexes, normalizes missing values
+and numeric representation, and excludes only explicitly documented
+nonsemantic serialization metadata.
 Compare hashes before construction, after in-memory reassembly, and after
 NetCDF reload. A changed parameter, tap, control field, time series, or
 referenced type fails the Gate. `Carrier` and `LineType` references receive
@@ -172,12 +185,15 @@ preflight. `AggregationInvariantSpec` replaces the ambiguous blanket phrase
 "injection conservation"; a device or attribute absent from the supported
 specification cannot acquire an implicit pass.
 
-The only new quotient structural states are
-`MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID` and
-`MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID`. PR-015 may produce an in-memory
-preliminary structural result using these names, but only PR-016 may persist a
-successful final state, after export, reload, map composition, and a second
-Gate. Preflight or construction errors write `FAILED` plus
+`PreliminaryStructuralEvidence` is a PR-015 in-memory object containing
+`stage="builder"`, `finalized=False`, named boolean checks, and details. It
+has **no** `MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID/INVALID` status and is
+never a persisted success claim. Only PR-016, after export, reload, map
+composition, and its final Gate, creates and persists a
+`MultiVoltageStructuralResult` whose status is
+`MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID` or
+`MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID`. Preflight or construction
+errors write `FAILED` plus
 `validation/failure.json` through the Pipeline and return a nonzero CLI status.
 A built result that fails a structural check writes the available maps and
 evidence with `MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID`; it never reports
@@ -254,13 +270,13 @@ class CrossLayerComponentReconnector:
                   busmaps: ValidatedLayerBusmaps) -> ReconnectedNetwork: ...
 
 class MultiVoltageStructuralValidator:
-    def validate(self, parent_network: pypsa.Network,
+    def precheck(self, parent_network: pypsa.Network,
                  quotient_network: pypsa.Network,
                  parent_sidecar: IdentitySidecar,
                  target_sidecar: IdentitySidecar,
                  mappings: MappingBundle,
                  invariants: tuple[AggregationInvariantSpec, ...],
-                 protection: ProtectionSet) -> MultiVoltageStructuralResult: ...
+                 protection: ProtectionSet) -> PreliminaryStructuralEvidence: ...
 
 class MultiVoltageQuotientBuilder:
     def build(self, simplified_network: pypsa.Network,
@@ -279,10 +295,10 @@ class MultiVoltageQuotientPipeline:
 
 `MultiVoltageBuildResult` contains the detached network, target sidecar,
 parent-to-target `MappingBundle`, one `ReductionRecord` per layer and one for
-reconnection, per-layer requested/actual cluster counts, and preliminary
-structural evidence. `MultiVoltagePipelineResult` identifies the reloaded
-network artifact, original-to-final maps, final structural evidence, manifest,
-and `CompressionOpportunityReport`. The Builder's records have in-memory
+reconnection, per-layer requested/actual cluster counts, and
+`PreliminaryStructuralEvidence`. `MultiVoltagePipelineResult` identifies the
+reloaded network artifact, original-to-final maps, final structural evidence,
+manifest, and `CompressionOpportunityReport`. The Builder's records have in-memory
 semantic parent/child signatures; the Pipeline fills persisted artifact hashes
 when writing stage records. No record claims a file hash before a file exists.
 
@@ -292,8 +308,8 @@ when writing stage records. No record claims a file hash before a file exists.
 | --- | --- |
 | PR-013 | Isolated sdist/wheel build; archive members and resources; fresh venv installs the built wheel with binary dependencies; installed CLI `--help`, `validate-config`, `dump-schema`, `report`; generated `test_summary.json`. |
 | PR-015 classification | Three exact voltages, explicit aliases, invalid/NaN/zero values, cross-layer Line and alias-induced Transformer collapse. No implicit tolerance. |
-| PR-015 allocation | Singleton-removal splits a free graph into multiple components; multi-subnetwork and region domains; `cannot_link`; global floor, largest remainder ties/capacity, valid and invalid `per_layer` overrides. |
-| PR-015 Builder | Three-layer quotient, Transformer singleton terminals, full static/dynamic/type hash, same-layer Link support and cross-layer Link failure, no self-loop, no original mutation, deterministic output. |
+| PR-015 allocation | Singleton-removal splits a free graph into multiple components; multi-subnetwork and region domains; `cannot_link`; global floor, largest remainder ties/capacity, valid and invalid `per_layer` overrides, including exact sum when every layer is overridden. |
+| PR-015 Builder | Three-layer quotient, Transformer singleton terminals, full static/dynamic/type hash with ordered StableId endpoint normalization, same-layer Link support and cross-layer Link failure, nonempty Shape rejection, no self-loop, no original mutation, deterministic output and status-free preliminary evidence. |
 | PR-015 mapping/Gate | Parallel Lines map many-to-one; absorbed internal Line has no target; L1 cycle IDs and L2 corridor/ring predicate; disconnected source components remain distinct; per-component/snapshot aggregation invariants; unknown dynamic attribute fails. |
 | PR-016 persistence | Snapshots, both weighting tables, investment periods, supported dynamic data and type references survive export/reload; `SubNetwork` regenerated; target sidecar resolves every target ID. |
 | PR-016 end to end | Original three-voltage network to topology, seeded energy planner, Builder, composed maps, final Gate and report; PV/shunt/tap/remote-control protection; deterministic rerun; failed busmap, unsupported component, corrupted reload and input mutation produce typed failure evidence. |
