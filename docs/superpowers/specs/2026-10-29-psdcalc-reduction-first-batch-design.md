@@ -36,7 +36,7 @@ flowchart LR
 
 原始 `pypsa.Network` 不修改；先复制或从原始 artifact 重新读取，在副本上工作。外部 identity sidecar 以 `(namespace, component, source_key)` 为权威，关联 PyPSA 组件名称与 StableId；自定义 `source_id` 列仅为便捷镜像，NetCDF/CSV 回读以 sidecar 校验，不依赖该列持久化。Sidecar、输入文件 SHA-256、按稳定 ID 排序的拓扑签名和输出哈希写入 manifest。原子写入临时文件后替换；失败时记录阶段、异常类型、消息和已有 artifact 引用，并抛显式异常。
 
-保护动作分为 `trace_only`、`preserve_component_identity`、`preserve_terminal_bus`、`preserve_bus_as_singleton`、`cannot_link`。冲突由 ProtectionEngine 在规划前拒绝；禁止隐式弱化规则。多电压等级及 transformer 网络在 capability gate 检查：本批没有单电压层化；不得跨不同 `v_nom` 聚类。若 transformer 保留与聚类约束不能同时满足，报告 `BackendCapabilityError` 或 `ConfigSemanticError`。
+保护动作分为 `trace_only`、`preserve_component_identity`、`preserve_terminal_bus`、`preserve_bus_as_singleton`、`cannot_link`。冲突由 ProtectionEngine 在规划前拒绝；禁止隐式弱化规则。多电压等级及 transformer 网络在 capability gate 检查：本批没有单电压层化；不得跨不同 `v_nom` 聚类。核对本地 PyPSA 源码后确认现有商图路径不会直接保留 Transformer；因此第一批 `build` 对含 Transformer 的网络直接报 `BackendCapabilityError`，不能静默丢弃。仅多电压且无 Transformer 的网络须满足同电压簇约束，否则报 `ConfigSemanticError`。
 
 连通策略仅 `reject` 或确定性 `split_disconnected`。对每个源 connected component/subnetwork 独立检查，不要求整个输入网络单连通。拆分后记录 `requested_cluster_count` 和 `actual_cluster_count`，两者允许不同。线路映射有 `preserved`、`aggregated`、`absorbed_internal` 等类型；内部吸收线路的 `target_id` 可空，必须保留来源 ID、操作 ID 与吸收原因。设备映射同样记录保留或聚合归属。组合映射不以数组下标为持久键。
 
