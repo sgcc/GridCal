@@ -1,8 +1,9 @@
 """Pydantic v2 models for the first-batch reduction configuration."""
 
-from typing import Any, Literal
+from typing import Any, Literal, Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+import math
 
 
 class StrictModel(BaseModel):
@@ -58,7 +59,7 @@ class HierarchyConfig(StrictModel):
 class PipelineConfig(StrictModel):
     """Construction family and future hierarchy placeholders."""
 
-    materialization_family: Literal["aggregation", "simplification", "equivalencing", "hybrid"] = "aggregation"
+    materialization_family: Literal["aggregation", "simplification", "equivalencing", "hybrid", "multi_voltage_quotient"] = "aggregation"
     materialize_from: Literal["original", "parent"] = "original"
     hierarchy: HierarchyConfig = Field(default_factory=HierarchyConfig)
 
@@ -132,6 +133,19 @@ class PartitionTarget(StrictModel):
     type: Literal["count", "ratio", "from_hierarchy_level"] = "count"
     n_clusters: int | None = Field(default=None, gt=0)
     ratio: float | None = Field(default=None, gt=0, le=1)
+    per_layer: dict[str, Annotated[int, Field(strict=True, gt=0)]] = Field(default_factory=dict)
+
+    @field_validator("per_layer")
+    @classmethod
+    def valid_layers(cls, value):
+        for key in value:
+            try:
+                voltage = float(key)
+            except ValueError as exc:
+                raise ValueError("layer keys must be positive finite voltages") from exc
+            if not math.isfinite(voltage) or voltage <= 0:
+                raise ValueError("layer keys must be positive finite voltages")
+        return value
 
 
 class CustomBusmapConfig(StrictModel):
@@ -190,6 +204,39 @@ class AggregationStrategies(StrictModel):
     one_ports: OnePortStrategies = Field(default_factory=OnePortStrategies)
 
 
+class AggregationInvariantConfig(StrictModel):
+    """Explicit supported invariant for final structural validation."""
+    component: str = Field(min_length=1)
+    attribute: str = Field(min_length=1)
+    strategy: Literal["sum", "preserve_exact"]
+    dynamic: bool = False
+    scope: Literal["target", "source_connected_component", "global"] = "target"
+    snapshots: tuple[Any, ...] | None = None
+    atol: float = Field(default=1e-9, ge=0, allow_inf_nan=False)
+
+
+class VoltageLayersConfig(StrictModel):
+    """Exact positive nominal-voltage aliases."""
+    aliases: dict[float, float] = Field(default_factory=dict)
+
+    @field_validator("aliases", mode="before")
+    @classmethod
+    def valid_aliases(cls, value):
+        if not isinstance(value, dict):
+            raise ValueError("aliases must be a mapping")
+        for source, target in value.items():
+            for item in (source, target):
+                if isinstance(item, bool):
+                    raise ValueError("aliases must contain positive finite voltages")
+                try:
+                    number = float(item)
+                except (ValueError, TypeError) as exc:
+                    raise ValueError("aliases must contain positive finite voltages") from exc
+                if not math.isfinite(number) or number <= 0:
+                    raise ValueError("aliases must contain positive finite voltages")
+        return value
+
+
 class AggregationConfig(StrictModel):
     """PyPSA quotient options."""
 
@@ -198,6 +245,7 @@ class AggregationConfig(StrictModel):
     preserve_components: list[str] = Field(default_factory=list)
     line_length_factor: float = Field(default=1.0, gt=0)
     strategies: AggregationStrategies = Field(default_factory=AggregationStrategies)
+    invariants: list[AggregationInvariantConfig] = Field(default_factory=list)
 
 
 class EquivalenceConfig(StrictModel):
@@ -324,6 +372,7 @@ class ReductionConfig(StrictModel):
     input: InputConfig
     task: TaskConfig
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
+    voltage_layers: VoltageLayersConfig = Field(default_factory=VoltageLayersConfig)
     simplification: SimplificationConfig = Field(default_factory=SimplificationConfig)
     protection: ProtectionConfig = Field(default_factory=ProtectionConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)

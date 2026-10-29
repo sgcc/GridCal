@@ -1,0 +1,22 @@
+schema_version: "0.1.0"
+run: {id: three-voltage, seed: 42, deterministic: true, output_dir: runs}
+input: {backend: pypsa, path: three-voltage.nc, format: netcdf, source_namespace: example}
+task:
+  type: planning
+  profile: planning_aggregation
+  reduction_role: structural_quotient
+  final_authority: original
+pipeline: {materialization_family: multi_voltage_quotient}
+voltage_layers:
+  aliases: {}
+simplification:
+  operations:
+    - {id: topology, type: voltage_aware_topology, enabled: true, mode: keep_transformer_interface}
+partition:
+  planner: pypsa_kmeans
+  target: {type: count, n_clusters: 12, per_layer: {"110": 4, "220": 4, "500": 4}}
+  connectivity_policy: reject
+aggregation:
+  backend: pypsa
+  invariants:
+    - {component: Load, attribute: p_set, strategy: sum, dynamic: true, scope: source_connected_component}

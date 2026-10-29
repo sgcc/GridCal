@@ -120,6 +120,16 @@ class ArtifactStore:
         })
         self._save_manifest()
 
+    def set_multi_voltage_result(self, valid: bool) -> None:
+        """Persist only the final post-reload multi-voltage structural state."""
+        self._manifest = self._manifest.model_copy(update={
+            "status": ("MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID" if valid else
+                       "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID"),
+            "operation_status": None,
+            "updated_at": utc_now(),
+        })
+        self._save_manifest()
+
     @contextmanager
     def capture(self, stage: str) -> Iterator[None]:
         """Record any stage failure and re-raise the original exception."""

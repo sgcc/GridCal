@@ -17,7 +17,11 @@ class RunManifest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     run_id: str
-    status: Literal["RUNNING", "FAILED", "STRUCTURALLY_VALID", "STRUCTURALLY_INVALID"] = "RUNNING"
+    status: Literal[
+        "RUNNING", "FAILED", "STRUCTURALLY_VALID", "STRUCTURALLY_INVALID",
+        "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+        "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+    ] = "RUNNING"
     operation_status: Literal["STRUCTURALLY_SIMPLIFIED", "PLANNING_APPROXIMATION"] | None = None
     created_at: str = Field(default_factory=utc_now)
     updated_at: str = Field(default_factory=utc_now)
