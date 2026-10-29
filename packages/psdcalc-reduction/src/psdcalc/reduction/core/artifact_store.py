@@ -91,6 +91,14 @@ class ArtifactStore:
         })
         self._save_manifest()
 
+    def set_structural_result(self, valid: bool) -> None:
+        """Persist the structural gate outcome without physical acceptance."""
+        self._manifest = self._manifest.model_copy(update={
+            "status": "STRUCTURALLY_VALID" if valid else "STRUCTURALLY_INVALID",
+            "updated_at": utc_now(),
+        })
+        self._save_manifest()
+
     @contextmanager
     def capture(self, stage: str) -> Iterator[None]:
         """Record any stage failure and re-raise the original exception."""

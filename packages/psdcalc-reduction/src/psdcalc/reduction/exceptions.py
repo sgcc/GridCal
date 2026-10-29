@@ -51,3 +51,7 @@ class PartitionError(ReductionError):
 
 class MaterializationError(ReductionError):
     """A quotient network could not be built without losing required identity."""
+
+
+class MappingError(ReductionError):
+    """A source object cannot be traced to a valid quotient target."""
