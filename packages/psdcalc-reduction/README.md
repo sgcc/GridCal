@@ -10,6 +10,20 @@ simplification before energy K-means, HAC, or greedy modularity planning.
 Install the locked development environment with `uv sync --locked` from this
 directory. Run the package tests with `uv run --locked pytest tests`.
 
+Run the PR-013 distribution Gate from the package directory with:
+
+```bash
+.venv/bin/python tools/packaging_gate.py --output-dir /tmp/psdcalc-pr013
+```
+
+This runs the package tests, builds an isolated sdist and wheel with
+`setuptools>=70`, checks archive members and resources, installs the wheel with
+binary dependencies in a clean venv, and exercises the installed CLI from
+outside the checkout. It generates `test_summary.json` in the output directory
+alongside the distributions. The summary is build evidence, not a source
+fixture. Dependency installation may use the package index; the tests do not
+access the internet.
+
 The CLI commands are `validate-config`, `inspect`, `plan`, `build`, `report`, and
 `dump-schema`. For example:
 

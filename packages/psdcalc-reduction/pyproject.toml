@@ -28,5 +28,8 @@ dev = ["pytest>=9,<10", "hypothesis>=6,<7"]
 where = ["src"]
 include = ["psdcalc*"]
 
+[tool.setuptools.package-data]
+"psdcalc.reduction.resources" = ["*.json", "*.yaml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
