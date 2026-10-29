@@ -115,7 +115,8 @@ class PypsaAdapter:
                                 bool(row.get("p_nom_extendable", False)) or
                                 bool(row.get("committable", False)))
                 items.append(InventoryItem(source_id, component.name,
-                                           tuple(terminals), controllable))
+                                           tuple(terminals), controllable,
+                                           row.to_dict()))
         return GridInventory(items)
 
     def topology_signature(self, network: pypsa.Network,

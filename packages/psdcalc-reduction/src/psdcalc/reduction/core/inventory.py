@@ -1,8 +1,8 @@
 """Backend-neutral inventory rows keyed by stable identities."""
 
 from collections import Counter
-from dataclasses import dataclass
-from typing import Iterable
+from dataclasses import dataclass, field
+from typing import Iterable, Mapping
 
 from psdcalc.reduction.core.ids import StableId
 from psdcalc.reduction.exceptions import IdentityError
@@ -16,6 +16,7 @@ class InventoryItem:
     component: str
     terminals: tuple[StableId, ...] = ()
     controllable: bool = False
+    attributes: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.source_id.component != self.component:

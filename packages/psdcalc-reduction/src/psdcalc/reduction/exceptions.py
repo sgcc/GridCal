@@ -39,3 +39,7 @@ class BackendIOError(ReductionError):
 
 class RoundTripError(ReductionError):
     """An exported network could not be restored with stable identity."""
+
+
+class ProtectionError(ReductionError):
+    """A protection selector or action cannot be applied safely."""
