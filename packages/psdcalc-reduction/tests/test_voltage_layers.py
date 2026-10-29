@@ -30,3 +30,39 @@ def test_cross_voltage_line_fails_before_materialization() -> None:
 
     with pytest.raises(BackendCapabilityError, match="cross-voltage Line"):
         VoltageLayerClassifier().classify(network, sidecar)
+
+
+@pytest.mark.parametrize("voltage", [0.0, float("nan"), float("inf")])
+def test_invalid_bus_voltage_fails(voltage: float) -> None:
+    """Zero and nonfinite nominal voltages cannot define a layer."""
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=1)
+    network.buses.loc["a", "v_nom"] = voltage
+    sidecar = PypsaAdapter().identity_sidecar(network, "n")
+    with pytest.raises(BackendCapabilityError, match="v_nom"):
+        VoltageLayerClassifier().classify(network, sidecar)
+
+
+@pytest.mark.parametrize("aliases", [
+    {"bad": 110.0}, {10.0: 0.0}, {10.0: float("nan")},
+    {float("inf"): 110.0},
+])
+def test_invalid_alias_fails(aliases: dict[object, object]) -> None:
+    """Aliases must be explicit finite positive numeric pairs."""
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=10)
+    sidecar = PypsaAdapter().identity_sidecar(network, "n")
+    with pytest.raises(BackendCapabilityError, match="alias"):
+        VoltageLayerClassifier().classify(network, sidecar, aliases=aliases)
+
+
+def test_alias_cannot_collapse_transformer_layers() -> None:
+    """An explicit alias still cannot turn a Transformer into a self-layer."""
+    network = pypsa.Network()
+    network.add("Bus", "a", v_nom=110)
+    network.add("Bus", "b", v_nom=10)
+    network.add("Transformer", "tx", bus0="a", bus1="b", x=0.1)
+    sidecar = PypsaAdapter().identity_sidecar(network, "n")
+    with pytest.raises(BackendCapabilityError, match="distinct voltage layers"):
+        VoltageLayerClassifier().classify(network, sidecar,
+                                          aliases={10.0: 110.0})

@@ -107,6 +107,10 @@ class CrossLayerComponentReconnector:
                 raise MaterializationError(
                     f"Cannot merge voltage layer {layer.layer.key}: {exc}"
                 ) from exc
+        for component_name in ("Carrier", "LineType", "TransformerType"):
+            result.components[component_name].static = (
+                simplified_network.components[component_name].static.copy(deep=True)
+            )
         for name, handler in self._handlers.items():
             if name == "Transformer":
                 handler.reconnect(simplified_network, result, parent_sidecar, busmaps)

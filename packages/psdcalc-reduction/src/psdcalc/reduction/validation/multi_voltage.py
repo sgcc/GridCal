@@ -2,19 +2,28 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import json
 import math
+from numbers import Real
 from typing import Literal
 
 import networkx as nx
+import numpy as np
 import pandas as pd
 import pypsa
 
-from psdcalc.reduction.core.ids import IdentitySidecar
-from psdcalc.reduction.exceptions import BackendCapabilityError, MappingError
+from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
+from psdcalc.reduction.core.ids import IdentitySidecar, StableId
+from psdcalc.reduction.exceptions import (
+    BackendCapabilityError, ConfigSemanticError, MappingError,
+)
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.cycle_corridors import (
+    CycleCorridorAnalysis, analyze_cycle_corridors,
+)
 
 
 @dataclass(frozen=True)
@@ -39,6 +48,26 @@ class AggregationInvariantSpec:
     snapshots: tuple[object, ...] | None = None
     atol: float = 1e-9
 
+    def __post_init__(self) -> None:
+        """Reject unsupported strategies and malformed comparison scopes."""
+        if (not isinstance(self.component, str) or not self.component or
+                not isinstance(self.attribute, str) or not self.attribute):
+            raise ConfigSemanticError("Invariant component and attribute are required")
+        if (not isinstance(self.strategy, str) or
+                self.strategy not in {"sum", "preserve_exact"}):
+            raise ConfigSemanticError("Unsupported invariant strategy")
+        if (not isinstance(self.scope, str) or
+                self.scope not in {"target", "source_connected_component", "global"}):
+            raise ConfigSemanticError("Unsupported invariant scope")
+        if not isinstance(self.dynamic, bool):
+            raise ConfigSemanticError("Invariant dynamic flag must be boolean")
+        if (isinstance(self.atol, (bool, np.bool_)) or
+                not isinstance(self.atol, Real) or
+                not math.isfinite(float(self.atol)) or self.atol < 0):
+            raise ConfigSemanticError("Invariant atol must be finite and nonnegative")
+        if self.snapshots is not None and not isinstance(self.snapshots, tuple):
+            raise ConfigSemanticError("Invariant snapshots must be a tuple")
+
 
 _DEFAULT_INVARIANTS = (
     AggregationInvariantSpec("Load", "p_set", "sum"),
@@ -46,6 +75,52 @@ _DEFAULT_INVARIANTS = (
     AggregationInvariantSpec("Load", "p_set", "sum", dynamic=True),
     AggregationInvariantSpec("Load", "q_set", "sum", dynamic=True),
 )
+
+
+def _finite_number(value: object, attribute: str) -> float:
+    """Return one finite numeric scalar without coercing missing or text data."""
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        raise BackendCapabilityError(
+            f"Invariant {attribute} requires finite numeric values"
+        )
+    number = float(value)
+    if not math.isfinite(number):
+        raise BackendCapabilityError(
+            f"Invariant {attribute} requires finite numeric values"
+        )
+    return number
+
+
+def _sum_numbers(values: object, attribute: str) -> float:
+    """Sum declared additive values without Pandas numeric coercion."""
+    return math.fsum(_finite_number(value, attribute) for value in values)
+
+
+def _exact_scalar(value: object, attribute: str) -> tuple[str, object]:
+    """Canonicalize a comparable exact value, including enum members."""
+    if isinstance(value, Enum):
+        return _exact_scalar(value.value, attribute)
+    if isinstance(value, (bool, np.bool_)):
+        return "bool", bool(value)
+    if isinstance(value, str):
+        return "string", value
+    if isinstance(value, Real):
+        return "number", _finite_number(value, attribute)
+    raise BackendCapabilityError(
+        f"Invariant {attribute} has an unsupported or incomparable value"
+    )
+
+
+def _exact_equal(left: object, right: object, attribute: str,
+                 atol: float) -> bool:
+    """Compare two supported scalars without changing their logical type."""
+    left_type, left_value = _exact_scalar(left, attribute)
+    right_type, right_value = _exact_scalar(right, attribute)
+    if left_type != right_type:
+        return False
+    if left_type == "number":
+        return abs(float(left_value) - float(right_value)) <= atol
+    return left_value == right_value
 
 
 def _normal(value: object) -> object:
@@ -115,29 +190,47 @@ def _branch_graph(network: pypsa.Network,
     return graph
 
 
-def _cycle_rank(network: pypsa.Network) -> int:
-    """Count independent Line cycles, including parallel-edge cycles."""
-    graph = nx.MultiGraph()
-    graph.add_nodes_from(str(name) for name in network.buses.index)
-    for _, row in network.lines.iterrows():
-        graph.add_edge(str(row.bus0), str(row.bus1))
-    return graph.number_of_edges() - graph.number_of_nodes() + nx.number_connected_components(graph)
-
-
-def _cycle_lines(network: pypsa.Network) -> set[str]:
-    """Find Line identities whose removal leaves a same-layer alternate path."""
-    graph = nx.MultiGraph()
-    graph.add_nodes_from(str(name) for name in network.buses.index)
-    for name, row in network.lines.iterrows():
-        graph.add_edge(str(row.bus0), str(row.bus1), key=str(name))
-    result: set[str] = set()
-    for name, row in network.lines.iterrows():
-        a, b = str(row.bus0), str(row.bus1)
-        graph.remove_edge(a, b, key=str(name))
-        if nx.has_path(graph, a, b):
-            result.add(str(name))
-        graph.add_edge(a, b, key=str(name))
-    return result
+def _simple_ring_preserved(
+    source: CycleCorridorAnalysis,
+    target: CycleCorridorAnalysis,
+    source_sidecar: IdentitySidecar,
+    target_sidecar: IdentitySidecar,
+    busmap: Mapping[object, object],
+) -> bool:
+    """Compare the mapped simple corridor graph and each source ring rank."""
+    try:
+        translated = {
+            name: target_sidecar.backend_name(
+                busmap[source_sidecar.source_id("Bus", name)]
+            ) for name in source.simple_graph.nodes
+        }
+    except (KeyError, MappingError):
+        return False
+    mapped = nx.Graph()
+    mapped.add_nodes_from(translated.values())
+    mapped.add_edges_from(
+        (translated[a], translated[b])
+        for a, b in source.simple_graph.edges
+        if translated[a] != translated[b]
+    )
+    if (set(mapped.nodes) != set(target.simple_graph.nodes) or
+            {frozenset(edge) for edge in mapped.edges} !=
+            {frozenset(edge) for edge in target.simple_graph.edges}):
+        return False
+    mapped_rank = (mapped.number_of_edges() - mapped.number_of_nodes() +
+                   nx.number_connected_components(mapped))
+    if source.simple_cycle_rank != mapped_rank:
+        return False
+    for nodes in nx.connected_components(source.simple_graph):
+        target_nodes = {translated[name] for name in nodes}
+        original = source.simple_graph.subgraph(nodes)
+        projected = mapped.subgraph(target_nodes)
+        original_rank = original.number_of_edges() - original.number_of_nodes() + 1
+        projected_rank = (projected.number_of_edges() - projected.number_of_nodes()
+                          + nx.number_connected_components(projected))
+        if original_rank != projected_rank:
+            return False
+    return True
 
 
 class MultiVoltageStructuralValidator:
@@ -156,7 +249,10 @@ class MultiVoltageStructuralValidator:
                  target_sidecar: IdentitySidecar,
                  mappings: MappingBundle,
                  invariants: tuple[AggregationInvariantSpec, ...],
-                 protection: ProtectionSet) -> PreliminaryStructuralEvidence:
+                 protection: ProtectionSet,
+                 *,
+                 voltage_layer_map: Mapping[StableId, tuple[float, float]],
+                 ) -> PreliminaryStructuralEvidence:
         """Return only in-memory evidence or raise a typed error."""
         specs = invariants or _DEFAULT_INVARIANTS
         self._reject_unknown_dynamic(parent_network, specs)
@@ -214,6 +310,10 @@ class MultiVoltageStructuralValidator:
                 except (KeyError, MappingError, AttributeError):
                     target_ok = False
         checks["target_existence"] = target_ok
+        checks["voltage_layers"] = self._voltage_layers_hold(
+            parent_network, quotient_network, parent_sidecar,
+            target_sidecar, mappings, voltage_layer_map,
+        )
         checks["snapshots"] = parent_network.snapshots.equals(
             quotient_network.snapshots
         ) and parent_network.snapshot_weightings.equals(
@@ -244,23 +344,78 @@ class MultiVoltageStructuralValidator:
                     transformer_ok = False
                     break
         checks["transformer_semantics"] = transformer_ok
+        transformer_rows = mappings.transformer_map
+        expected_transformers = {
+            parent_sidecar.source_id("Transformer", str(name))
+            for name in parent_network.transformers.index
+        }
+        checks["transformer_mapping_identity"] = (
+            len(transformer_rows) == len(expected_transformers)
+            and {row.source_id for row in transformer_rows} == expected_transformers
+            and all(row.target_id == row.source_id and
+                    row.mapping_type == "preserved" for row in transformer_rows)
+        )
+        expected_controls = {
+            item.source_id for item in PypsaAdapter().inventory(
+                parent_network, parent_sidecar
+            ).items if item.controllable
+        }
+        controls = mappings.control_map
+        checks["control_mapping_coverage"] = (
+            len(controls) == len(expected_controls)
+            and {row.source_id for row in controls} == expected_controls
+        )
+        device_owners = {row.source_id: row for row in mappings.device_map}
+        checks["control_owner_consistency"] = all(
+            row.source_id in device_owners
+            and row.target_id == device_owners[row.source_id].target_id
+            and row.mapping_type == device_owners[row.source_id].mapping_type
+            for row in controls
+        )
+        control_targets_exist = True
+        for row in controls:
+            try:
+                if (row.target_id is None or
+                        row.target_id.component != row.source_id.component):
+                    control_targets_exist = False
+                    continue
+                backend = target_sidecar.backend_name(row.target_id)
+                if backend not in quotient_network.components[
+                        row.source_id.component].static.index:
+                    control_targets_exist = False
+            except (KeyError, MappingError, AttributeError):
+                control_targets_exist = False
+        checks["control_target_existence"] = control_targets_exist
         checks["connected_components"] = self._components_preserved(
             parent_network, quotient_network, parent_sidecar,
             target_sidecar, busmap,
         )
-        checks["ring_topology"] = _cycle_rank(parent_network) == _cycle_rank(
-            quotient_network
+        source_cycles = analyze_cycle_corridors(parent_network)
+        target_cycles = analyze_cycle_corridors(quotient_network)
+        checks["simple_ring_topology"] = _simple_ring_preserved(
+            source_cycles, target_cycles, parent_sidecar, target_sidecar, busmap,
         )
-        target_cycle_lines = _cycle_lines(quotient_network)
+        details["multigraph_cycle_rank_delta"] = str(
+            target_cycles.multigraph_cycle_rank -
+            source_cycles.multigraph_cycle_rank
+        )
         line_rows = {row.source_id: row for row in mappings.line_map}
         corridor_ok = True
-        for name in _cycle_lines(parent_network):
+        for name in source_cycles.cycle_lines:
             source_id = parent_sidecar.source_id("Line", name)
             row = line_rows.get(source_id)
             if row is None or row.target_id is None:
                 corridor_ok = False
                 break
-            if target_sidecar.backend_name(row.target_id) not in target_cycle_lines:
+            target_name = target_sidecar.backend_name(row.target_id)
+            target_pair = target_cycles.line_corridors.get(target_name)
+            a, b = source_cycles.line_corridors[name]
+            mapped_pair = tuple(sorted((
+                target_sidecar.backend_name(busmap[parent_sidecar.source_id("Bus", a)]),
+                target_sidecar.backend_name(busmap[parent_sidecar.source_id("Bus", b)]),
+            )))
+            if (target_pair != mapped_pair or
+                    target_pair not in target_cycles.non_bridge_corridors):
                 corridor_ok = False
                 break
         checks["cycle_corridors"] = corridor_ok
@@ -277,6 +432,67 @@ class MultiVoltageStructuralValidator:
             if not passed:
                 details[name] = f"In-memory {name} check failed"
         return PreliminaryStructuralEvidence("builder", False, checks, details)
+
+    @staticmethod
+    def _voltage_layers_hold(
+        parent: pypsa.Network,
+        child: pypsa.Network,
+        parent_sidecar: IdentitySidecar,
+        target_sidecar: IdentitySidecar,
+        mappings: MappingBundle,
+        voltage_layer_map: Mapping[StableId, tuple[float, float]],
+    ) -> bool:
+        """Verify canonical Bus voltages and legal Line/Transformer interfaces."""
+        bus_rows = mappings.bus_map
+        if {row.source_id for row in bus_rows} != set(voltage_layer_map):
+            return False
+        layers_by_target: dict[StableId, set[float]] = {}
+        for row in bus_rows:
+            if row.target_id is None:
+                return False
+            try:
+                raw, canonical = voltage_layer_map[row.source_id]
+                raw = float(raw)
+                canonical = float(canonical)
+                parent_voltage = float(parent.buses.loc[
+                    parent_sidecar.backend_name(row.source_id), "v_nom"
+                ])
+            except (TypeError, ValueError, KeyError, MappingError):
+                return False
+            if (not math.isfinite(raw) or raw <= 0 or
+                    not math.isfinite(canonical) or canonical <= 0 or
+                    parent_voltage != raw):
+                return False
+            layers_by_target.setdefault(row.target_id, set()).add(canonical)
+        if any(len(values) != 1 for values in layers_by_target.values()):
+            return False
+        names_by_layer: dict[str, float] = {}
+        for target_id, values in layers_by_target.items():
+            try:
+                backend = target_sidecar.backend_name(target_id)
+            except MappingError:
+                return False
+            if backend not in child.buses.index:
+                return False
+            canonical = next(iter(values))
+            try:
+                target_voltage = float(child.buses.loc[backend, "v_nom"])
+            except (TypeError, ValueError):
+                return False
+            if target_voltage != canonical:
+                return False
+            names_by_layer[backend] = canonical
+        if set(names_by_layer) != {str(name) for name in child.buses.index}:
+            return False
+        for _, row in child.lines.iterrows():
+            if names_by_layer.get(str(row.bus0)) != names_by_layer.get(str(row.bus1)):
+                return False
+        for _, row in child.transformers.iterrows():
+            a = names_by_layer.get(str(row.bus0))
+            b = names_by_layer.get(str(row.bus1))
+            if a is None or b is None or a == b:
+                return False
+        return True
 
     @staticmethod
     def _reject_unknown_dynamic(network: pypsa.Network,
@@ -356,8 +572,6 @@ class MultiVoltageStructuralValidator:
             else:
                 if spec.attribute not in source.static.columns:
                     continue
-            if spec.atol < 0 or not math.isfinite(spec.atol):
-                raise BackendCapabilityError("Invariant tolerance must be finite and nonnegative")
             snapshots = (parent.snapshots if spec.snapshots is None else
                          pd.Index(spec.snapshots))
             if spec.dynamic and (not snapshots.isin(parent.snapshots).all() or
@@ -397,38 +611,49 @@ class MultiVoltageStructuralValidator:
                     if any(name not in target_frame.columns for name in target_names):
                         return False
                     source_values = source_frame.reindex(snapshots)[dynamic_names]
-                    expected = (source_values.sum(axis=1) if spec.strategy == "sum"
-                                else source_values.iloc[:, 0])
-                    static_names = set(names) - set(dynamic_names)
-                    if static_names:
-                        if spec.attribute not in source.static.columns:
-                            return False
-                        baseline = pd.to_numeric(
-                            source.static.loc[sorted(static_names), spec.attribute],
-                            errors="coerce",
-                        ).fillna(0.0).sum()
-                        expected = expected + baseline
                     actual_values = target_frame.reindex(snapshots)[target_names]
-                    actual = (actual_values.sum(axis=1) if spec.strategy == "sum"
-                              else actual_values.iloc[:, 0])
-                    if not expected.sub(actual).abs().le(spec.atol).all():
-                        return False
+                    if spec.strategy == "sum":
+                        static_names = sorted(set(names) - set(dynamic_names))
+                        baseline = 0.0
+                        if static_names:
+                            if spec.attribute not in source.static.columns:
+                                return False
+                            baseline = _sum_numbers(
+                                source.static.loc[static_names, spec.attribute],
+                                spec.attribute,
+                            )
+                        for snapshot in snapshots:
+                            expected = _sum_numbers(
+                                source_values.loc[snapshot].tolist(), spec.attribute,
+                            ) + baseline
+                            actual = _sum_numbers(
+                                actual_values.loc[snapshot].tolist(), spec.attribute,
+                            )
+                            if abs(expected - actual) > spec.atol:
+                                return False
+                    else:
+                        for snapshot in snapshots:
+                            if not _exact_equal(
+                                source_values.loc[snapshot, dynamic_names[0]],
+                                actual_values.loc[snapshot, target_names[0]],
+                                spec.attribute, spec.atol,
+                            ):
+                                return False
                 else:
                     if any(name not in target.static.index for name in target_names):
                         return False
-                    source_values = pd.to_numeric(
-                        source.static.loc[names, spec.attribute], errors="coerce"
-                    ).fillna(0.0)
-                    expected = (source_values.sum() if spec.strategy == "sum"
-                                else source_values.iloc[0])
                     if spec.attribute not in target.static.columns:
                         return False
-                    target_values = pd.to_numeric(
-                        target.static.loc[target_names, spec.attribute],
-                        errors="coerce",
-                    ).fillna(0.0)
-                    actual = (target_values.sum() if spec.strategy == "sum"
-                              else target_values.iloc[0])
-                    if abs(float(expected) - float(actual)) > spec.atol:
+                    source_values = source.static.loc[names, spec.attribute]
+                    target_values = target.static.loc[target_names, spec.attribute]
+                    if spec.strategy == "sum":
+                        expected = _sum_numbers(source_values, spec.attribute)
+                        actual = _sum_numbers(target_values, spec.attribute)
+                        if abs(expected - actual) > spec.atol:
+                            return False
+                    elif not _exact_equal(
+                        source_values.iloc[0], target_values.iloc[0],
+                        spec.attribute, spec.atol,
+                    ):
                         return False
         return True

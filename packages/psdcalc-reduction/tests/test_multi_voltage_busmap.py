@@ -138,3 +138,71 @@ def test_region_boundary_blocks_a_same_voltage_cluster() -> None:
 
     with pytest.raises(PartitionError, match="subnetwork or region"):
         validator.validate(network, sidecar, partition, layers, protection)
+
+
+def test_cannot_link_rejects_same_target() -> None:
+    """Explicit pair exclusions remain hard constraints within one layer."""
+    network = fixture_network()
+    sidecar, layers, protection, validator = context(network)
+    pair = frozenset({sidecar.source_id("Bus", "b"),
+                      sidecar.source_id("Bus", "c")})
+    protected = type(protection)(
+        protection.traced, protection.preserved_components,
+        protection.terminal_buses, protection.singleton_buses,
+        frozenset({pair}),
+    )
+    plan = plan_for(sidecar, {"a": "a", "b": "free", "c": "free",
+                              "x": "x", "y": "y"})
+    with pytest.raises(PartitionError, match="cannot_link"):
+        validator.validate(network, sidecar, plan, layers, protected)
+
+
+def test_cluster_counts_are_validated_and_bool_is_not_integer() -> None:
+    """The planner's actual count must match its unique stable targets."""
+    network = fixture_network()
+    sidecar, layers, protection, validator = context(network)
+    plan = plan_for(sidecar, {"a": "a", "b": "free", "c": "free",
+                              "x": "x", "y": "y"})
+    with pytest.raises(PartitionError, match="actual_cluster_count"):
+        validator.validate(network, sidecar,
+                           PartitionPlan(plan.stable_busmap,
+                                         plan.backend_busmap, 4, 3, "reject"),
+                           layers, protection)
+    with pytest.raises(PartitionError, match="requested_cluster_count"):
+        validator.validate(network, sidecar,
+                           PartitionPlan(plan.stable_busmap,
+                                         plan.backend_busmap, True, 4, "reject"),
+                           layers, protection)
+    with pytest.raises(PartitionError, match="actual_cluster_count"):
+        validator.validate(network, sidecar,
+                           PartitionPlan(plan.stable_busmap,
+                                         plan.backend_busmap, 4, True, "reject"),
+                           layers, protection)
+    with pytest.raises(PartitionError, match="positive integer"):
+        validator.allocate_targets(network, sidecar, layers, protection, True)
+
+
+def test_valid_override_saturation_and_largest_remainder_tie() -> None:
+    """Overrides fix one layer; equal free headroom breaks by layer key."""
+    network = fixture_network()
+    sidecar, layers, protection, validator = context(network)
+    assert validator.allocate_targets(
+        network, sidecar, layers, protection, 5, per_layer={"10": 2}
+    ) == {"10": 2, "110": 3}
+    assert validator.allocate_targets(
+        network, sidecar, layers, protection, 5,
+        per_layer={"10": 2, "110": 3},
+    ) == {"10": 2, "110": 3}
+
+    tied = pypsa.Network()
+    for voltage, prefix in ((10, "a"), (20, "b")):
+        for index in range(3):
+            tied.add("Bus", f"{prefix}{index}", v_nom=voltage)
+        for index in range(2):
+            tied.add("Line", f"{prefix}{index}{index + 1}",
+                     bus0=f"{prefix}{index}", bus1=f"{prefix}{index + 1}",
+                     x=0.1)
+    sidecar, layers, protection, validator = context(tied)
+    assert validator.allocate_targets(
+        tied, sidecar, layers, protection, 3
+    ) == {"10": 2, "20": 1}

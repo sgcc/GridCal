@@ -16,6 +16,7 @@ from psdcalc.reduction.exceptions import BackendCapabilityError
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.rows import MapEntry
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.cycle_corridors import analyze_cycle_corridors
 from psdcalc.reduction.validation.structural import StructuralResult, StructuralValidator
 
 
@@ -31,22 +32,10 @@ def _line_graph(network: pypsa.Network, voltage: float) -> nx.Graph:
 
 
 def _cycle_lines(network: pypsa.Network, graph: nx.Graph) -> set[str]:
-    """Mark every line whose removal leaves its terminals connected."""
-    result: set[str] = set()
-    for name, row in network.lines.iterrows():
-        a, b = str(row.bus0), str(row.bus1)
-        if a not in graph or b not in graph or not bool(row.get("active", True)):
-            continue
-        trial = graph.copy()
-        trial.remove_edge(a, b)
-        parallel = sum(
-            1 for other_name, other in network.lines.iterrows()
-            if other_name != name and bool(other.get("active", True)) and
-            {str(other.bus0), str(other.bus1)} == {a, b}
-        )
-        if parallel or nx.has_path(trial, a, b):
-            result.add(str(name))
-    return result
+    """Mark active layer cycle edges through the shared bridge helper."""
+    return set(analyze_cycle_corridors(
+        network, allowed_buses={str(node) for node in graph.nodes}
+    ).cycle_lines)
 
 
 def _simple_line(network: pypsa.Network, name: str) -> bool:

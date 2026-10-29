@@ -160,8 +160,8 @@ class LayerQuotientMaterializer:
             child_sidecar = self._sidecar_subset(parent_sidecar, child)
             stable = {source: busmaps.global_busmap[source] for source in layer.bus_ids}
             backend = dict(busmaps.backend_by_layer[layer.key])
-            requested, actual = busmaps.per_layer_counts[layer.key]
-            partition = PartitionPlan(stable, backend, requested, actual, "reject")
+            planned, actual = busmaps.per_layer_counts[layer.key]
+            partition = PartitionPlan(stable, backend, planned, actual, "reject")
             local_config = aggregation.model_copy(update={
                 "preserve_components": [name for name in aggregation.preserve_components
                                         if name != "Transformer"]

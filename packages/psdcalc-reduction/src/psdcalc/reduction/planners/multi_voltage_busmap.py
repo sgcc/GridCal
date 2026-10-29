@@ -11,17 +11,19 @@ from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.exceptions import PartitionError
 from psdcalc.reduction.planners.base import PartitionPlan
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.cycle_corridors import analyze_cycle_corridors
 from psdcalc.reduction.topology.voltage_layers import VoltageLayer
 
 
 @dataclass(frozen=True)
 class ValidatedLayerBusmaps:
-    """One accepted global plan and its per-layer backend projections."""
+    """One accepted plan with per-layer (planned, post-repair actual) counts."""
 
     global_busmap: Mapping[StableId, StableId]
     backend_by_layer: Mapping[str, Mapping[str, str]]
     transformer_terminals: frozenset[StableId]
     requested_cluster_count: int
+    planned_cluster_count: int
     actual_cluster_count: int
     per_layer_counts: Mapping[str, tuple[int, int]]
 
@@ -50,17 +52,11 @@ class MultiVoltageBusmapValidator:
                 buses.add(sidecar.source_id("Bus", str(row.bus)))
         for _, row in network.shunt_impedances.iterrows():
             buses.add(sidecar.source_id("Bus", str(row.bus)))
-        line_graph = nx.MultiGraph()
-        line_graph.add_nodes_from(str(name) for name in network.buses.index)
-        for name, row in network.lines.iterrows():
-            line_graph.add_edge(str(row.bus0), str(row.bus1), key=str(name))
-        for name, row in network.lines.iterrows():
-            a, b = str(row.bus0), str(row.bus1)
-            line_graph.remove_edge(a, b, key=str(name))
-            if nx.has_path(line_graph, a, b):
-                buses.add(sidecar.source_id("Bus", a))
-                buses.add(sidecar.source_id("Bus", b))
-            line_graph.add_edge(a, b, key=str(name))
+        analysis = analyze_cycle_corridors(network)
+        for name in analysis.cycle_lines:
+            a, b = analysis.line_corridors[name]
+            buses.add(sidecar.source_id("Bus", a))
+            buses.add(sidecar.source_id("Bus", b))
         return frozenset(buses)
 
     @staticmethod
@@ -98,7 +94,8 @@ class MultiVoltageBusmapValidator:
                          per_layer: Mapping[str, int] | None = None
                          ) -> dict[str, int]:
         """Allocate requested counts or raise a partition error."""
-        if not isinstance(global_target, int) or global_target < 1:
+        if (not isinstance(global_target, int) or isinstance(global_target, bool)
+                or global_target < 1):
             raise PartitionError("Global cluster target must be a positive integer")
         keys = {layer.key for layer in layers}
         overrides = dict(per_layer or {})
@@ -157,6 +154,20 @@ class MultiVoltageBusmapValidator:
             raise PartitionError("Stable busmap must cover every source Bus exactly once")
         if set(partition.backend_busmap) != {str(name) for name in network.buses.index}:
             raise PartitionError("Backend busmap must cover every source Bus exactly once")
+        if (not isinstance(partition.requested_cluster_count, int) or
+                isinstance(partition.requested_cluster_count, bool) or
+                partition.requested_cluster_count < 1):
+            raise PartitionError("requested_cluster_count must be a positive integer")
+        if (not isinstance(partition.actual_cluster_count, int) or
+                isinstance(partition.actual_cluster_count, bool) or
+                partition.actual_cluster_count < 1):
+            raise PartitionError("actual_cluster_count must be a positive integer")
+        planned_count = len({self._bus_target(target) for target in
+                             partition.stable_busmap.values()})
+        if partition.actual_cluster_count != planned_count:
+            raise PartitionError(
+                "PartitionPlan.actual_cluster_count differs from unique targets"
+            )
         if partition.connectivity_policy not in {"reject", "split_disconnected"}:
             raise PartitionError("Unsupported connectivity policy")
         layer_by_bus = {source: layer.key for layer in layers
@@ -235,5 +246,6 @@ class MultiVoltageBusmapValidator:
         return ValidatedLayerBusmaps(
             repaired, projections, mandatory,
             partition.requested_cluster_count,
+            planned_count,
             len(set(repaired.values())), dict(sorted(counts.items())),
         )

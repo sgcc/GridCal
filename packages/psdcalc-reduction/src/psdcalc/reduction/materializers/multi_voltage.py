@@ -35,6 +35,9 @@ class MultiVoltageBuildResult:
     records: tuple[ReductionRecord, ...]
     preliminary: PreliminaryStructuralEvidence
     layer_cluster_counts: Mapping[str, tuple[int, int]]
+    requested_cluster_count: int
+    planned_cluster_count: int
+    actual_cluster_count: int
     voltage_layer_map: Mapping[StableId, tuple[float, float]]
 
 
@@ -87,6 +90,14 @@ class MultiVoltageQuotientBuilder:
                 raise BackendCapabilityError(
                     f"Unsupported component table: {component.name}"
                 )
+        invalid_one_ports = set(aggregation.aggregate_one_ports) - set(
+            simplified_network.one_port_components
+        )
+        if invalid_one_ports:
+            raise BackendCapabilityError(
+                "Unsupported one-port aggregation component: " +
+                ", ".join(sorted(invalid_one_ports))
+            )
         parent_hash = _semantic_hash(simplified_network)
         for name, row in simplified_network.links.iterrows():
             for column in simplified_network.links.columns:
@@ -96,11 +107,6 @@ class MultiVoltageQuotientBuilder:
                         raise BackendCapabilityError(
                             f"Multi-terminal Link is unsupported: {name}"
                         )
-            if (float(simplified_network.buses.loc[str(row.bus0), "v_nom"]) !=
-                    float(simplified_network.buses.loc[str(row.bus1), "v_nom"])):
-                raise BackendCapabilityError(
-                    f"Cross-layer Link is unsupported: {name}"
-                )
         MultiVoltageStructuralValidator().validate_supported_dynamic(
             simplified_network, invariants
         )
@@ -112,6 +118,15 @@ class MultiVoltageQuotientBuilder:
                 parent_sidecar.backend_name(source), "v_nom"]), layer.v_nom_kv)
             for layer in layers for source in layer.bus_ids
         }
+        canonical_by_name = {
+            parent_sidecar.backend_name(source): canonical
+            for source, (_, canonical) in voltage_layer_map.items()
+        }
+        for name, row in simplified_network.links.iterrows():
+            if canonical_by_name[str(row.bus0)] != canonical_by_name[str(row.bus1)]:
+                raise BackendCapabilityError(
+                    f"Cross-layer Link is unsupported: {name}"
+                )
         busmaps = MultiVoltageBusmapValidator().validate(
             simplified_network, parent_sidecar, partition, layers, protection
         )
@@ -138,6 +153,7 @@ class MultiVoltageQuotientBuilder:
         evidence = MultiVoltageStructuralValidator().precheck(
             simplified_network, reconnected.network, parent_sidecar,
             reconnected.target_sidecar, mapping, invariants, protection,
+            voltage_layer_map=voltage_layer_map,
         )
         if _semantic_hash(simplified_network) != parent_hash:
             raise MaterializationError("Builder mutated simplified_network")
@@ -153,7 +169,8 @@ class MultiVoltageQuotientBuilder:
                 input_signature=parent_hash,
                 output_signature=child_hash,
                 parameters={"voltage_layer": layer.layer.key,
-                            "requested_cluster_count":
+                            "requested_cluster_count": None,
+                            "planned_cluster_count":
                                 busmaps.per_layer_counts[layer.layer.key][0],
                             "actual_cluster_count":
                                 busmaps.per_layer_counts[layer.layer.key][1]},
@@ -162,10 +179,15 @@ class MultiVoltageQuotientBuilder:
             operation_id="mvq-reconnect", operation_type="aggregation",
             parent_grid_hash=parent_hash, child_grid_hash=output_hash,
             input_signature=parent_hash, output_signature=output_hash,
-            parameters={"transformer_count": len(tx_rows)},
+            parameters={"transformer_count": len(tx_rows),
+                        "requested_cluster_count": busmaps.requested_cluster_count,
+                        "planned_cluster_count": busmaps.planned_cluster_count,
+                        "actual_cluster_count": busmaps.actual_cluster_count},
         ))
         return MultiVoltageBuildResult(
             reconnected.network, reconnected.target_sidecar, mapping,
             tuple(records), evidence, busmaps.per_layer_counts,
+            busmaps.requested_cluster_count, busmaps.planned_cluster_count,
+            busmaps.actual_cluster_count,
             voltage_layer_map,
         )
