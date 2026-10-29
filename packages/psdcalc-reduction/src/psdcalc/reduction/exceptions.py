@@ -19,3 +19,7 @@ class UnsupportedFeatureError(ReductionError):
 
 class ConfigSemanticError(ReductionError):
     """A well-formed configuration has inconsistent values."""
+
+
+class ArtifactError(ReductionError):
+    """An artifact path or persistent write is invalid."""
