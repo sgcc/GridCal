@@ -327,7 +327,7 @@ class ReductionConfig(StrictModel):
     simplification: SimplificationConfig = Field(default_factory=SimplificationConfig)
     protection: ProtectionConfig = Field(default_factory=ProtectionConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
-    partition: PartitionConfig
+    partition: PartitionConfig | None = None
     aggregation: AggregationConfig
     equivalence: EquivalenceConfig = Field(default_factory=EquivalenceConfig)
     mapping: MappingConfig = Field(default_factory=MappingConfig)

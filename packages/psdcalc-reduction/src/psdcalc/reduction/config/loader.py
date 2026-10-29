@@ -43,14 +43,21 @@ def _source_mapping(source: Mapping[str, Any] | str | Path) -> dict[str, Any]:
 
 def _gate_features(config: ReductionConfig) -> None:
     """Reject enabled later-stage capabilities without swallowing failures."""
-    if config.pipeline.materialization_family != "aggregation":
-        raise UnsupportedFeatureError("pipeline.materialization_family is not first-batch aggregation")
+    if config.pipeline.materialization_family not in {"aggregation", "simplification"}:
+        raise UnsupportedFeatureError("pipeline.materialization_family is not implemented")
     if config.pipeline.materialize_from != "original":
         raise UnsupportedFeatureError("pipeline.materialize_from=parent requires hierarchy")
     if config.pipeline.hierarchy.nested or config.pipeline.hierarchy.levels:
         raise UnsupportedFeatureError("pipeline.hierarchy is not implemented")
-    if any(op.enabled for op in config.simplification.operations):
-        raise UnsupportedFeatureError("simplification operation is not implemented")
+    enabled = [op for op in config.simplification.operations if op.enabled]
+    if any(op.type != "voltage_aware_topology" for op in enabled):
+        raise UnsupportedFeatureError("requested simplification operation is not implemented")
+    if len(enabled) > 1:
+        raise UnsupportedFeatureError("multiple simplification operations are not implemented")
+    if enabled and enabled[0].mode == "lift_to_target_voltage":
+        if config.task.profile != "planning_aggregation":
+            raise ConfigSemanticError("voltage lift is restricted to planning_aggregation")
+        raise UnsupportedFeatureError("planning voltage lift is not implemented")
     if config.equivalence.enabled:
         raise UnsupportedFeatureError("equivalence is not implemented")
     if (config.lifting.state.method is not None or
@@ -68,7 +75,7 @@ def _gate_features(config: ReductionConfig) -> None:
         raise UnsupportedFeatureError("multi-level or metrics output is not implemented")
     if config.plugins.allow_external or config.plugins.modules:
         raise UnsupportedFeatureError("external plugins are not implemented")
-    if config.partition.target.type == "from_hierarchy_level":
+    if config.partition is not None and config.partition.target.type == "from_hierarchy_level":
         raise UnsupportedFeatureError("hierarchy target is not implemented")
     if any(b.enabled and b.type not in {"geographic_xy", "load_generation"}
            for b in config.features.builders):
@@ -84,6 +91,16 @@ def _gate_features(config: ReductionConfig) -> None:
 
 def _check_semantics(config: ReductionConfig) -> None:
     """Reject well-formed but inconsistent first-batch settings."""
+    enabled = [op for op in config.simplification.operations if op.enabled]
+    if config.pipeline.materialization_family == "simplification":
+        if len(enabled) != 1 or enabled[0].type != "voltage_aware_topology":
+            raise ConfigSemanticError("simplification pipeline requires one voltage_aware_topology operation")
+    elif enabled:
+        raise ConfigSemanticError("enabled topology simplification requires simplification pipeline")
+    if config.pipeline.materialization_family == "simplification":
+        return
+    if config.partition is None:
+        raise ConfigSemanticError("partition is required for aggregation")
     target = config.partition.target
     if config.partition.planner == "custom_busmap":
         if not config.partition.custom_busmap.path:

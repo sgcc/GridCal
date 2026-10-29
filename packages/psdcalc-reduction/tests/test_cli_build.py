@@ -45,3 +45,38 @@ def test_build_persists_structural_evidence(tmp_path: Path, capsys) -> None:
     assert (tmp_path / "runs/case/maps/branch_map.parquet").exists()
     assert main(["report", str(tmp_path / "runs/case")]) == 0
     assert "STRUCTURALLY_VALID" in capsys.readouterr().out
+
+
+def test_topology_build_preserves_transformer_interface(tmp_path: Path) -> None:
+    network = pypsa.Network()
+    for name, voltage in (("a", 110), ("r", 110), ("lv", 10)):
+        network.add("Bus", name, v_nom=voltage)
+    network.add("Line", "ar", bus0="a", bus1="r", r=0.01, x=0.1)
+    network.add("Transformer", "t", bus0="a", bus1="lv", r=0.01, x=0.1)
+    network.add("Load", "demand", bus="r", p_set=3.0)
+    network.export_to_netcdf(tmp_path / "input.nc")
+    config = {
+        "schema_version": "0.1.0",
+        "run": {"id": "topology", "seed": 7, "output_dir": "runs"},
+        "input": {"backend": "pypsa", "path": "input.nc", "format": "netcdf",
+                  "source_namespace": "n"},
+        "task": {"type": "planning", "profile": "planning_aggregation",
+                 "reduction_role": "candidate", "final_authority": "original"},
+        "pipeline": {"materialization_family": "simplification"},
+        "simplification": {"operations": [{"id": "t1", "type": "voltage_aware_topology",
+                                           "enabled": True,
+                                           "mode": "keep_transformer_interface"}]},
+        "aggregation": {"backend": "pypsa"},
+    }
+    path = tmp_path / "topology.yaml"
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["build", str(path)]) == 0
+    run = tmp_path / "runs/topology"
+    manifest = json.loads((run / "run_manifest.json").read_text())
+    assert manifest["status"] == "STRUCTURALLY_VALID"
+    assert manifest["operation_status"] == "STRUCTURALLY_SIMPLIFIED"
+    assert (run / "validation/voltage_layer_map.json").exists()
+    restored = pypsa.Network(run / "levels/L1.nc")
+    assert set(restored.transformers.index) == {"t"}
+    assert set(restored.buses.index) == {"a", "lv"}

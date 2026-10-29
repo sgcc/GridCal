@@ -91,10 +91,12 @@ class ArtifactStore:
         })
         self._save_manifest()
 
-    def set_structural_result(self, valid: bool) -> None:
+    def set_structural_result(self, valid: bool,
+                              operation_status: str | None = None) -> None:
         """Persist the structural gate outcome without physical acceptance."""
         self._manifest = self._manifest.model_copy(update={
             "status": "STRUCTURALLY_VALID" if valid else "STRUCTURALLY_INVALID",
+            "operation_status": operation_status,
             "updated_at": utc_now(),
         })
         self._save_manifest()

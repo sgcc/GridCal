@@ -18,6 +18,7 @@ class RunManifest(BaseModel):
 
     run_id: str
     status: Literal["RUNNING", "FAILED", "STRUCTURALLY_VALID", "STRUCTURALLY_INVALID"] = "RUNNING"
+    operation_status: Literal["STRUCTURALLY_SIMPLIFIED", "PLANNING_APPROXIMATION"] | None = None
     created_at: str = Field(default_factory=utc_now)
     updated_at: str = Field(default_factory=utc_now)
     input_hash: str | None = None

@@ -66,8 +66,11 @@ def test_disabled_voltage_aware_transform_parses_but_enabled_one_fails() -> None
     assert not load_config(data).simplification.operations[0].enabled
 
     data["simplification"]["operations"][0]["enabled"] = True
-    with pytest.raises(UnsupportedFeatureError, match="simplification"):
+    with pytest.raises(ConfigSemanticError, match="simplification pipeline"):
         load_config(data)
+
+    data["pipeline"] = {"materialization_family": "simplification"}
+    assert load_config(data).simplification.operations[0].enabled
 
 
 def test_declared_lifting_method_is_unsupported() -> None:

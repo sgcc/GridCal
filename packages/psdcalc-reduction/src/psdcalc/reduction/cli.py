@@ -18,6 +18,7 @@ from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.materializers.quotient import QuotientMaterializer
 from psdcalc.reduction.planners.custom_busmap import CustomBusmapPlanner
 from psdcalc.reduction.protection.engine import ProtectionEngine
+from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
 from psdcalc.reduction.validation.structural import StructuralValidator
 
 
@@ -43,6 +44,8 @@ def _context(config: ReductionConfig, config_path: Path) -> tuple[object, object
 def _plan(config: ReductionConfig, config_path: Path,
           network: object, sidecar: object, protection: object) -> object:
     """Plan a source-ID custom partition using its declared connectivity policy."""
+    if config.partition is None:
+        raise UnsupportedFeatureError("Partition is unavailable for this pipeline")
     if config.partition.planner != "custom_busmap":
         raise UnsupportedFeatureError(
             f"Planner {config.partition.planner} awaits the energy-planner stage"
@@ -56,6 +59,41 @@ def _plan(config: ReductionConfig, config_path: Path,
     )
 
 
+def _build_topology(store: ArtifactStore, config: ReductionConfig,
+                    network: object, sidecar: object, protection: object) -> None:
+    """Persist selective topology simplification and all required evidence."""
+    adapter = PypsaAdapter()
+    result = VoltageAwareTopologySimplifier().simplify(
+        network, sidecar, protection, mode="keep_transformer_interface"
+    )
+    for name, path in result.mappings.save_parquet(store.path("maps")).items():
+        store.record_artifact(name, str(path.relative_to(store.run_dir)))
+    evidence = {
+        "voltage_layer_map": result.voltage_layer_map,
+        "topology_roles": result.topology_roles,
+        "anchors": [source.encode() for source in result.anchors],
+        "absorbed_branches": [source.encode() for source in result.absorbed_branches],
+        "moved_devices": [source.encode() for source in result.moved_devices],
+    }
+    for name, value in evidence.items():
+        store.write_json(f"validation/{name}.json", value)
+        store.record_artifact(name, f"validation/{name}.json")
+    store.write_json("validation/structural.json", result.structural.to_dict())
+    store.record_artifact("structural", "validation/structural.json")
+    for record in result.records:
+        relative = f"records/{record.operation_id}.json"
+        store.write_json(relative, record.model_dump(mode="json"))
+        store.record_artifact(record.operation_id, relative)
+    target = store.path("levels/L1.nc")
+    adapter.export(result.network, target, "netcdf")
+    store.record_artifact("simplified_network", "levels/L1.nc")
+    store.set_structural_result(
+        result.structural.status == "STRUCTURALLY_VALID",
+        "STRUCTURALLY_SIMPLIFIED" if result.structural.status == "STRUCTURALLY_VALID"
+        else None,
+    )
+
+
 def _build(config: ReductionConfig, config_path: Path) -> Path:
     """Build one quotient and persist maps, record, and structural evidence."""
     output_root = Path(config.run.output_dir)
@@ -66,10 +104,14 @@ def _build(config: ReductionConfig, config_path: Path) -> Path:
         network, sidecar, protection = _context(config, config_path)
         adapter = PypsaAdapter()
         source_signature = adapter.topology_signature(network, sidecar)
+        original_snapshot = adapter.clone(network)
         input_path = _input_path(config, config_path)
         input_hash = hash_file(input_path) if input_path.is_file() else source_signature
         store.write_json("input/source_ids.json", sidecar.to_rows())
         store.record_artifact("source_ids", "input/source_ids.json")
+        if config.pipeline.materialization_family == "simplification":
+            _build_topology(store, config, network, sidecar, protection)
+            return store.run_dir
         plan = _plan(config, config_path, network, sidecar, protection)
         store.write_json("input/plan.json", {
             "requested_cluster_count": plan.requested_cluster_count,
@@ -92,6 +134,7 @@ def _build(config: ReductionConfig, config_path: Path) -> Path:
         evidence = StructuralValidator().validate(
             network, quotient.network, sidecar, mapping, protection,
             original_topology_signature=source_signature,
+            original_snapshot=original_snapshot,
         )
         store.write_json("validation/structural.json", evidence.to_dict())
         store.record_artifact("structural", "validation/structural.json")

@@ -56,6 +56,42 @@ def _injection_totals(network: pypsa.Network) -> dict[str, float]:
     return totals
 
 
+def _dynamic_injections_equal(original: pypsa.Network,
+                              reduced: pypsa.Network) -> bool:
+    """Compare declared injection schedules at every snapshot."""
+    for component in _INJECTION_COMPONENTS:
+        left = original.components[component].dynamic
+        right = reduced.components[component].dynamic
+        for field in ("p_set", "q_set"):
+            first = left.get(field, pd.DataFrame())
+            second = right.get(field, pd.DataFrame())
+            if first.empty and second.empty:
+                continue
+            if not first.index.equals(second.index):
+                return False
+            first_total = first.apply(pd.to_numeric, errors="coerce").fillna(0.0).sum(axis=1)
+            second_total = second.apply(pd.to_numeric, errors="coerce").fillna(0.0).sum(axis=1)
+            if ((first_total - second_total).abs() >
+                    1e-7 * first_total.abs().clip(lower=1.0)).any():
+                return False
+    return True
+
+
+def _same_model(left: pypsa.Network, right: pypsa.Network) -> bool:
+    """Compare static and dynamic component tables without mutation."""
+    for component in left.components:
+        name = component.name
+        other = right.components[name]
+        if not component.static.equals(other.static):
+            return False
+        if set(component.dynamic) != set(other.dynamic):
+            return False
+        if any(not frame.equals(other.dynamic[key])
+               for key, frame in component.dynamic.items()):
+            return False
+    return True
+
+
 @dataclass(frozen=True)
 class StructuralResult:
     """Per-check evidence and strictly structural gate status."""
@@ -82,6 +118,7 @@ class StructuralValidator:
         protection: ProtectionSet,
         *,
         original_topology_signature: str | None = None,
+        original_snapshot: pypsa.Network | None = None,
     ) -> StructuralResult:
         """Return structural evidence without asserting AC or OPF equivalence."""
         checks: dict[str, bool] = {}
@@ -94,8 +131,11 @@ class StructuralValidator:
             checks["terminals"] = False
             details["terminals"] = str(exc)
         current_signature = adapter.topology_signature(original, sidecar)
-        checks["source_unchanged"] = (original_topology_signature is None or
-                                      current_signature == original_topology_signature)
+        checks["source_unchanged"] = (
+            (original_topology_signature is None or
+             current_signature == original_topology_signature) and
+            (original_snapshot is None or _same_model(original, original_snapshot))
+        )
         if not checks["source_unchanged"]:
             details["source_unchanged"] = "Original topology signature changed"
 
@@ -183,7 +223,7 @@ class StructuralValidator:
         )
         original_injection = _injection_totals(original)
         reduced_injection = _injection_totals(reduced)
-        checks["injection_conservation"] = all(
+        checks["injection_conservation"] = _dynamic_injections_equal(original, reduced) and all(
             abs(value - reduced_injection.get(key, 0.0)) <= 1e-7 * max(1.0, abs(value))
             for key, value in original_injection.items()
         )
