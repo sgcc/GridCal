@@ -6,6 +6,8 @@ import pytest
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.models import AggregationConfig, ParallelCorridorConfig
 from psdcalc.reduction.core.ids import StableId
+from psdcalc.reduction.mapping.bundle import MappingBundle
+from psdcalc.reduction.mapping.rows import MapEntry
 from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.planners.base import PartitionPlan
 from psdcalc.reduction.protection.engine import ProtectionSet
@@ -177,6 +179,19 @@ def test_builder_detaches_l_plus_shunts_with_base_line() -> None:
         source_ledger=ledger)
     assert checks["l_plus_terminal_owner_consistency"] is False
     assert checks["l_plus_semantic_round_trip"] is False
+    corrupted_device_rows = tuple(
+        MapEntry(row.source_id, row.target_id, "aggregated", row.operation_id)
+        if row.source_id == shunt else row
+        for row in result.mappings.device_map)
+    corrupted_mapping = MappingBundle(
+        result.mappings.bus_map, result.mappings.branch_map,
+        corrupted_device_rows, result.mappings.control_map)
+    mapping_checks, _ = ProtectedParallelStructuralValidator().check(
+        n, result.network, ids, result.target_sidecar, corrupted_mapping,
+        result.parallel_plan,
+        {row.source_id: row.target_id for row in result.mappings.bus_map},
+        source_ledger=ledger)
+    assert mapping_checks["l_plus_association_coverage"] is False
 
 
 @pytest.mark.parametrize("inactive_count", [0, 1])
