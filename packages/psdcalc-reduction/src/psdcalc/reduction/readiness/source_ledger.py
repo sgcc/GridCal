@@ -69,7 +69,7 @@ def build_bpa_source_ledger(
         if not raw.startswith(b"L "):
             raise BackendCapabilityError("Line source card is not L")
         circuit = raw[31:32].decode("ascii", errors="strict").strip()
-        if not circuit or circuit != source.attributes.get("circuit_id"):
+        if circuit != source.attributes.get("circuit_id"):
             raise BackendCapabilityError("Line source circuit ID differs from DAT")
         key = (raw[6:18], raw[19:31], raw[31:32])
         lines.append(LineCircuitProvenance(

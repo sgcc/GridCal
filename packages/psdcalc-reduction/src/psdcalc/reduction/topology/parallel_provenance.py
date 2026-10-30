@@ -26,9 +26,11 @@ class SourceProfileContract:
 
     name: str
     circuit_ids: Literal["unavailable", "required"]
+    blank_circuit_ids: Literal["reject", "unique_source_card"] = "reject"
 
     def __post_init__(self) -> None:
-        if not self.name or self.circuit_ids not in {"unavailable", "required"}:
+        if (not self.name or self.circuit_ids not in {"unavailable", "required"}
+                or self.blank_circuit_ids not in {"reject", "unique_source_card"}):
             raise IdentityError("Invalid source-profile circuit ID contract")
         if (self.name in {"BPA10056814", "BPA10056819"} and
                 self.circuit_ids != "required"):
@@ -40,7 +42,7 @@ class SourceProfileContract:
         """Declare the two audited BPA L-card circuit contracts."""
         if case_id not in {"BPA10056814", "BPA10056819"}:
             raise IdentityError("Unknown audited BPA source profile")
-        return cls(case_id, "required")
+        return cls(case_id, "required", "unique_source_card")
 
 
 @dataclass(frozen=True)
@@ -88,6 +90,7 @@ class ParallelSourceLedger:
         line_ids: set[StableId] = set()
         cards: set[str] = set()
         circuits: set[tuple[float, StableId, StableId, str]] = set()
+        blank_corridors: set[tuple[float, StableId, StableId]] = set()
         for item in self.lines:
             if item.line_id.component != "Line" or item.line_id not in source_lines:
                 raise IdentityError("Circuit provenance references an absent Line")
@@ -99,8 +102,7 @@ class ParallelSourceLedger:
                     raise IdentityError("Duplicate or blank source Line card identity")
                 cards.add(item.source_card_identity)
             if self.profile.circuit_ids == "required":
-                if (not item.source_card_identity or not item.raw_card or
-                        not item.circuit_id or not item.circuit_id.strip()):
+                if not item.source_card_identity or not item.raw_card:
                     raise IdentityError("Required Line circuit/card evidence is missing")
                 if (self.profile.name in {"BPA10056814", "BPA10056819"}
                         and not item.raw_card.startswith("L ")):
@@ -111,9 +113,21 @@ class ParallelSourceLedger:
                 left, right = sorted((bus0, bus1))
                 voltage = canonical_voltage[bus0]
                 key = (voltage, left, right, item.circuit_id)
-                if key in circuits:
-                    raise IdentityError("Duplicate circuit ID within one corridor")
-                circuits.add(key)
+                if self.profile.name in {"BPA10056814", "BPA10056819"}:
+                    raw_circuit = item.raw_card[31:32].strip()
+                    if raw_circuit != (item.circuit_id or ""):
+                        raise IdentityError("Line circuit ID differs from source card")
+                if not item.circuit_id:
+                    if self.profile.blank_circuit_ids != "unique_source_card":
+                        raise IdentityError("Required Line circuit ID is blank")
+                    corridor = (voltage, left, right)
+                    if corridor in blank_corridors:
+                        raise IdentityError("Multiple blank circuit IDs in one corridor")
+                    blank_corridors.add(corridor)
+                else:
+                    if key in circuits:
+                        raise IdentityError("Duplicate circuit ID within one corridor")
+                    circuits.add(key)
             elif item.circuit_id is not None:
                 raise IdentityError("Circuit ID contradicts unavailable source profile")
         if self.profile.circuit_ids == "required" and line_ids != source_lines:
@@ -163,6 +177,7 @@ class ParallelSourceLedger:
         profile_path = directory / "source_profile.json"
         profile_path.write_text(json.dumps({
             "name": self.profile.name, "circuit_ids": self.profile.circuit_ids,
+            "blank_circuit_ids": self.profile.blank_circuit_ids,
         }, sort_keys=True) + "\n", encoding="utf-8")
         line_schema = pa.schema([
             ("line_id", pa.string()), ("source_card_identity", pa.string()),

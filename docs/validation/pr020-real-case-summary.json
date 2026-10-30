@@ -15,8 +15,15 @@
         "unresolved_corridor_count": 0
       },
       "blank_l_circuit_id_count": 183,
+      "blank_l_circuit_parallel_count": 1,
+      "blank_l_circuit_single_line_count": 182,
+      "blank_l_circuit_l_plus_count": 0,
+      "duplicate_l_card_binding_count": 0,
+      "endpoint_binding_mismatch_count": 0,
+      "l_plus_terminal_finite_value_count": 11,
+      "l_plus_terminal_absent_value_count": 7,
       "dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
-      "failure": "SOURCE_PROFILE_CIRCUIT_ID_REQUIRED_BUT_BLANK",
+      "failure": "L_PLUS_SOURCE_REACTOR_VALUE_ABSENT",
       "scenarios": {
         "BASE": "FAILED_BEFORE_PIPELINE",
         "LOW_115": "NOT_RUN",
