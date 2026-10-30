@@ -76,6 +76,15 @@ def test_mixed_active_inactive_members_are_protected() -> None:
     assert corridor.protected
 
 
+def test_all_inactive_corridor_fails_closed() -> None:
+    """An all-inactive corridor cannot silently enter ordinary quotient."""
+    n = _network(inactive=True)
+    n.lines.loc["l1", "active"] = False
+    sidecar = PypsaAdapter().identity_sidecar(n, "test")
+    with pytest.raises(Exception, match="inactive parallel corridor"):
+        ParallelCorridorAnalyzer().analyze(n, sidecar, _empty_protection())
+
+
 def test_builder_preserves_two_active_parallel_members() -> None:
     """The opt-in Builder keeps both Line StableIds and the cycle Gate."""
     n = _network(num_parallel=2)

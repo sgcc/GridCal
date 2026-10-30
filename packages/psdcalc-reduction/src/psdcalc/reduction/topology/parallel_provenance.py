@@ -154,8 +154,8 @@ class ParallelSourceLedger:
             shunt = network.shunt_impedances.loc[shunt_name]
             if sidecar.source_id("Bus", str(shunt.bus)) != expected_bus:
                 raise IdentityError("L+ Shunt is attached to a different Bus")
-            if float(shunt.b) != item.signed_reactor_value:
-                raise IdentityError("L+ signed reactor value differs from Shunt")
+            # Source-card reactor units/sign are provenance. PyPSA Shunt.b is
+            # an electrical projection and is checked by shunt_semantic_hash.
 
     def save_parquet(self, directory: Path) -> tuple[Path, ...]:
         """Write deterministic external ledgers, including empty typed tables."""

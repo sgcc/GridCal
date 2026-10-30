@@ -189,6 +189,7 @@ class ProtectedParallelStructuralValidator:
         protection: ProtectionSet | None = None,
         mapping_round_trip: bool = True,
         sidecar_round_trip: bool = True,
+        object_results: dict[str, dict[str, bool]] | None = None,
     ) -> tuple[dict[str, bool], dict[str, str]]:
         """Return named fail-closed checks without assigning a final status."""
         checks = {key: True for key in (
@@ -211,6 +212,11 @@ class ProtectedParallelStructuralValidator:
             "parallel_evidence_round_trip",
         )}
         details: dict[str, str] = {}
+        line_results: dict[str, bool] = {}
+        association_results: dict[str, bool] = {}
+        if object_results is not None:
+            object_results["line_semantic_hash"] = line_results
+            object_results["l_plus_association"] = association_results
 
         def fail(key: str, reason: str) -> None:
             checks[key] = False
@@ -327,6 +333,7 @@ class ProtectedParallelStructuralValidator:
             target_dense = target.copy()
             target_dense.set_snapshots(target.snapshots.copy(deep=True))
         for line_id in sorted(expected):
+            line_results[line_id.encode()] = False
             try:
                 source_hash = LineSemanticHash().digest(
                     source, source_sidecar, line_id, busmap=busmap,
@@ -345,6 +352,8 @@ class ProtectedParallelStructuralValidator:
                 if source_hash != target_hash:
                     fail("protected_parallel_line_semantics",
                          f"Full Line semantic hash changed: {line_id.encode()}")
+                else:
+                    line_results[line_id.encode()] = True
                 source_type = source.lines.loc[
                     source_sidecar.backend_name(line_id)].get("type", "")
                 target_type = target.lines.loc[
@@ -353,6 +362,14 @@ class ProtectedParallelStructuralValidator:
                         _reference(target, "LineType", target_type)):
                     fail("protected_parallel_type_references",
                          f"LineType changed: {line_id.encode()}")
+                source_carrier = source.lines.loc[
+                    source_sidecar.backend_name(line_id)].get("carrier", "")
+                target_carrier = target.lines.loc[
+                    target_sidecar.backend_name(line_id)].get("carrier", "")
+                if (_reference(source, "Carrier", source_carrier) !=
+                        _reference(target, "Carrier", target_carrier)):
+                    fail("protected_parallel_type_references",
+                         f"Carrier changed: {line_id.encode()}")
             except (IdentityError, MappingError, BackendCapabilityError,
                     KeyError, ValueError, TypeError) as exc:
                 fail("protected_parallel_line_semantics",
@@ -391,13 +408,15 @@ class ProtectedParallelStructuralValidator:
                           if source_ledger is not None and row.source_id in {
                               item.shunt_id for item in source_ledger.l_plus}]
             for item in source_ledger.l_plus:
+                association_results[item.shunt_id.encode()] = False
                 owner_rows = [row for row in shunt_rows
                               if row.source_id == item.shunt_id]
-                if (len(owner_rows) != 1 or
-                        owner_rows[0].target_id != item.shunt_id or
-                        owner_rows[0].mapping_type != "preserved" or
-                        protection is not None and
-                        item.shunt_id not in protection.preserved_components):
+                mapping_ok = (len(owner_rows) == 1 and
+                        owner_rows[0].target_id == item.shunt_id and
+                        owner_rows[0].mapping_type == "preserved" and
+                        (protection is None or
+                         item.shunt_id in protection.preserved_components))
+                if not mapping_ok:
                     fail("l_plus_association_coverage",
                          f"L+ Shunt identity/action/map lost: {item.shunt_id.encode()}")
                 try:
@@ -411,15 +430,19 @@ class ProtectedParallelStructuralValidator:
                         target_sidecar.backend_name(item.base_line_id)]
                     terminal = "bus0" if item.terminal_side == "FROM" else "bus1"
                     base_bus = target_sidecar.source_id("Bus", str(base[terminal]))
-                    if actual_bus != expected_bus or base_bus != expected_bus:
+                    owner_ok = actual_bus == expected_bus and base_bus == expected_bus
+                    if not owner_ok:
                         fail("l_plus_terminal_owner_consistency",
                              f"L+ terminal owner changed: {item.shunt_id.encode()}")
-                    if (shunt_semantic_hash(
+                    semantic_ok = (shunt_semantic_hash(
                             source, source_sidecar, item.shunt_id, busmap=busmap) !=
                             shunt_semantic_hash(target, target_sidecar,
-                                                item.shunt_id)):
+                                                item.shunt_id))
+                    if semantic_ok:
                         fail("l_plus_semantic_round_trip",
                              f"L+ Shunt semantics changed: {item.shunt_id.encode()}")
+                    association_results[item.shunt_id.encode()] = (
+                        mapping_ok and owner_ok and not semantic_ok)
                 except (IdentityError, MappingError, KeyError,
                         BackendCapabilityError) as exc:
                     fail("l_plus_terminal_owner_consistency",

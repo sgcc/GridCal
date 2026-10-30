@@ -372,6 +372,7 @@ class MultiVoltageQuotientPipeline:
                 baseline_protection=baseline_protection,
                 parallel_corridor_policy=policy,
                 structural_checks=structural.checks,
+                protected_object_results=structural.protected_object_results,
             )
             store.write_json("validation/opportunity.json", opportunity.__dict__)
             store.record_artifact("opportunity", "validation/opportunity.json")

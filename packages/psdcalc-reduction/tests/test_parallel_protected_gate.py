@@ -92,6 +92,21 @@ def test_target_stable_id_replacement_fails_at_equal_member_count() -> None:
     assert not checks["protected_parallel_member_coverage"]
 
 
+def test_carrier_reference_mutation_fails_independent_type_gate() -> None:
+    """A changed Carrier row fails the dedicated reference check."""
+    n, ids, built = _case()
+    n.add("Carrier", "ac", co2_emissions=0.1)
+    built.network.add("Carrier", "ac", co2_emissions=0.1)
+    n.lines.loc["one", "carrier"] = "ac"
+    name = built.target_sidecar.backend_name(ids.source_id("Line", "one"))
+    built.network.lines.loc[name, "carrier"] = "ac"
+    assert _checks(n, ids, built)["protected_parallel_type_references"]
+    corrupted = built.network.copy()
+    corrupted.carriers.loc["ac", "co2_emissions"] = 9.0
+    assert not _checks(n, ids, built, target=corrupted)[
+        "protected_parallel_type_references"]
+
+
 def test_non_singleton_protected_endpoint_fails_before_detach() -> None:
     """A merged protected terminal is rejected on complete active topology."""
     n = pypsa.Network()

@@ -83,6 +83,7 @@ def build_compression_opportunity_report(
     baseline_protection: ProtectionSet | None = None,
     parallel_corridor_policy: str = "aggregate_corridor",
     structural_checks: Mapping[str, bool] | None = None,
+    protected_object_results: Mapping[str, Mapping[str, bool]] | None = None,
 ) -> CompressionOpportunityReport:
     """Compute a conservative structural floor and observed topology operations.
 
@@ -214,12 +215,14 @@ def build_compression_opportunity_report(
     protected_count = (len(parallel_plan.protected_lines)
                        if parallel_plan is not None and strict_parallel else 0)
     lplus_count = len(source_ledger.l_plus) if source_ledger is not None else 0
-    semantic_ok = bool((structural_checks or {}).get(
-        "protected_parallel_line_semantics", False))
-    lplus_ok = bool((structural_checks or {}).get(
-        "l_plus_association_coverage", False) and
-        (structural_checks or {}).get("l_plus_terminal_owner_consistency", False)
-        and (structural_checks or {}).get("l_plus_semantic_round_trip", False))
+    line_results = (protected_object_results or {}).get("line_semantic_hash", {})
+    association_results = (protected_object_results or {}).get("l_plus_association", {})
+    line_passes = sum(line_results.get(item.encode(), False)
+                      for item in (parallel_plan.protected_lines
+                                   if parallel_plan is not None else ()))
+    lplus_passes = sum(association_results.get(item.shunt_id.encode(), False)
+                       for item in (source_ledger.l_plus
+                                    if source_ledger is not None else ()))
     return CompressionOpportunityReport(
         ring_endpoint_count=len(ring), transformer_endpoint_count=len(transformers),
         shunt_endpoint_count=len(shunts), control_endpoint_count=len(controls),
@@ -275,8 +278,8 @@ def build_compression_opportunity_report(
         detached_member_count=protected_count,
         reconnected_member_count=reconnected,
         preserved_mapping_count=preserved_rows,
-        line_semantic_hash_pass_count=(protected_count if semantic_ok else 0),
-        line_semantic_hash_failure_count=(0 if semantic_ok else protected_count),
+        line_semantic_hash_pass_count=line_passes,
+        line_semantic_hash_failure_count=protected_count - line_passes,
         l_plus_association_count=lplus_count,
         l_plus_shunt_preserved_count=(sum(
             row.source_id in {item.shunt_id for item in source_ledger.l_plus}
@@ -284,6 +287,6 @@ def build_compression_opportunity_report(
             row.mapping_type == "preserved"
             for row in quotient_mappings.device_map)
             if source_ledger is not None and quotient_mappings is not None else 0),
-        l_plus_association_pass_count=(lplus_count if lplus_ok else 0),
-        l_plus_association_failure_count=(0 if lplus_ok else lplus_count),
+        l_plus_association_pass_count=lplus_passes,
+        l_plus_association_failure_count=lplus_count - lplus_passes,
     )

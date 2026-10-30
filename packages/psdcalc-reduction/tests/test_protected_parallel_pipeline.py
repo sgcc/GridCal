@@ -102,7 +102,7 @@ def test_l_plus_both_terminals_type_and_dynamic_line_survive_reload(tmp_path) ->
                                ids.source_id("Bus", bus),
                                ids.source_id("ShuntImpedance", shunt), value)
               for side, bus, shunt, value in (
-                  ("FROM", "u", "lplus_from", -0.4),
+                  ("FROM", "u", "lplus_from", -123.0),
                   ("TO", "v", "lplus_to", -0.6))))
     input_path = tmp_path / "source.nc"
     source.export_to_netcdf(input_path)
@@ -119,7 +119,50 @@ def test_l_plus_both_terminals_type_and_dynamic_line_survive_reload(tmp_path) ->
         "l_plus_semantic_round_trip", "parallel_evidence_round_trip"))
     assert result.opportunity_report.l_plus_association_count == 2
     assert result.opportunity_report.l_plus_shunt_preserved_count == 2
+    assert result.opportunity_report.l_plus_association_pass_count == 2
+    assert result.opportunity_report.l_plus_association_failure_count == 0
     assert (store.run_dir / "input/parallel_provenance/l_plus_associations.parquet").exists()
+
+
+def test_l_plus_report_counts_each_association_after_one_shunt_mutates(tmp_path) -> None:
+    """One failed derived Shunt leaves the other association passing."""
+    class CorruptShuntAdapter(PypsaAdapter):
+        """Mutate one Shunt only on final NetCDF reload."""
+
+        def load(self, path, format):
+            """Change one electrical parameter while retaining identities."""
+            network = super().load(path, format)
+            if path.name == "L2.nc":
+                name = next(name for name in network.shunt_impedances.index
+                            if ":protected:" in str(name))
+                network.shunt_impedances.loc[name, "b"] = 99.0
+            return network
+
+    source = three_voltage_source()
+    source.add("Line", "uv2", bus0="v", bus1="u", r=0.02, x=0.13)
+    source.add("ShuntImpedance", "lplus_from", bus="u", b=-0.4)
+    source.add("ShuntImpedance", "lplus_to", bus="v", b=-0.6)
+    ids = PypsaAdapter().identity_sidecar(source, "n")
+    base = ids.source_id("Line", "uv")
+    ledger = ParallelSourceLedger(
+        SourceProfileContract("programmatic", "unavailable"), (),
+        tuple(LPlusAssociation(base, "lplus-card", side,
+                               ids.source_id("Bus", bus),
+                               ids.source_id("ShuntImpedance", shunt), value)
+              for side, bus, shunt, value in (
+                  ("FROM", "u", "lplus_from", -12.0),
+                  ("TO", "v", "lplus_to", -13.0))))
+    path = tmp_path / "source.nc"
+    source.export_to_netcdf(path)
+    config = _config(path, "lplus-one-mutated")
+    result = MultiVoltageQuotientPipeline(
+        CorruptShuntAdapter(), source_ledger=ledger).run(
+            original_network=source, source_sidecar=ids, config=config,
+            store=ArtifactStore(tmp_path / "runs", config.run.id))
+    assert result.structural.status == (
+        "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID")
+    assert result.opportunity_report.l_plus_association_pass_count == 1
+    assert result.opportunity_report.l_plus_association_failure_count == 1
 
 
 def test_protected_dynamic_line_multiindex_snapshots(tmp_path) -> None:
@@ -178,6 +221,8 @@ def test_corrupt_netcdf_protected_line_is_structurally_invalid(tmp_path) -> None
     assert result.structural.status == (
         "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID")
     assert result.structural.checks["protected_parallel_line_semantics"] is False
+    assert result.opportunity_report.line_semantic_hash_pass_count == 1
+    assert result.opportunity_report.line_semantic_hash_failure_count == 1
     assert store.manifest.status == result.structural.status
 
 

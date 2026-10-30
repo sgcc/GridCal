@@ -88,6 +88,11 @@ class ParallelCorridorAnalyzer:
             members = frozenset(sid for sid, _ in rows)
             active = frozenset(sid for sid, enabled in rows if enabled)
             inactive = members - active
+            if len(members) >= 2 and not active and not (
+                    members & protection.preserved_components or
+                    members & lplus_base_lines):
+                raise BackendCapabilityError(
+                    "All-inactive parallel corridor requires explicit protection")
             simple_cycle = (left, right) not in bridges[voltage] and bool(active)
             parallel_cycle = len(active) >= 2
             cycle_type = (

@@ -1,6 +1,6 @@
 """Final structural evidence evaluated against an explicitly reloaded quotient."""
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import math
 from numbers import Real
@@ -31,6 +31,7 @@ class MultiVoltageStructuralResult:
     checks: Mapping[str, bool]
     details: Mapping[str, str]
     parallel_corridor_policy: str = "aggregate_corridor"
+    protected_object_results: Mapping[str, Mapping[str, bool]] = field(default_factory=dict)
 
 
 def _value(value: object) -> object:
@@ -194,6 +195,7 @@ class MultiVoltageFinalValidator:
         except (IdentityError, MappingError, KeyError) as exc:
             checks['reloaded_precheck'] = False
             details['reloaded_precheck'] = f'{type(exc).__name__}: {exc}'
+        protected_object_results: dict[str, dict[str, bool]] = {}
         if parallel_plan is not None:
             busmap = {row.source_id: row.target_id
                       for row in mappings.bus_map if row.target_id is not None}
@@ -205,7 +207,8 @@ class MultiVoltageFinalValidator:
                     persisted_ledger=persisted_ledger,
                     protection=protection,
                     mapping_round_trip=parallel_mapping_round_trip,
-                    sidecar_round_trip=parallel_sidecar_round_trip))
+                    sidecar_round_trip=parallel_sidecar_round_trip,
+                    object_results=protected_object_results))
             checks.update(parallel_checks)
             details.update(parallel_details)
         checks['input_semantic_immutability'] = (
@@ -276,4 +279,4 @@ class MultiVoltageFinalValidator:
             details['original_mapping_coverage'] = f'{type(exc).__name__}: {exc}'
         return MultiVoltageStructuralResult(
             'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID' if all(checks.values()) else 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID',
-            checks, details, parallel_corridor_policy)
+            checks, details, parallel_corridor_policy, protected_object_results)
