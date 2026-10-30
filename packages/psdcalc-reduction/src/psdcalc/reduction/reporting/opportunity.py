@@ -68,6 +68,10 @@ class CompressionOpportunityReport:
     l_plus_shunt_preserved_count: int = 0
     l_plus_association_pass_count: int = 0
     l_plus_association_failure_count: int = 0
+    l_plus_finite_source_count: int = 0
+    l_plus_blank_source_count: int = 0
+    l_plus_parse_mismatch_count: int = 0
+    l_plus_malformed_count: int = 0
 
 
 def build_compression_opportunity_report(
@@ -163,6 +167,14 @@ def build_compression_opportunity_report(
         requested, planned, actual = (
             layer_counts[layer.key] if layer_counts is not None else (None, None, None)
         )
+        layer_names = {source_sidecar.backend_name(bus) for bus in layer.bus_ids}
+        parallel_endpoints = (
+            parallel_plan.mandatory_singletons & set(layer.bus_ids)
+            if parallel_plan is not None else frozenset())
+        mandatory_names = ((ring | transformers | shunts | controls | protected)
+                           & layer_names)
+        mandatory_names.update(source_sidecar.backend_name(bus)
+                               for bus in parallel_endpoints)
         per_layer[layer.key] = {
             "source_bus_count": len(layer.bus_ids),
             "simplified_bus_count": len({topology_by_source[bus]
@@ -171,6 +183,13 @@ def build_compression_opportunity_report(
             "planned_cluster_count": planned,
             "actual_cluster_count": actual,
             "final_bus_count": len({final_by_source[bus] for bus in layer.bus_ids}),
+            "minimum_required_bus_count": floors.get(layer.key, 0),
+            "mandatory_singleton_count": len(mandatory_names),
+            "ring_endpoint_count": len(ring & layer_names),
+            "transformer_endpoint_count": len(transformers & layer_names),
+            "shunt_endpoint_count": len(shunts & layer_names),
+            "control_endpoint_count": len(controls & layer_names),
+            "parallel_singleton_endpoint_count": len(parallel_endpoints),
         }
     if sum(row["final_bus_count"] for row in per_layer.values()) != target_count:
         raise MappingError("Final Bus targets cross voltage layers")
@@ -289,4 +308,10 @@ def build_compression_opportunity_report(
             if source_ledger is not None and quotient_mappings is not None else 0),
         l_plus_association_pass_count=lplus_passes,
         l_plus_association_failure_count=lplus_count - lplus_passes,
+        l_plus_finite_source_count=sum(
+            item.source_value_state == "finite" for item in source_ledger.l_plus
+        ) if source_ledger is not None else 0,
+        l_plus_blank_source_count=sum(
+            item.source_value_state == "blank" for item in source_ledger.l_plus
+        ) if source_ledger is not None else 0,
     )

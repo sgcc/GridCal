@@ -18,6 +18,8 @@ from psdcalc.reduction.exceptions import (
     BackendCapabilityError, MappingError, PartitionError, SignatureError,
 )
 from psdcalc.reduction.pipelines.multi_voltage import MultiVoltageQuotientPipeline
+from psdcalc.reduction.metrics.stage_inventory import CompressionStage, StageInventory
+from psdcalc.reduction.reporting.comparison import build_pipeline_comparison
 from psdcalc.reduction.validation.multi_voltage_final import network_semantic_signature
 
 
@@ -98,6 +100,36 @@ def test_three_voltage_pipeline_persists_final_structural_evidence(
         original_network=original, source_sidecar=sidecar,
         config=config, store=store,
     )
+
+    assert tuple(result.stage_inventories) == tuple(
+        stage.value for stage in list(CompressionStage)[2:])
+    assert result.stage_inventories[CompressionStage.TOPOLOGY_SIMPLIFIED.value].bus_count == len(
+        PypsaAdapter().load(store.run_dir / "levels/L1.nc", "netcdf").buses)
+    assert result.stage_inventories[CompressionStage.QUOTIENT_CANDIDATE.value].bus_count == (
+        result.stage_inventories[CompressionStage.FINAL_RELOADED.value].bus_count)
+    assert all(result.phase_runtime[key] >= 0 for key in (
+        "topology", "planning", "builder", "persist_reload_gate"))
+    assert tuple(result.stage_energy) == tuple(
+        stage.value for stage in list(CompressionStage)[2:])
+    assert any(row.scope == "global" for row in result.stage_energy[
+        CompressionStage.QUOTIENT_CANDIDATE.value])
+    assert all("minimum_required_bus_count" in row and
+               "transformer_endpoint_count" in row and
+               "ring_endpoint_count" in row
+               for row in result.opportunity_report.per_layer.values())
+    comparison = build_pipeline_comparison(
+        model_id="SYNTHETIC", source_stage=StageInventory(
+            CompressionStage.PSD_BPA_SOURCE,
+            bus_count=len(original.buses), line_count=len(original.lines)),
+        projected_network=original, result=result,
+        config_sha256=result.manifest.config_hash,
+        code_sha="a" * 40, tree_sha="b" * 40)
+    assert comparison.accepted_final_bus_count == len(
+        PypsaAdapter().load(result.final_network_path, "netcdf").buses)
+    assert sum(row.projected_bus_count for row in comparison.voltage_layers) == len(original.buses)
+    assert sum(row.final_bus_count for row in comparison.voltage_layers) == comparison.accepted_final_bus_count
+    assert len([row for row in comparison.energy_aggregates
+                if row.scope == "global"]) == 4
 
     assert result.structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
     assert result.manifest.status == result.structural.status

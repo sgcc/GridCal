@@ -26,9 +26,11 @@ class SourceProfileContract:
 
     name: str
     circuit_ids: Literal["unavailable", "required"]
+    blank_circuit_ids: Literal["reject", "unique_source_card"] = "reject"
 
     def __post_init__(self) -> None:
-        if not self.name or self.circuit_ids not in {"unavailable", "required"}:
+        if (not self.name or self.circuit_ids not in {"unavailable", "required"}
+                or self.blank_circuit_ids not in {"reject", "unique_source_card"}):
             raise IdentityError("Invalid source-profile circuit ID contract")
         if (self.name in {"BPA10056814", "BPA10056819"} and
                 self.circuit_ids != "required"):
@@ -40,7 +42,7 @@ class SourceProfileContract:
         """Declare the two audited BPA L-card circuit contracts."""
         if case_id not in {"BPA10056814", "BPA10056819"}:
             raise IdentityError("Unknown audited BPA source profile")
-        return cls(case_id, "required")
+        return cls(case_id, "required", "unique_source_card")
 
 
 @dataclass(frozen=True)
@@ -62,7 +64,13 @@ class LPlusAssociation:
     terminal_side: Literal["FROM", "TO"]
     terminal_bus_id: StableId
     shunt_id: StableId
-    signed_reactor_value: float
+    source_reactor_value: float | None
+    source_value_state: Literal["finite", "blank"] = "finite"
+
+    @property
+    def signed_reactor_value(self) -> float | None:
+        """Return the source value under the pre-PR-020 read-only name."""
+        return self.source_reactor_value
 
 
 @dataclass(frozen=True)
@@ -72,6 +80,7 @@ class ParallelSourceLedger:
     profile: SourceProfileContract
     lines: tuple[LineCircuitProvenance, ...] = ()
     l_plus: tuple[LPlusAssociation, ...] = ()
+    coverage_scope: Literal["complete_source", "preserved_subset"] = "complete_source"
 
     def validate(self, network: pypsa.Network,
                  sidecar: IdentitySidecar, *,
@@ -88,6 +97,7 @@ class ParallelSourceLedger:
         line_ids: set[StableId] = set()
         cards: set[str] = set()
         circuits: set[tuple[float, StableId, StableId, str]] = set()
+        blank_corridors: set[tuple[float, StableId, StableId]] = set()
         for item in self.lines:
             if item.line_id.component != "Line" or item.line_id not in source_lines:
                 raise IdentityError("Circuit provenance references an absent Line")
@@ -99,8 +109,7 @@ class ParallelSourceLedger:
                     raise IdentityError("Duplicate or blank source Line card identity")
                 cards.add(item.source_card_identity)
             if self.profile.circuit_ids == "required":
-                if (not item.source_card_identity or not item.raw_card or
-                        not item.circuit_id or not item.circuit_id.strip()):
+                if not item.source_card_identity or not item.raw_card:
                     raise IdentityError("Required Line circuit/card evidence is missing")
                 if (self.profile.name in {"BPA10056814", "BPA10056819"}
                         and not item.raw_card.startswith("L ")):
@@ -111,12 +120,27 @@ class ParallelSourceLedger:
                 left, right = sorted((bus0, bus1))
                 voltage = canonical_voltage[bus0]
                 key = (voltage, left, right, item.circuit_id)
-                if key in circuits:
-                    raise IdentityError("Duplicate circuit ID within one corridor")
-                circuits.add(key)
+                if self.profile.name in {"BPA10056814", "BPA10056819"}:
+                    raw_circuit = item.raw_card[31:32].strip()
+                    if raw_circuit != (item.circuit_id or ""):
+                        raise IdentityError("Line circuit ID differs from source card")
+                if not item.circuit_id:
+                    if self.profile.blank_circuit_ids != "unique_source_card":
+                        raise IdentityError("Required Line circuit ID is blank")
+                    corridor = (voltage, left, right)
+                    if corridor in blank_corridors:
+                        raise IdentityError("Multiple blank circuit IDs in one corridor")
+                    blank_corridors.add(corridor)
+                else:
+                    if key in circuits:
+                        raise IdentityError("Duplicate circuit ID within one corridor")
+                    circuits.add(key)
             elif item.circuit_id is not None:
                 raise IdentityError("Circuit ID contradicts unavailable source profile")
-        if self.profile.circuit_ids == "required" and line_ids != source_lines:
+        if self.coverage_scope not in {"complete_source", "preserved_subset"}:
+            raise IdentityError("Unknown source ledger coverage scope")
+        if (self.profile.circuit_ids == "required" and
+                self.coverage_scope == "complete_source" and line_ids != source_lines):
             raise IdentityError("Required circuit ledger does not cover every Line")
 
         card_owners: dict[str, StableId] = {}
@@ -129,7 +153,13 @@ class ParallelSourceLedger:
                     item.base_line_id.component != "Line" or
                     item.shunt_id.component != "ShuntImpedance" or
                     item.terminal_bus_id.component != "Bus" or
-                    not math.isfinite(item.signed_reactor_value)):
+                    item.source_value_state not in {"finite", "blank"} or
+                    (item.source_value_state == "finite" and
+                     (isinstance(item.source_reactor_value, bool) or
+                      not isinstance(item.source_reactor_value, (int, float)) or
+                      not math.isfinite(item.source_reactor_value))) or
+                    (item.source_value_state == "blank" and
+                     item.source_reactor_value is not None)):
                 raise IdentityError("Invalid L+ association fields")
             if item.base_line_id not in source_lines:
                 raise IdentityError("L+ base Line is absent")
@@ -163,6 +193,8 @@ class ParallelSourceLedger:
         profile_path = directory / "source_profile.json"
         profile_path.write_text(json.dumps({
             "name": self.profile.name, "circuit_ids": self.profile.circuit_ids,
+            "blank_circuit_ids": self.profile.blank_circuit_ids,
+            "coverage_scope": self.coverage_scope,
         }, sort_keys=True) + "\n", encoding="utf-8")
         line_schema = pa.schema([
             ("line_id", pa.string()), ("source_card_identity", pa.string()),
@@ -178,7 +210,8 @@ class ParallelSourceLedger:
         lplus_schema = pa.schema([
             ("base_line_id", pa.string()), ("source_card_identity", pa.string()),
             ("terminal_side", pa.string()), ("terminal_bus_id", pa.string()),
-            ("shunt_id", pa.string()), ("signed_reactor_value", pa.float64()),
+            ("shunt_id", pa.string()), ("source_value_state", pa.string()),
+            ("source_reactor_value", pa.float64()),
         ])
         lplus_path = directory / "l_plus_associations.parquet"
         pq.write_table(pa.Table.from_pylist([{
@@ -187,7 +220,8 @@ class ParallelSourceLedger:
             "terminal_side": item.terminal_side,
             "terminal_bus_id": item.terminal_bus_id.encode(),
             "shunt_id": item.shunt_id.encode(),
-            "signed_reactor_value": item.signed_reactor_value,
+            "source_value_state": item.source_value_state,
+            "source_reactor_value": item.source_reactor_value,
         } for item in sorted(self.l_plus,
                              key=lambda row: (row.base_line_id, row.terminal_side))],
             schema=lplus_schema), lplus_path)
@@ -205,6 +239,9 @@ class ParallelSourceLedger:
         l_plus = tuple(LPlusAssociation(
             StableId.decode(row["base_line_id"]), row["source_card_identity"],
             row["terminal_side"], StableId.decode(row["terminal_bus_id"]),
-            StableId.decode(row["shunt_id"]), row["signed_reactor_value"])
+            StableId.decode(row["shunt_id"]),
+            row.get("source_reactor_value", row.get("signed_reactor_value")),
+            row.get("source_value_state", "finite"))
             for row in pq.read_table(directory / "l_plus_associations.parquet").to_pylist())
-        return cls(SourceProfileContract(**profile), lines, l_plus)
+        coverage_scope = profile.pop("coverage_scope", "complete_source")
+        return cls(SourceProfileContract(**profile), lines, l_plus, coverage_scope)

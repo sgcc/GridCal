@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+from time import perf_counter
+from collections.abc import Mapping
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -21,9 +23,15 @@ from psdcalc.reduction.core.manifests import RunManifest
 from psdcalc.reduction.core.records import ReductionRecord
 from psdcalc.reduction.core.signatures import hash_file, hash_path
 from psdcalc.reduction.exceptions import (
-    ConfigSemanticError, MappingError, SignatureError,
+    BackendCapabilityError, ConfigSemanticError, MappingError, SignatureError,
 )
 from psdcalc.reduction.mapping.bundle import MappingBundle
+from psdcalc.reduction.mapping.rows import MapEntry
+from psdcalc.reduction.metrics.stage_inventory import (
+    CompressionStage, StageInventory, pypsa_stage_inventory,
+)
+from psdcalc.reduction.metrics.energy import collect_energy_aggregates
+from psdcalc.reduction.reporting.comparison import EnergyAggregateSummary
 from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.planners.layer_energy import VoltageLayerEnergyPlanner
@@ -36,6 +44,9 @@ from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
 from psdcalc.reduction.topology.parallel_corridors import ParallelCorridorAnalyzer
 from psdcalc.reduction.topology.parallel_provenance import (
     ParallelSourceLedger, SourceProfileContract,
+)
+from psdcalc.reduction.topology.parallel_projection import (
+    project_parallel_source_ledger, reject_derived_protected_lines,
 )
 from psdcalc.reduction.topology.voltage_layers import VoltageLayerClassifier
 from psdcalc.reduction.protection.engine import ProtectionSet
@@ -57,6 +68,9 @@ class MultiVoltagePipelineResult:
     manifest: RunManifest
     opportunity_report: CompressionOpportunityReport
     records: tuple[ReductionRecord, ...]
+    stage_inventories: Mapping[str, StageInventory] | None = None
+    phase_runtime: Mapping[str, float] | None = None
+    stage_energy: Mapping[str, tuple[EnergyAggregateSummary, ...]] | None = None
 
 
 def _write_sidecar(store: ArtifactStore, relative: str,
@@ -166,7 +180,9 @@ class MultiVoltageQuotientPipeline:
                 protection = ProtectionSet(
                     protection.traced,
                     protection.preserved_components | frozenset(
-                        item.shunt_id for item in source_ledger.l_plus),
+                        item.shunt_id for item in source_ledger.l_plus) |
+                    initial_parallel.protected_lines | frozenset(
+                        item.base_line_id for item in source_ledger.l_plus),
                     protection.terminal_buses,
                     protection.singleton_buses | initial_parallel.mandatory_singletons,
                     protection.cannot_link,
@@ -182,15 +198,32 @@ class MultiVoltageQuotientPipeline:
                                    "psdcalc-reduction": __version__},
             )
             _write_sidecar(store, "input/source_ids.json", source_sidecar, "source_ids")
+            if policy == "preserve_protected_members":
+                source_dir = store.path("input/source_provenance")
+                for path in source_ledger.save_parquet(source_dir):
+                    store.record_artifact("l0_" + path.stem,
+                        str(path.relative_to(store.run_dir)))
             if config.output.save_original_snapshot:
                 adapter.export(adapter.clone(original_network),
                                store.path("input/original.nc"), "netcdf")
                 store.record_artifact("original_snapshot", "input/original.nc")
 
+            topology_start = perf_counter()
             topology = VoltageAwareTopologySimplifier().simplify(
                 original_network, source_sidecar, protection,
                 mode="keep_transformer_interface",
             )
+            topology_seconds = perf_counter() - topology_start
+            stage_inventories: dict[str, StageInventory] = {
+                CompressionStage.TOPOLOGY_SIMPLIFIED.value:
+                    pypsa_stage_inventory(
+                        topology.network, CompressionStage.TOPOLOGY_SIMPLIFIED),
+            }
+            stage_energy: dict[str, tuple[EnergyAggregateSummary, ...]] = {
+                CompressionStage.TOPOLOGY_SIMPLIFIED.value:
+                    collect_energy_aggregates(
+                        topology.network, CompressionStage.TOPOLOGY_SIMPLIFIED),
+            }
             adapter.export(topology.network, store.path("levels/L1.nc"), "netcdf")
             store.record_artifact("simplified_network", "levels/L1.nc")
             _save_maps(store, topology.mappings, "maps/topology", "topology_")
@@ -217,14 +250,40 @@ class MultiVoltageQuotientPipeline:
             if loaded_parent.to_rows() != parent_sidecar.to_rows():
                 raise SignatureError("Simplified identity sidecar failed readback")
             if policy == "preserve_protected_members":
-                source_ledger.validate(
-                    topology.network, loaded_parent,
-                    voltage_aliases=config.voltage_layers.aliases)
+                projected = None
+                if source_ledger.profile.name in {"BPA10056814", "BPA10056819"}:
+                    projected = project_parallel_source_ledger(
+                        source_ledger, topology.mappings, original_network,
+                        source_sidecar, topology.network, loaded_parent,
+                        protected_lines=initial_parallel.protected_lines)
+                    l1_dir = store.path("input/l1_provenance")
+                    for path in projected.ledger.save_parquet(l1_dir):
+                        store.record_artifact("l1_" + path.stem,
+                            str(path.relative_to(store.run_dir)))
+                    lineage_path = l1_dir / "topology_lineage.parquet"
+                    pq.write_table(pa.Table.from_pylist(
+                        [row.to_row() for row in projected.lineage]), lineage_path)
+                    if tuple(MapEntry.from_row(row) for row in
+                             pq.read_table(lineage_path).to_pylist()) != projected.lineage:
+                        raise MappingError("L1 topology lineage changed on Parquet readback")
+                    store.record_artifact("l1_topology_lineage",
+                        "input/l1_provenance/topology_lineage.parquet")
+                    store.write_json("input/l1_provenance/projection_summary.json",
+                                     projected.summary)
+                    store.record_artifact("l1_projection_summary",
+                        "input/l1_provenance/projection_summary.json")
+                    source_ledger = projected.ledger
+                else:
+                    source_ledger.validate(topology.network, loaded_parent,
+                                           voltage_aliases=config.voltage_layers.aliases)
                 parent_parallel = ParallelCorridorAnalyzer().analyze(
                     topology.network, loaded_parent, protection,
                     voltage_aliases=config.voltage_layers.aliases,
                     lplus_base_lines=frozenset(
                         item.base_line_id for item in source_ledger.l_plus))
+                if projected is not None:
+                    reject_derived_protected_lines(
+                        projected, parent_parallel.protected_lines)
                 protection = ProtectionSet(
                     protection.traced, protection.preserved_components,
                     protection.terminal_buses,
@@ -233,6 +292,7 @@ class MultiVoltageQuotientPipeline:
                 )
 
             target = config.partition.target
+            planning_start = perf_counter()
             plan = VoltageLayerEnergyPlanner().plan(
                 topology.network, loaded_parent, protection,
                 planner=config.partition.planner,
@@ -245,6 +305,7 @@ class MultiVoltageQuotientPipeline:
                 min_cluster_size=config.partition.min_cluster_size,
                 max_cluster_size=config.partition.max_cluster_size,
             )
+            planning_seconds = perf_counter() - planning_start
             store.write_json("input/plan.json", {
                 "requested_cluster_count": plan.requested_cluster_count,
                 "planned_cluster_count": len(set(plan.stable_busmap.values())),
@@ -255,11 +316,20 @@ class MultiVoltageQuotientPipeline:
             store.record_artifact("plan", "input/plan.json")
             invariants = tuple(AggregationInvariantSpec(**item.model_dump())
                                for item in config.aggregation.invariants)
+            builder_start = perf_counter()
             built = MultiVoltageQuotientBuilder().build(
                 topology.network, loaded_parent, plan, config.aggregation,
                 protection, config.voltage_layers.aliases, invariants,
                 source_ledger=source_ledger,
             )
+            builder_seconds = perf_counter() - builder_start
+            stage_inventories[CompressionStage.QUOTIENT_CANDIDATE.value] = (
+                pypsa_stage_inventory(
+                    built.network, CompressionStage.QUOTIENT_CANDIDATE))
+            stage_energy[CompressionStage.QUOTIENT_CANDIDATE.value] = (
+                collect_energy_aggregates(
+                    built.network, CompressionStage.QUOTIENT_CANDIDATE))
+            persistence_start = perf_counter()
             persisted_ledger = None
             if policy == "preserve_protected_members":
                 ledger_dir = store.path("input/parallel_provenance")
@@ -339,6 +409,27 @@ class MultiVoltageQuotientPipeline:
                 parallel_sidecar_round_trip=sidecar_match,
                 parallel_corridor_policy=policy,
             )
+            persist_reload_gate_seconds = perf_counter() - persistence_start
+            try:
+                stage_inventories[CompressionStage.FINAL_RELOADED.value] = (
+                    pypsa_stage_inventory(
+                        reloaded, CompressionStage.FINAL_RELOADED))
+                stage_energy[CompressionStage.FINAL_RELOADED.value] = (
+                    collect_energy_aggregates(
+                        reloaded, CompressionStage.FINAL_RELOADED))
+            except BackendCapabilityError:
+                if structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID":
+                    raise
+                stage_inventories[CompressionStage.FINAL_RELOADED.value] = StageInventory(
+                    CompressionStage.FINAL_RELOADED,
+                    bus_count=len(reloaded.buses), line_count=len(reloaded.lines),
+                    transformer_count=len(reloaded.transformers),
+                    generator_count=len(reloaded.generators), load_count=len(reloaded.loads),
+                    shunt_count=len(reloaded.shunt_impedances),
+                    link_count=len(reloaded.links),
+                    storage_unit_count=len(reloaded.storage_units),
+                    store_count=len(reloaded.stores))
+                stage_energy[CompressionStage.FINAL_RELOADED.value] = ()
             store.write_json("validation/multi_voltage_structural.json", {
                 "status": structural.status, "checks": dict(structural.checks),
                 "details": dict(structural.details),
@@ -404,5 +495,9 @@ class MultiVoltageQuotientPipeline:
                 structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID")
             return MultiVoltagePipelineResult(
                 final_path, final_sidecar_path, persisted_composed, structural,
-                store.manifest, opportunity, records,
+                store.manifest, opportunity, records, stage_inventories,
+                {"topology": topology_seconds, "planning": planning_seconds,
+                 "builder": builder_seconds,
+                 "persist_reload_gate": persist_reload_gate_seconds},
+                stage_energy,
             )

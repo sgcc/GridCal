@@ -349,6 +349,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 path = run_dir / "validation" / f"{name}.json"
                 if path.exists():
                     payload[name] = json.loads(path.read_text(encoding="utf-8"))
+            comparison_path = (run_dir / "reports" / "compression-comparison" /
+                               "compression_comparison.json")
+            if comparison_path.exists():
+                payload["compression_comparison"] = json.loads(
+                    comparison_path.read_text(encoding="utf-8"))
             print(json.dumps(payload, ensure_ascii=False, indent=2))
         else:
             config_path = Path(args.config).resolve()
