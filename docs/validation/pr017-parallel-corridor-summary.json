@@ -1,0 +1,53 @@
+{
+  "audit_boundary": "SOURCE_PROVENANCE_ONLY",
+  "cases": {
+    "BPA10056814": {
+      "adapter_duplicate_corridor_count": 0,
+      "audit_parquet_sha256": "22515d8e4a402d697b7c6980f7b97c2dc3d58725fd24092c820b7a1e39eee01d",
+      "both_cycle_corridor_count": 103,
+      "dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "genuine_double_circuit_count": 191,
+      "genuine_parallel_circuit_corridor_count": 194,
+      "l_plus_associated_parallel_corridor_count": 2,
+      "l_plus_card_count": 9,
+      "l_plus_extension_corridor_count": 0,
+      "l_plus_false_parallel_count": 0,
+      "parallel_corridor_count": 194,
+      "parallel_corridors_with_single_quotient_target_count": 194,
+      "parallel_line_row_count": 392,
+      "parallel_only_corridors_with_single_quotient_target_count": 91,
+      "parallel_only_cycle_corridor_count": 91,
+      "quotient_target_line_count": 392,
+      "quotient_target_unique_count": 194,
+      "simple_graph_cycle_corridor_count": 0,
+      "source_case": "BPA10056814",
+      "unresolved_corridor_count": 0
+    },
+    "BPA10056819": {
+      "adapter_duplicate_corridor_count": 0,
+      "audit_parquet_sha256": "490ca3ff6a4cedc605e2ef15df9979456ad750dd8cb5cbd44e263df4bbda46aa",
+      "both_cycle_corridor_count": 79,
+      "dat_sha256": "2ceb9219686671e406c4d9186358245a58b927f06fb115b0fa7ec52ad66cb128",
+      "genuine_double_circuit_count": 137,
+      "genuine_parallel_circuit_corridor_count": 138,
+      "l_plus_associated_parallel_corridor_count": 2,
+      "l_plus_card_count": 5,
+      "l_plus_extension_corridor_count": 0,
+      "l_plus_false_parallel_count": 0,
+      "parallel_corridor_count": 138,
+      "parallel_corridors_with_single_quotient_target_count": 0,
+      "parallel_line_row_count": 277,
+      "parallel_only_corridors_with_single_quotient_target_count": 0,
+      "parallel_only_cycle_corridor_count": 59,
+      "quotient_target_line_count": 0,
+      "quotient_target_unique_count": 0,
+      "simple_graph_cycle_corridor_count": 0,
+      "source_case": "BPA10056819",
+      "unresolved_corridor_count": 0
+    }
+  },
+  "l_plus_semantics": "Same-key L extension with two terminal reactor ratings; projected as terminal ShuntImpedance, never as an independent Line.",
+  "beijing_quotient_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID",
+  "beijing_invalid_reason": "PROTECTED_PARALLEL_CYCLE_MULTIPLICITY_LOST",
+  "physical_fidelity_status": "PHYSICAL_FIDELITY_NOT_YET_EVALUATED"
+}
