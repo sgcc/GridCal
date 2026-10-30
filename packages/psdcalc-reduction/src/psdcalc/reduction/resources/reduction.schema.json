@@ -60,6 +60,9 @@
           "title": "Line Length Factor",
           "type": "number"
         },
+        "parallel_corridors": {
+          "$ref": "#/$defs/ParallelCorridorConfig"
+        },
         "preserve_components": {
           "items": {
             "type": "string"
@@ -730,6 +733,24 @@
         }
       },
       "title": "OutputConfig",
+      "type": "object"
+    },
+    "ParallelCorridorConfig": {
+      "additionalProperties": false,
+      "description": "Opt-in parallel Line identity policy.",
+      "properties": {
+        "policy": {
+          "default": "aggregate_corridor",
+          "enum": [
+            "aggregate_corridor",
+            "preserve_protected_members",
+            "preserve_all_members"
+          ],
+          "title": "Policy",
+          "type": "string"
+        }
+      },
+      "title": "ParallelCorridorConfig",
       "type": "object"
     },
     "PartitionConfig": {

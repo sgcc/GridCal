@@ -12,12 +12,16 @@ from psdcalc.reduction.exceptions import (
     BackendCapabilityError, MaterializationError, MappingError,
 )
 from psdcalc.reduction.mapping.bundle import MappingBundle
+from psdcalc.reduction.mapping.rows import MapEntry
+from psdcalc.reduction.materializers.protected_parallel import ProtectedParallelLineHandler
 from psdcalc.reduction.materializers.quotient import (
     QuotientMaterializer, QuotientResult,
 )
 from psdcalc.reduction.planners.base import PartitionPlan
 from psdcalc.reduction.planners.multi_voltage_busmap import ValidatedLayerBusmaps
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.parallel_corridors import ProtectedParallelPlan
+from psdcalc.reduction.topology.parallel_provenance import ParallelSourceLedger
 from psdcalc.reduction.topology.voltage_layers import VoltageLayer
 
 
@@ -152,11 +156,20 @@ class LayerQuotientMaterializer:
                     layers: tuple[VoltageLayer, ...],
                     busmaps: ValidatedLayerBusmaps,
                     aggregation: AggregationConfig,
-                    protection: ProtectionSet) -> tuple[LayerQuotient, ...]:
+                    protection: ProtectionSet,
+                    parallel_plan: ProtectedParallelPlan | None = None,
+                    source_ledger: ParallelSourceLedger | None = None,
+                    ) -> tuple[LayerQuotient, ...]:
         """Return detached per-layer quotients with globally unique names."""
         output: list[LayerQuotient] = []
         for layer in layers:
             child = self._layer_copy(simplified_network, parent_sidecar, layer)
+            handler = ProtectedParallelLineHandler()
+            detached = (handler.detach(child, parent_sidecar, parallel_plan)
+                        if parallel_plan is not None else ())
+            detached_shunts = (handler.detach_l_plus_shunts(
+                child, parent_sidecar, source_ledger, detached)
+                if source_ledger is not None and detached else ())
             child_sidecar = self._sidecar_subset(parent_sidecar, child)
             stable = {source: busmaps.global_busmap[source] for source in layer.bus_ids}
             backend = dict(busmaps.backend_by_layer[layer.key])
@@ -224,6 +237,34 @@ class LayerQuotientMaterializer:
                 bundle, quotient.network, partition, operation_id,
                 translated, child_sidecar,
             )
+            if detached:
+                restored = handler.reconnect(
+                    quotient.network, detached, backend, layer.key)
+                for source_id, target_name in restored.items():
+                    if source_id in target_names:
+                        raise MappingError("Protected Line appears in ordinary quotient map")
+                    target_names[source_id] = target_name
+                preserved = tuple(MapEntry(
+                    item.source_id, item.source_id, "preserved", operation_id)
+                    for item in detached)
+                bundle = MappingBundle(
+                    bundle.bus_map, bundle.branch_map + preserved,
+                    bundle.device_map, bundle.control_map,
+                )
+            if detached_shunts:
+                restored_shunts = handler.reconnect_l_plus_shunts(
+                    quotient.network, detached_shunts, backend, layer.key)
+                for source_id, target_name in restored_shunts.items():
+                    if source_id in target_names:
+                        raise MappingError("L+ Shunt appears in ordinary quotient map")
+                    target_names[source_id] = target_name
+                preserved_shunts = tuple(MapEntry(
+                    item.source_id, item.source_id, "preserved", operation_id)
+                    for item in detached_shunts)
+                bundle = MappingBundle(
+                    bundle.bus_map, bundle.branch_map,
+                    bundle.device_map + preserved_shunts, bundle.control_map,
+                )
             output.append(LayerQuotient(layer, quotient.network, bundle,
                                         target_names))
         return tuple(output)

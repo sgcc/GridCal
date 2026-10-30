@@ -237,6 +237,15 @@ class VoltageLayersConfig(StrictModel):
         return value
 
 
+class ParallelCorridorConfig(StrictModel):
+    """Opt-in parallel Line identity policy."""
+
+    policy: Literal[
+        "aggregate_corridor", "preserve_protected_members",
+        "preserve_all_members",
+    ] = "aggregate_corridor"
+
+
 class AggregationConfig(StrictModel):
     """PyPSA quotient options."""
 
@@ -246,6 +255,8 @@ class AggregationConfig(StrictModel):
     line_length_factor: float = Field(default=1.0, gt=0)
     strategies: AggregationStrategies = Field(default_factory=AggregationStrategies)
     invariants: list[AggregationInvariantConfig] = Field(default_factory=list)
+    parallel_corridors: ParallelCorridorConfig = Field(
+        default_factory=ParallelCorridorConfig)
 
 
 class EquivalenceConfig(StrictModel):

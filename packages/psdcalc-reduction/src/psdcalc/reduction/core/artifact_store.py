@@ -90,6 +90,7 @@ class ArtifactStore:
                      topology_signature: str | None = None,
                      output_hash: str | None = None,
                      seed: int | None = None,
+                     parallel_corridor_policy: str | None = None,
                      software_versions: dict[str, str] | None = None) -> None:
         """Persist reproducibility fields once their evidence is available."""
         changes: dict[str, object] = {"updated_at": utc_now()}
@@ -97,6 +98,7 @@ class ArtifactStore:
                            ("config_hash", config_hash),
                            ("topology_signature", topology_signature),
                            ("output_hash", output_hash), ("seed", seed),
+                           ("parallel_corridor_policy", parallel_corridor_policy),
                            ("software_versions", software_versions)):
             if value is not None:
                 changes[key] = value

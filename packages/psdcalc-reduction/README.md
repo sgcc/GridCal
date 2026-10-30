@@ -7,6 +7,12 @@ custom busmaps, PyPSA quotient construction, complete structural maps, and a
 structural Gate. Phase 1.5 adds selective voltage-aware topology simplification,
 voltage-layer energy planning, a pure in-memory multi-voltage quotient Builder,
 and a persisted Pipeline with NetCDF reload and a final structural Gate.
+Version 0.3.0 adds the ADR-009 opt-in
+`aggregation.parallel_corridors.policy: preserve_protected_members` strategy.
+It retains each member of a protected parallel corridor and any associated
+L+ terminal Shunts through independent StableIds, Parquet ledgers, NetCDF
+reload, and named structural checks. The default remains `aggregate_corridor`;
+`preserve_all_members` is recognized but raises `UnsupportedFeatureError`.
 
 Install the locked development environment with `uv sync --locked` from this
 directory. Run the package tests with `uv run --locked pytest tests`.
@@ -45,6 +51,8 @@ authoritative sidecars, complete bus/branch/device/control maps, line and
 Transformer map projections, operation records, preliminary Builder evidence,
 post-reload final Gate evidence, and a compression opportunity report. The
 final Gate reads the persisted maps and sidecar back before validation.
+With the protected-member strategy, the run also saves the source-profile,
+Line circuit, and L+ association ledgers under `input/parallel_provenance/`.
 `report` reads the persisted evidence.
 
 The topology stage retains Transformer interfaces and source voltage levels.

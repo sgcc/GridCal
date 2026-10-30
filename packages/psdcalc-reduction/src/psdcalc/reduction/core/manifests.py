@@ -30,6 +30,7 @@ class RunManifest(BaseModel):
     topology_signature: str | None = None
     output_hash: str | None = None
     seed: int | None = None
+    parallel_corridor_policy: str | None = None
     software_versions: dict[str, str] = Field(default_factory=dict)
     artifacts: dict[str, str] = Field(default_factory=dict)
     failure: dict[str, str] | None = None

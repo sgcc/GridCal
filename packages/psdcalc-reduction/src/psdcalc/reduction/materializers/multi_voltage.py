@@ -10,7 +10,9 @@ from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.models import AggregationConfig
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.core.records import ReductionRecord
-from psdcalc.reduction.exceptions import BackendCapabilityError, MaterializationError
+from psdcalc.reduction.exceptions import (
+    BackendCapabilityError, MaterializationError, UnsupportedFeatureError,
+)
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.rows import MapEntry
 from psdcalc.reduction.materializers.cross_layer import CrossLayerComponentReconnector
@@ -18,10 +20,18 @@ from psdcalc.reduction.materializers.layer_quotient import LayerQuotientMaterial
 from psdcalc.reduction.planners.base import PartitionPlan
 from psdcalc.reduction.planners.multi_voltage_busmap import MultiVoltageBusmapValidator
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.parallel_corridors import ParallelCorridorAnalyzer
+from psdcalc.reduction.topology.parallel_corridors import ProtectedParallelPlan
+from psdcalc.reduction.topology.parallel_provenance import (
+    ParallelSourceLedger, SourceProfileContract,
+)
 from psdcalc.reduction.topology.voltage_layers import VoltageLayerClassifier
 from psdcalc.reduction.validation.multi_voltage import (
     AggregationInvariantSpec, MultiVoltageStructuralValidator,
     PreliminaryStructuralEvidence,
+)
+from psdcalc.reduction.validation.protected_parallel import (
+    ProtectedParallelStructuralValidator,
 )
 
 
@@ -39,6 +49,8 @@ class MultiVoltageBuildResult:
     planned_cluster_count: int
     actual_cluster_count: int
     voltage_layer_map: Mapping[StableId, tuple[float, float]]
+    parallel_plan: ProtectedParallelPlan | None = None
+    source_ledger: ParallelSourceLedger | None = None
 
 
 def _semantic_hash(network: pypsa.Network) -> str:
@@ -78,10 +90,19 @@ class MultiVoltageQuotientBuilder:
               aggregation: AggregationConfig,
               protection: ProtectionSet,
               voltage_aliases: Mapping[float, float] | None = None,
-              invariants: tuple[AggregationInvariantSpec, ...] = ()
+              invariants: tuple[AggregationInvariantSpec, ...] = (),
+              *, source_ledger: ParallelSourceLedger | None = None,
               ) -> MultiVoltageBuildResult:
         """Return a detached multi-voltage quotient and preliminary evidence."""
         adapter = PypsaAdapter()
+        policy = aggregation.parallel_corridors.policy
+        if policy == "preserve_all_members":
+            raise UnsupportedFeatureError(
+                "preserve_all_members is not implemented")
+        if policy not in {"aggregate_corridor", "preserve_protected_members"}:
+            raise UnsupportedFeatureError(f"Unsupported parallel policy: {policy}")
+        source_ledger = source_ledger or ParallelSourceLedger(
+            SourceProfileContract("programmatic_pypsa", "unavailable"))
         adapter.validate_model(simplified_network, parent_sidecar)
         if not simplified_network.shapes.empty:
             raise BackendCapabilityError("Nonempty Shape table is unsupported")
@@ -111,9 +132,6 @@ class MultiVoltageQuotientBuilder:
                         raise BackendCapabilityError(
                             f"Multi-terminal Link is unsupported: {name}"
                         )
-        MultiVoltageStructuralValidator().validate_supported_dynamic(
-            simplified_network, invariants
-        )
         layers = VoltageLayerClassifier().classify(
             simplified_network, parent_sidecar, aliases=voltage_aliases
         )
@@ -131,12 +149,37 @@ class MultiVoltageQuotientBuilder:
                 raise BackendCapabilityError(
                     f"Cross-layer Link is unsupported: {name}"
                 )
+        parallel_plan = None
+        if policy == "preserve_protected_members":
+            source_ledger.validate(
+                simplified_network, parent_sidecar,
+                voltage_aliases=voltage_aliases)
+            parallel_plan = ParallelCorridorAnalyzer().analyze(
+                simplified_network, parent_sidecar, protection,
+                voltage_aliases=voltage_aliases,
+                lplus_base_lines=frozenset(
+                    item.base_line_id for item in source_ledger.l_plus))
+            protection = ProtectionSet(
+                protection.traced,
+                protection.preserved_components | frozenset(
+                    item.shunt_id for item in source_ledger.l_plus),
+                protection.terminal_buses,
+                protection.singleton_buses | parallel_plan.mandatory_singletons,
+                protection.cannot_link,
+            )
+        allowed_line_dynamic_names = frozenset(
+            parent_sidecar.backend_name(line_id)
+            for line_id in parallel_plan.protected_lines
+        ) if parallel_plan is not None else frozenset()
+        MultiVoltageStructuralValidator().validate_supported_dynamic(
+            simplified_network, invariants,
+            allowed_line_dynamic_names=allowed_line_dynamic_names)
         busmaps = MultiVoltageBusmapValidator().validate(
             simplified_network, parent_sidecar, partition, layers, protection
         )
         layer_results = LayerQuotientMaterializer().materialize(
             simplified_network, parent_sidecar, layers, busmaps,
-            aggregation, protection,
+            aggregation, protection, parallel_plan, source_ledger,
         )
         reconnected = CrossLayerComponentReconnector().reconnect(
             simplified_network, parent_sidecar, layer_results, busmaps
@@ -158,7 +201,24 @@ class MultiVoltageQuotientBuilder:
             simplified_network, reconnected.network, parent_sidecar,
             reconnected.target_sidecar, mapping, invariants, protection,
             voltage_layer_map=voltage_layer_map,
+            allowed_line_dynamic_names=allowed_line_dynamic_names,
         )
+        if parallel_plan is not None:
+            parallel_checks, parallel_details = (
+                ProtectedParallelStructuralValidator().check(
+                    simplified_network, reconnected.network, parent_sidecar,
+                    reconnected.target_sidecar, mapping, parallel_plan,
+                    busmaps.global_busmap, source_ledger=source_ledger,
+                    protection=protection))
+            evidence = PreliminaryStructuralEvidence(
+                "builder", False,
+                {**evidence.checks, **parallel_checks},
+                {**evidence.details, **parallel_details},
+                policy,
+            )
+        else:
+            evidence = PreliminaryStructuralEvidence(
+                "builder", False, evidence.checks, evidence.details, policy)
         if _semantic_hash(simplified_network) != parent_hash:
             raise MaterializationError("Builder mutated simplified_network")
         output_hash = _semantic_hash(reconnected.network)
@@ -177,13 +237,18 @@ class MultiVoltageQuotientBuilder:
                             "planned_cluster_count":
                                 busmaps.per_layer_counts[layer.layer.key][0],
                             "actual_cluster_count":
-                                busmaps.per_layer_counts[layer.layer.key][1]},
+                                busmaps.per_layer_counts[layer.layer.key][1],
+                            "parallel_corridor_policy": policy},
             ))
         records.append(ReductionRecord(
             operation_id="mvq-reconnect", operation_type="aggregation",
             parent_grid_hash=parent_hash, child_grid_hash=output_hash,
             input_signature=parent_hash, output_signature=output_hash,
             parameters={"transformer_count": len(tx_rows),
+                        "parallel_corridor_policy": policy,
+                        "protected_parallel_line_count": (
+                            len(parallel_plan.protected_lines)
+                            if parallel_plan is not None else 0),
                         "requested_cluster_count": busmaps.requested_cluster_count,
                         "planned_cluster_count": busmaps.planned_cluster_count,
                         "actual_cluster_count": busmaps.actual_cluster_count},
@@ -194,4 +259,5 @@ class MultiVoltageQuotientBuilder:
             busmaps.requested_cluster_count, busmaps.planned_cluster_count,
             busmaps.actual_cluster_count,
             voltage_layer_map,
+            parallel_plan, source_ledger if parallel_plan is not None else None,
         )
