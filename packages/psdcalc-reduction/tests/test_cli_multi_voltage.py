@@ -32,3 +32,16 @@ def test_cli_plan_build_report(tmp_path: Path, capsys) -> None:
         "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID")
     assert report["preliminary"]["finalized"] is False
     assert report["opportunity"]["realized_bus_compression_fraction"] > 0
+    comparison_dir = run_dir / "reports" / "compression-comparison"
+    comparison_dir.mkdir(parents=True)
+    (comparison_dir / "compression_comparison.json").write_text(
+        json.dumps({"model_id": "SYNTHETIC", "parallel_corridor_policy":
+                    "preserve_protected_members", "final_structural_status":
+                    "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+                    "physical_fidelity_status": "PHYSICAL_FIDELITY_NOT_YET_EVALUATED",
+                    "candidate_bus_compression_fraction": 0.2,
+                    "accepted_bus_compression_fraction": 0.2,
+                    "failed_checks": [], "stages": {}, "parallel_corridors": {}}))
+    assert main(["report", str(run_dir)]) == 0
+    appended = json.loads(capsys.readouterr().out)
+    assert appended["compression_comparison"]["model_id"] == "SYNTHETIC"

@@ -1,0 +1,40 @@
+{
+  "baseline_commit": "03e5a2fbac05e591c456ee088e5e4b2d6bcac590",
+  "baseline_tree": "79f2ac8c5cf11392fc284e6220a65860840ba598",
+  "cases": {
+    "BPA10056814": {
+      "ac_only_readiness": "PASS",
+      "adapter_projection": "PASS",
+      "audit": {
+        "adapter_duplicate_corridor_count": 0,
+        "double_circuit_corridor_count": 191,
+        "l_plus_false_parallel_count": 0,
+        "parallel_corridor_count": 194,
+        "parallel_only_cycle_count": 91,
+        "three_or_more_corridor_count": 3,
+        "unresolved_corridor_count": 0
+      },
+      "blank_l_circuit_id_count": 183,
+      "dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "failure": "SOURCE_PROFILE_CIRCUIT_ID_REQUIRED_BUT_BLANK",
+      "scenarios": {
+        "BASE": "FAILED_BEFORE_PIPELINE",
+        "LOW_115": "NOT_RUN",
+        "LT110": "NOT_RUN"
+      },
+      "source_bus_count": 1527,
+      "source_line_count": 639,
+      "source_transformer2w_count": 96,
+      "source_transformer3w_group_count": 416,
+      "source_transformer3w_leg_count": 1248
+    },
+    "BPA10056819": {
+      "scenarios": {
+        "BASE": "NOT_RUN",
+        "LOW_VOLTAGE": "NOT_RUN"
+      }
+    }
+  },
+  "final_structural_status": null,
+  "physical_fidelity_status": "PHYSICAL_FIDELITY_NOT_YET_EVALUATED"
+}
