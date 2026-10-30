@@ -325,6 +325,8 @@ def build_pipeline_comparison(
         "line_semantic_hash_failure_count", "l_plus_association_count",
         "l_plus_shunt_preserved_count", "l_plus_association_pass_count",
         "l_plus_association_failure_count",
+        "l_plus_finite_source_count", "l_plus_blank_source_count",
+        "l_plus_parse_mismatch_count", "l_plus_malformed_count",
     )
     parallel = {field: getattr(opportunity, field) for field in parallel_fields}
     runtime: dict[str, float | int | str] = {

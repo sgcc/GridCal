@@ -25,14 +25,16 @@ class _SourceCase(Protocol):
     ac_lines: Mapping[str, _SourceLine]
 
 
-def _reactor(value: object) -> float:
-    """Preserve one finite source-card value without electrical conversion."""
+def _reactor(value: object) -> tuple[float | None, Literal["finite", "blank"]]:
+    """Preserve finite source values and explicit blank fields distinctly."""
+    if value is None:
+        return None, "blank"
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise BackendCapabilityError("L+ source reactor value is not numeric")
     result = float(value)
     if not isfinite(result):
         raise BackendCapabilityError("L+ source reactor value is nonfinite")
-    return result
+    return result, "finite"
 
 
 def build_bpa_source_ledger(
@@ -88,15 +90,27 @@ def build_bpa_source_ledger(
         for side, bus_column, attribute in (
                 ("FROM", "bus0", "from_reactor_mvar"),
                 ("TO", "bus1", "to_reactor_mvar")):
+            raw_field = (plus[1].ljust(48)[33:38] if side == "FROM" else
+                         plus[1].ljust(48)[43:48])
+            try:
+                raw_text = raw_field.decode("ascii", errors="strict").strip()
+                raw_value = (None if not raw_text else float(
+                    raw_text.replace("D", "E").replace("d", "e")))
+            except (UnicodeError, ValueError) as exc:
+                raise BackendCapabilityError("Malformed L+ source terminal field") from exc
             shunt_name = f"{line_id.source_key}:L+:{side}"
             try:
                 shunt_id = sidecar.source_id("ShuntImpedance", shunt_name)
             except IdentityError as exc:
                 raise BackendCapabilityError("Derived L+ Shunt is absent") from exc
+            reactor, state = _reactor(source.attributes[attribute])
+            if (raw_value is None) != (state == "blank") or (
+                    raw_value is not None and raw_value != reactor):
+                raise BackendCapabilityError("L+ raw and PSDCase terminal values differ")
             associations.append(LPlusAssociation(
                 line_id, f"L+:{plus[0]}", side,
                 sidecar.source_id("Bus", str(row[bus_column])), shunt_id,
-                _reactor(source.attributes[attribute])))
+                reactor, state))
     if matched != set(plus_by_key):
         raise BackendCapabilityError("Unbound L+ source card remains")
     ledger = ParallelSourceLedger(profile, tuple(lines), tuple(associations))

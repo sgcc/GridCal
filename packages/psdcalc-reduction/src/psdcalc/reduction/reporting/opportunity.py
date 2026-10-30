@@ -68,6 +68,10 @@ class CompressionOpportunityReport:
     l_plus_shunt_preserved_count: int = 0
     l_plus_association_pass_count: int = 0
     l_plus_association_failure_count: int = 0
+    l_plus_finite_source_count: int = 0
+    l_plus_blank_source_count: int = 0
+    l_plus_parse_mismatch_count: int = 0
+    l_plus_malformed_count: int = 0
 
 
 def build_compression_opportunity_report(
@@ -304,4 +308,10 @@ def build_compression_opportunity_report(
             if source_ledger is not None and quotient_mappings is not None else 0),
         l_plus_association_pass_count=lplus_passes,
         l_plus_association_failure_count=lplus_count - lplus_passes,
+        l_plus_finite_source_count=sum(
+            item.source_value_state == "finite" for item in source_ledger.l_plus
+        ) if source_ledger is not None else 0,
+        l_plus_blank_source_count=sum(
+            item.source_value_state == "blank" for item in source_ledger.l_plus
+        ) if source_ledger is not None else 0,
     )

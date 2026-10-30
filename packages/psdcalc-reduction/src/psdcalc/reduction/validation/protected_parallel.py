@@ -209,6 +209,7 @@ class ProtectedParallelStructuralValidator:
             "l_plus_association_coverage",
             "l_plus_terminal_owner_consistency",
             "l_plus_semantic_round_trip",
+            "l_plus_source_value_state_consistency",
             "parallel_evidence_round_trip",
         )}
         details: dict[str, str] = {}
@@ -381,7 +382,14 @@ class ProtectedParallelStructuralValidator:
             if persisted_ledger is not None and persisted_ledger != source_ledger:
                 fail("parallel_evidence_round_trip",
                      "Reloaded source profile/circuit/L+ ledger changed")
+                fail("l_plus_source_value_state_consistency",
+                     "Reloaded L+ source value state or value changed")
             association_ledger = persisted_ledger or source_ledger
+            if any((item.source_value_state == "blank") !=
+                   (item.source_reactor_value is None)
+                   for item in association_ledger.l_plus):
+                fail("l_plus_source_value_state_consistency",
+                     "L+ source value state contradicts source value")
             cards: set[tuple[str, str]] = set()
             card_owners: dict[str, StableId] = {}
             base_sides: set[tuple[StableId, str]] = set()
