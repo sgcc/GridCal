@@ -28,12 +28,21 @@
       "l_plus_byte_audit_sha256": "0d74c089f6d11650a4c4fd2bfe08e9948e81038c4215089afcad2672491a25a0",
       "l1_bus_count": 1392,
       "l1_line_count": 504,
+      "l0_to_l1_preserved_line_count": 504,
+      "l0_to_l1_absorbed_internal_count": 135,
+      "l0_to_l1_aggregated_count": 0,
+      "l1_derived_line_count": 0,
+      "protected_l0_line_count": 189,
+      "protected_l1_preserved_count": 189,
+      "protected_l1_lost_count": 0,
+      "accepted_final_bus_count": 1392,
+      "accepted_bus_compression_fraction": 0.08840864440078586,
       "source_ledger_line_count": 639,
       "source_ledger_l_plus_terminal_count": 18,
       "dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
-      "failure": "L1_SOURCE_LEDGER_REFERENCES_ABSORBED_LINE",
+      "failure": null,
       "scenarios": {
-        "BASE": "FAILED_AT_L1_PROVENANCE_CHECK",
+        "BASE": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
         "LOW_115": "NOT_RUN",
         "LT110": "NOT_RUN"
       },
@@ -50,6 +59,6 @@
       }
     }
   },
-  "final_structural_status": null,
+  "final_structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
   "physical_fidelity_status": "PHYSICAL_FIDELITY_NOT_YET_EVALUATED"
 }

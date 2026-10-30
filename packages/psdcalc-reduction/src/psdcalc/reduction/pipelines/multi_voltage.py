@@ -26,6 +26,7 @@ from psdcalc.reduction.exceptions import (
     BackendCapabilityError, ConfigSemanticError, MappingError, SignatureError,
 )
 from psdcalc.reduction.mapping.bundle import MappingBundle
+from psdcalc.reduction.mapping.rows import MapEntry
 from psdcalc.reduction.metrics.stage_inventory import (
     CompressionStage, StageInventory, pypsa_stage_inventory,
 )
@@ -43,6 +44,9 @@ from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
 from psdcalc.reduction.topology.parallel_corridors import ParallelCorridorAnalyzer
 from psdcalc.reduction.topology.parallel_provenance import (
     ParallelSourceLedger, SourceProfileContract,
+)
+from psdcalc.reduction.topology.parallel_projection import (
+    project_parallel_source_ledger, reject_derived_protected_lines,
 )
 from psdcalc.reduction.topology.voltage_layers import VoltageLayerClassifier
 from psdcalc.reduction.protection.engine import ProtectionSet
@@ -176,7 +180,9 @@ class MultiVoltageQuotientPipeline:
                 protection = ProtectionSet(
                     protection.traced,
                     protection.preserved_components | frozenset(
-                        item.shunt_id for item in source_ledger.l_plus),
+                        item.shunt_id for item in source_ledger.l_plus) |
+                    initial_parallel.protected_lines | frozenset(
+                        item.base_line_id for item in source_ledger.l_plus),
                     protection.terminal_buses,
                     protection.singleton_buses | initial_parallel.mandatory_singletons,
                     protection.cannot_link,
@@ -192,6 +198,11 @@ class MultiVoltageQuotientPipeline:
                                    "psdcalc-reduction": __version__},
             )
             _write_sidecar(store, "input/source_ids.json", source_sidecar, "source_ids")
+            if policy == "preserve_protected_members":
+                source_dir = store.path("input/source_provenance")
+                for path in source_ledger.save_parquet(source_dir):
+                    store.record_artifact("l0_" + path.stem,
+                        str(path.relative_to(store.run_dir)))
             if config.output.save_original_snapshot:
                 adapter.export(adapter.clone(original_network),
                                store.path("input/original.nc"), "netcdf")
@@ -239,14 +250,40 @@ class MultiVoltageQuotientPipeline:
             if loaded_parent.to_rows() != parent_sidecar.to_rows():
                 raise SignatureError("Simplified identity sidecar failed readback")
             if policy == "preserve_protected_members":
-                source_ledger.validate(
-                    topology.network, loaded_parent,
-                    voltage_aliases=config.voltage_layers.aliases)
+                projected = None
+                if source_ledger.profile.name in {"BPA10056814", "BPA10056819"}:
+                    projected = project_parallel_source_ledger(
+                        source_ledger, topology.mappings, original_network,
+                        source_sidecar, topology.network, loaded_parent,
+                        protected_lines=initial_parallel.protected_lines)
+                    l1_dir = store.path("input/l1_provenance")
+                    for path in projected.ledger.save_parquet(l1_dir):
+                        store.record_artifact("l1_" + path.stem,
+                            str(path.relative_to(store.run_dir)))
+                    lineage_path = l1_dir / "topology_lineage.parquet"
+                    pq.write_table(pa.Table.from_pylist(
+                        [row.to_row() for row in projected.lineage]), lineage_path)
+                    if tuple(MapEntry.from_row(row) for row in
+                             pq.read_table(lineage_path).to_pylist()) != projected.lineage:
+                        raise MappingError("L1 topology lineage changed on Parquet readback")
+                    store.record_artifact("l1_topology_lineage",
+                        "input/l1_provenance/topology_lineage.parquet")
+                    store.write_json("input/l1_provenance/projection_summary.json",
+                                     projected.summary)
+                    store.record_artifact("l1_projection_summary",
+                        "input/l1_provenance/projection_summary.json")
+                    source_ledger = projected.ledger
+                else:
+                    source_ledger.validate(topology.network, loaded_parent,
+                                           voltage_aliases=config.voltage_layers.aliases)
                 parent_parallel = ParallelCorridorAnalyzer().analyze(
                     topology.network, loaded_parent, protection,
                     voltage_aliases=config.voltage_layers.aliases,
                     lplus_base_lines=frozenset(
                         item.base_line_id for item in source_ledger.l_plus))
+                if projected is not None:
+                    reject_derived_protected_lines(
+                        projected, parent_parallel.protected_lines)
                 protection = ProtectionSet(
                     protection.traced, protection.preserved_components,
                     protection.terminal_buses,

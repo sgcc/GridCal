@@ -80,6 +80,7 @@ class ParallelSourceLedger:
     profile: SourceProfileContract
     lines: tuple[LineCircuitProvenance, ...] = ()
     l_plus: tuple[LPlusAssociation, ...] = ()
+    coverage_scope: Literal["complete_source", "preserved_subset"] = "complete_source"
 
     def validate(self, network: pypsa.Network,
                  sidecar: IdentitySidecar, *,
@@ -136,7 +137,10 @@ class ParallelSourceLedger:
                     circuits.add(key)
             elif item.circuit_id is not None:
                 raise IdentityError("Circuit ID contradicts unavailable source profile")
-        if self.profile.circuit_ids == "required" and line_ids != source_lines:
+        if self.coverage_scope not in {"complete_source", "preserved_subset"}:
+            raise IdentityError("Unknown source ledger coverage scope")
+        if (self.profile.circuit_ids == "required" and
+                self.coverage_scope == "complete_source" and line_ids != source_lines):
             raise IdentityError("Required circuit ledger does not cover every Line")
 
         card_owners: dict[str, StableId] = {}
@@ -190,6 +194,7 @@ class ParallelSourceLedger:
         profile_path.write_text(json.dumps({
             "name": self.profile.name, "circuit_ids": self.profile.circuit_ids,
             "blank_circuit_ids": self.profile.blank_circuit_ids,
+            "coverage_scope": self.coverage_scope,
         }, sort_keys=True) + "\n", encoding="utf-8")
         line_schema = pa.schema([
             ("line_id", pa.string()), ("source_card_identity", pa.string()),
@@ -238,4 +243,5 @@ class ParallelSourceLedger:
             row.get("source_reactor_value", row.get("signed_reactor_value")),
             row.get("source_value_state", "finite"))
             for row in pq.read_table(directory / "l_plus_associations.parquet").to_pylist())
-        return cls(SourceProfileContract(**profile), lines, l_plus)
+        coverage_scope = profile.pop("coverage_scope", "complete_source")
+        return cls(SourceProfileContract(**profile), lines, l_plus, coverage_scope)
