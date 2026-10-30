@@ -18,5 +18,6 @@ partition:
   connectivity_policy: reject
 aggregation:
   backend: pypsa
+  parallel_corridors: {policy: aggregate_corridor}
   invariants:
     - {component: Load, attribute: p_set, strategy: sum, dynamic: true, scope: source_connected_component}

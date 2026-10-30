@@ -12,10 +12,15 @@ from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.parallel_corridors import ProtectedParallelPlan
+from psdcalc.reduction.topology.parallel_provenance import ParallelSourceLedger
 from psdcalc.reduction.exceptions import IdentityError, MappingError
 from psdcalc.reduction.validation.multi_voltage import AggregationInvariantSpec
 
 from psdcalc.reduction.validation.multi_voltage import MultiVoltageStructuralValidator
+from psdcalc.reduction.validation.protected_parallel import (
+    ProtectedParallelStructuralValidator,
+)
 
 
 @dataclass(frozen=True)
@@ -25,6 +30,7 @@ class MultiVoltageStructuralResult:
     status: Literal['MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID', 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID']
     checks: Mapping[str, bool]
     details: Mapping[str, str]
+    parallel_corridor_policy: str = "aggregate_corridor"
 
 
 def _value(value: object) -> object:
@@ -163,7 +169,13 @@ class MultiVoltageFinalValidator:
                  original_network: pypsa.Network, original_sidecar: IdentitySidecar,
                  composed_mappings: MappingBundle,
                  original_input_signature: str,
-                 built_network: pypsa.Network | None = None
+                 built_network: pypsa.Network | None = None,
+                 parallel_plan: ProtectedParallelPlan | None = None,
+                 source_ledger: ParallelSourceLedger | None = None,
+                 persisted_ledger: ParallelSourceLedger | None = None,
+                 parallel_mapping_round_trip: bool = True,
+                 parallel_sidecar_round_trip: bool = True,
+                 parallel_corridor_policy: str = "aggregate_corridor",
                  ) -> MultiVoltageStructuralResult:
         """Validate reloaded structure; propagate unsupported configuration errors."""
         checks = {}
@@ -172,12 +184,30 @@ class MultiVoltageFinalValidator:
             preliminary = MultiVoltageStructuralValidator().precheck(
                 parent_network, quotient_network, parent_sidecar, target_sidecar,
                 mappings, invariants, protection,
-                voltage_layer_map=voltage_layer_map)
+                voltage_layer_map=voltage_layer_map,
+                allowed_line_dynamic_names=frozenset(
+                    parent_sidecar.backend_name(line_id)
+                    for line_id in parallel_plan.protected_lines)
+                if parallel_plan is not None else frozenset())
             checks.update(preliminary.checks)
             details.update(preliminary.details)
         except (IdentityError, MappingError, KeyError) as exc:
             checks['reloaded_precheck'] = False
             details['reloaded_precheck'] = f'{type(exc).__name__}: {exc}'
+        if parallel_plan is not None:
+            busmap = {row.source_id: row.target_id
+                      for row in mappings.bus_map if row.target_id is not None}
+            parallel_checks, parallel_details = (
+                ProtectedParallelStructuralValidator().check(
+                    parent_network, quotient_network, parent_sidecar,
+                    target_sidecar, mappings, parallel_plan, busmap,
+                    source_ledger=source_ledger,
+                    persisted_ledger=persisted_ledger,
+                    protection=protection,
+                    mapping_round_trip=parallel_mapping_round_trip,
+                    sidecar_round_trip=parallel_sidecar_round_trip))
+            checks.update(parallel_checks)
+            details.update(parallel_details)
         checks['input_semantic_immutability'] = (
             network_semantic_signature(original_network) == original_input_signature)
         if built_network is not None:
@@ -246,4 +276,4 @@ class MultiVoltageFinalValidator:
             details['original_mapping_coverage'] = f'{type(exc).__name__}: {exc}'
         return MultiVoltageStructuralResult(
             'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID' if all(checks.values()) else 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID',
-            checks, details)
+            checks, details, parallel_corridor_policy)

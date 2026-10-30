@@ -36,6 +36,7 @@ class PreliminaryStructuralEvidence:
     finalized: Literal[False]
     checks: Mapping[str, bool]
     details: Mapping[str, str]
+    parallel_corridor_policy: str = "aggregate_corridor"
 
 
 @dataclass(frozen=True)
@@ -252,11 +253,14 @@ class MultiVoltageStructuralValidator:
     def validate_supported_dynamic(
         self, network: pypsa.Network,
         invariants: tuple[AggregationInvariantSpec, ...] = (),
+        *, allowed_line_dynamic_names: frozenset[str] = frozenset(),
     ) -> None:
         """Reject unsupported populated input time series before construction."""
         if invariants:
             self._validate_explicit_specs(network, invariants)
-        self._reject_unknown_dynamic(network, invariants or _DEFAULT_INVARIANTS)
+        self._reject_unknown_dynamic(
+            network, invariants or _DEFAULT_INVARIANTS,
+            allowed_line_dynamic_names)
 
     def precheck(self, parent_network: pypsa.Network,
                  quotient_network: pypsa.Network,
@@ -267,12 +271,14 @@ class MultiVoltageStructuralValidator:
                  protection: ProtectionSet,
                  *,
                  voltage_layer_map: Mapping[StableId, tuple[float, float]],
+                 allowed_line_dynamic_names: frozenset[str] = frozenset(),
                  ) -> PreliminaryStructuralEvidence:
         """Return only in-memory evidence or raise a typed error."""
         specs = invariants or _DEFAULT_INVARIANTS
         if invariants:
             self._validate_explicit_specs(parent_network, invariants)
-        self._reject_unknown_dynamic(parent_network, specs)
+        self._reject_unknown_dynamic(
+            parent_network, specs, allowed_line_dynamic_names)
         checks: dict[str, bool] = {}
         details: dict[str, str] = {}
         source_components = {
@@ -559,7 +565,9 @@ class MultiVoltageStructuralValidator:
 
     @staticmethod
     def _reject_unknown_dynamic(network: pypsa.Network,
-                                specs: tuple[AggregationInvariantSpec, ...]) -> None:
+                                specs: tuple[AggregationInvariantSpec, ...],
+                                allowed_line_dynamic_names: frozenset[str] = frozenset()
+                                ) -> None:
         """Fail populated unrecognized or unspecified dynamic input tables."""
         spec_keys = {(spec.component, spec.attribute) for spec in specs
                      if spec.dynamic}
@@ -575,6 +583,10 @@ class MultiVoltageStructuralValidator:
                         f"Unknown or unsupported dynamic attribute: "
                         f"{component.name}.{attribute}"
                     )
+                if (component.name == "Line" and
+                        set(map(str, frame.columns)) <=
+                        allowed_line_dynamic_names):
+                    continue
                 if component.name != "Transformer" and (
                         component.name, attribute) not in spec_keys:
                     raise BackendCapabilityError(

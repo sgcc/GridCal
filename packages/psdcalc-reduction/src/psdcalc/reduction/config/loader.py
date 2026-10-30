@@ -43,6 +43,9 @@ def _source_mapping(source: Mapping[str, Any] | str | Path) -> dict[str, Any]:
 
 def _gate_features(config: ReductionConfig) -> None:
     """Reject enabled later-stage capabilities without swallowing failures."""
+    if config.aggregation.parallel_corridors.policy == "preserve_all_members":
+        raise UnsupportedFeatureError(
+            "aggregation.parallel_corridors.policy=preserve_all_members is not implemented")
     if config.pipeline.materialization_family not in {"aggregation", "simplification", "multi_voltage_quotient"}:
         raise UnsupportedFeatureError("pipeline.materialization_family is not implemented")
     if config.pipeline.materialize_from != "original":

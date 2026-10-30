@@ -33,7 +33,12 @@ from psdcalc.reduction.reporting.opportunity import (
     CompressionOpportunityReport, build_compression_opportunity_report,
 )
 from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
+from psdcalc.reduction.topology.parallel_corridors import ParallelCorridorAnalyzer
+from psdcalc.reduction.topology.parallel_provenance import (
+    ParallelSourceLedger, SourceProfileContract,
+)
 from psdcalc.reduction.topology.voltage_layers import VoltageLayerClassifier
+from psdcalc.reduction.protection.engine import ProtectionSet
 from psdcalc.reduction.validation.multi_voltage import AggregationInvariantSpec
 from psdcalc.reduction.validation.multi_voltage_final import (
     MultiVoltageFinalValidator, MultiVoltageStructuralResult,
@@ -94,10 +99,12 @@ class MultiVoltageQuotientPipeline:
     """Close topology, energy planning, quotient, persistence, and final Gate."""
 
     def __init__(self, adapter: PypsaAdapter | None = None,
-                 protection_base_dir: Path | None = None) -> None:
-        """Accept an adapter and base directory for relative protection files."""
+                 protection_base_dir: Path | None = None,
+                 source_ledger: ParallelSourceLedger | None = None) -> None:
+        """Accept an adapter, protection base directory, and external ledger."""
         self._adapter = adapter or PypsaAdapter()
         self._protection_base_dir = protection_base_dir
+        self._source_ledger = source_ledger
 
     def run(
         self, *, original_network: pypsa.Network,
@@ -143,11 +150,33 @@ class MultiVoltageQuotientPipeline:
                 config.protection.rules, profile=config.task.profile,
                 base_dir=self._protection_base_dir or source_path.parent,
             )
+            baseline_protection = protection
+            policy = config.aggregation.parallel_corridors.policy
+            source_ledger = self._source_ledger or ParallelSourceLedger(
+                SourceProfileContract("programmatic_pypsa", "unavailable"))
+            if policy == "preserve_protected_members":
+                source_ledger.validate(
+                    original_network, source_sidecar,
+                    voltage_aliases=config.voltage_layers.aliases)
+                initial_parallel = ParallelCorridorAnalyzer().analyze(
+                    original_network, source_sidecar, protection,
+                    voltage_aliases=config.voltage_layers.aliases,
+                    lplus_base_lines=frozenset(
+                        item.base_line_id for item in source_ledger.l_plus))
+                protection = ProtectionSet(
+                    protection.traced,
+                    protection.preserved_components | frozenset(
+                        item.shunt_id for item in source_ledger.l_plus),
+                    protection.terminal_buses,
+                    protection.singleton_buses | initial_parallel.mandatory_singletons,
+                    protection.cannot_link,
+                )
             store.set_metadata(
                 input_hash=input_hash,
                 topology_signature=adapter.topology_signature(
                     original_network, source_sidecar),
                 seed=config.run.seed,
+                parallel_corridor_policy=policy,
                 software_versions={"python": sys.version.split()[0],
                                    "pypsa": pypsa.__version__,
                                    "psdcalc-reduction": __version__},
@@ -187,6 +216,21 @@ class MultiVoltageQuotientPipeline:
                 store.path("input/simplified_ids.json").read_text(encoding="utf-8")))
             if loaded_parent.to_rows() != parent_sidecar.to_rows():
                 raise SignatureError("Simplified identity sidecar failed readback")
+            if policy == "preserve_protected_members":
+                source_ledger.validate(
+                    topology.network, loaded_parent,
+                    voltage_aliases=config.voltage_layers.aliases)
+                parent_parallel = ParallelCorridorAnalyzer().analyze(
+                    topology.network, loaded_parent, protection,
+                    voltage_aliases=config.voltage_layers.aliases,
+                    lplus_base_lines=frozenset(
+                        item.base_line_id for item in source_ledger.l_plus))
+                protection = ProtectionSet(
+                    protection.traced, protection.preserved_components,
+                    protection.terminal_buses,
+                    protection.singleton_buses | parent_parallel.mandatory_singletons,
+                    protection.cannot_link,
+                )
 
             target = config.partition.target
             plan = VoltageLayerEnergyPlanner().plan(
@@ -214,10 +258,19 @@ class MultiVoltageQuotientPipeline:
             built = MultiVoltageQuotientBuilder().build(
                 topology.network, loaded_parent, plan, config.aggregation,
                 protection, config.voltage_layers.aliases, invariants,
+                source_ledger=source_ledger,
             )
+            persisted_ledger = None
+            if policy == "preserve_protected_members":
+                ledger_dir = store.path("input/parallel_provenance")
+                for path in source_ledger.save_parquet(ledger_dir):
+                    store.record_artifact(
+                        path.stem, str(path.relative_to(store.run_dir)))
+                persisted_ledger = ParallelSourceLedger.load_parquet(ledger_dir)
             store.write_json("validation/preliminary.json", {
                 "stage": built.preliminary.stage,
                 "finalized": built.preliminary.finalized,
+                "parallel_corridor_policy": built.preliminary.parallel_corridor_policy,
                 "checks": dict(built.preliminary.checks),
                 "details": dict(built.preliminary.details),
             })
@@ -234,7 +287,10 @@ class MultiVoltageQuotientPipeline:
                 store.path("maps/quotient"),
                 expected_files=(Path(path).stem for path in quotient_files),
             )
-            if persisted_quotient.canonical_rows() != built.mappings.canonical_rows():
+            quotient_maps_match = (
+                persisted_quotient.canonical_rows() ==
+                built.mappings.canonical_rows())
+            if not quotient_maps_match and policy != "preserve_protected_members":
                 raise MappingError("Quotient mapping changed during Parquet readback")
             composed = MappingBundle(
                 compose_maps(topology.mappings.bus_map, built.mappings.bus_map),
@@ -247,7 +303,9 @@ class MultiVoltageQuotientPipeline:
                 store.path("maps"),
                 expected_files=(Path(path).stem for path in map_files),
             )
-            if persisted_composed.canonical_rows() != composed.canonical_rows():
+            composed_maps_match = (
+                persisted_composed.canonical_rows() == composed.canonical_rows())
+            if not composed_maps_match and policy != "preserve_protected_members":
                 raise MappingError("Composed mapping changed during Parquet readback")
             final_path = store.path("levels/L2.nc")
             adapter.export(built.network, final_path, "netcdf")
@@ -258,7 +316,9 @@ class MultiVoltageQuotientPipeline:
             reloaded = adapter.load(final_path, "netcdf")
             target_sidecar = IdentitySidecar.from_rows(json.loads(
                 final_sidecar_path.read_text(encoding="utf-8")))
-            if target_sidecar.to_rows() != built.target_sidecar.to_rows():
+            sidecar_match = (
+                target_sidecar.to_rows() == built.target_sidecar.to_rows())
+            if not sidecar_match and policy != "preserve_protected_members":
                 raise SignatureError("Target identity sidecar changed during readback")
             if hash_path(source_path) != input_hash:
                 raise SignatureError("Original input SHA changed during pipeline")
@@ -271,10 +331,18 @@ class MultiVoltageQuotientPipeline:
                 composed_mappings=persisted_composed,
                 original_input_signature=source_semantics,
                 built_network=built.network,
+                parallel_plan=built.parallel_plan,
+                source_ledger=built.source_ledger,
+                persisted_ledger=persisted_ledger,
+                parallel_mapping_round_trip=(quotient_maps_match and
+                                             composed_maps_match),
+                parallel_sidecar_round_trip=sidecar_match,
+                parallel_corridor_policy=policy,
             )
             store.write_json("validation/multi_voltage_structural.json", {
                 "status": structural.status, "checks": dict(structural.checks),
                 "details": dict(structural.details),
+                "parallel_corridor_policy": structural.parallel_corridor_policy,
             })
             store.record_artifact("multi_voltage_structural",
                                   "validation/multi_voltage_structural.json")
@@ -288,11 +356,22 @@ class MultiVoltageQuotientPipeline:
                 key: (requested_by_layer[key], *built.layer_cluster_counts[key])
                 for key in requested_by_layer
             }
+            report_parallel_plan = built.parallel_plan or (
+                ParallelCorridorAnalyzer().analyze(
+                    topology.network, loaded_parent, protection,
+                    voltage_aliases=config.voltage_layers.aliases))
             opportunity = build_compression_opportunity_report(
                 original_network, source_sidecar, topology, reloaded,
                 persisted_composed, protection,
                 layer_counts=layer_counts,
                 voltage_aliases=config.voltage_layers.aliases,
+                parallel_plan=report_parallel_plan,
+                source_ledger=built.source_ledger,
+                quotient_mappings=persisted_quotient,
+                final_structural_status=structural.status,
+                baseline_protection=baseline_protection,
+                parallel_corridor_policy=policy,
+                structural_checks=structural.checks,
             )
             store.write_json("validation/opportunity.json", opportunity.__dict__)
             store.record_artifact("opportunity", "validation/opportunity.json")
@@ -308,6 +387,7 @@ class MultiVoltageQuotientPipeline:
                     "actual_cluster_count": built.actual_cluster_count,
                     "final_structural_status": structural.status,
                     "netcdf_round_trip": True,
+                    "parallel_corridor_policy": policy,
                 },
                 removed_objects=tuple(row.source_id.encode()
                                       for row in persisted_composed.branch_map
