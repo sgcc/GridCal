@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "case_label": "anonymous_beijing_ac_only_case",
+  "evidence_scope": "static_snapshot_ac_pf_fidelity_only",
+  "physical_equivalence_claim": false,
+  "root_cause": "REDUCTION_PARAMETER_EQUIVALENCE_ERROR",
+  "historical_pre_fix": {
+    "target_pf_converged": false,
+    "cut_115_first_failing_stage": "S4 electrical materialization",
+    "cut_115_s1_converged": true,
+    "cut_115_l1_converged": true,
+    "cut_115_s3_additional_bus_contraction": false,
+    "cut_115_active_zero_series_impedance_lines": 2,
+    "restoring_both_reactances_restored_convergence": true
+  },
+  "corrected_implementation": {
+    "one_to_one_lines_retain_effective_source_electrical_semantics": true,
+    "aggregated_corridors_use_parallel_admittance_equivalents": true,
+    "total_shunt_admittance_preserved": true,
+    "unsupported_equivalents_fail_closed": true,
+    "ac_readiness_independently_rejects_invalid_materialized_lines": true
+  },
+  "threshold_provenance": {
+    "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+    "threshold_digest": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "frozen_before_real_case": true,
+    "classification": "preregistered_project_experiment_thresholds_not_ieee_or_national_standard_limits",
+    "changed_after_viewing_case_results": false
+  },
+  "source_inventory": {
+    "bus_count": 1527,
+    "line_count": 639
+  },
+  "policies": [
+    {
+      "policy": "BASE",
+      "s4_bus_count": 1392,
+      "s4_line_count": 399,
+      "bus_compression_fraction": 0.08840864440078586,
+      "line_compression_fraction": 0.3755868544600939,
+      "s4_pf_converged": true,
+      "vm_rmse_pu": 0.00005378045940839738,
+      "vm_max_pu": 0.00019638027093504817,
+      "cutset_p_max_mw": 7.347785465051743,
+      "cutset_q_max_mvar": 1.1963330127292693,
+      "loss_relative_error": 0.00011097440734940648,
+      "post_fix_s4_pf_runtime_seconds_diagnostic_only": 0.36325083393603563,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    },
+    {
+      "policy": "CUT_330",
+      "s4_bus_count": 1392,
+      "s4_line_count": 399,
+      "bus_compression_fraction": 0.08840864440078586,
+      "line_compression_fraction": 0.3755868544600939,
+      "s4_pf_converged": true,
+      "vm_rmse_pu": 0.000053780459403704873,
+      "vm_max_pu": 0.0001963802709357143,
+      "cutset_p_max_mw": 7.347785465051743,
+      "cutset_q_max_mvar": 1.1963330126860683,
+      "loss_relative_error": 0.00011097440752881107,
+      "post_fix_s4_pf_runtime_seconds_diagnostic_only": 0.3478596662171185,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    },
+    {
+      "policy": "CUT_230",
+      "s4_bus_count": 1395,
+      "s4_line_count": 507,
+      "bus_compression_fraction": 0.08644400785854617,
+      "line_compression_fraction": 0.20657276995305164,
+      "s4_pf_converged": true,
+      "vm_rmse_pu": 0.00005581910875684765,
+      "vm_max_pu": 0.0002270926943408469,
+      "cutset_p_max_mw": 7.347785465051686,
+      "cutset_q_max_mvar": 1.1963212442419433,
+      "loss_relative_error": 0.00011103421360790007,
+      "post_fix_s4_pf_runtime_seconds_diagnostic_only": 0.35545283276587725,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    },
+    {
+      "policy": "CUT_115",
+      "s4_bus_count": 1525,
+      "s4_line_count": 637,
+      "bus_compression_fraction": 0.0013097576948264572,
+      "line_compression_fraction": 0.003129890453834116,
+      "s4_pf_converged": true,
+      "vm_rmse_pu": 0.000004887905955009205,
+      "vm_max_pu": 0.00003453532406427762,
+      "cutset_p_max_mw": 7.347785465051686,
+      "cutset_q_max_mvar": 0.8391246221334967,
+      "loss_relative_error": 0.0000810517697481874,
+      "post_fix_s4_pf_runtime_seconds_diagnostic_only": 0.4019273752346635,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    },
+    {
+      "policy": "CUT_110",
+      "s4_bus_count": 1525,
+      "s4_line_count": 637,
+      "bus_compression_fraction": 0.0013097576948264572,
+      "line_compression_fraction": 0.003129890453834116,
+      "s4_pf_converged": true,
+      "vm_rmse_pu": 0.000004887905955009205,
+      "vm_max_pu": 0.00003453532406427762,
+      "cutset_p_max_mw": 7.347785465051686,
+      "cutset_q_max_mvar": 0.8391246221334967,
+      "loss_relative_error": 0.0000810517697481874,
+      "post_fix_s4_pf_runtime_seconds_diagnostic_only": 0.39898416586220264,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    },
+    {
+      "policy": "CUT_37",
+      "s4_bus_count": 1525,
+      "s4_line_count": 637,
+      "bus_compression_fraction": 0.0013097576948264572,
+      "line_compression_fraction": 0.003129890453834116,
+      "s4_pf_converged": true,
+      "vm_rmse_pu": 0.000004887905955009205,
+      "vm_max_pu": 0.00003453532406427762,
+      "cutset_p_max_mw": 7.347785465051686,
+      "cutset_q_max_mvar": 0.8391246221334967,
+      "loss_relative_error": 0.0000810517697481874,
+      "post_fix_s4_pf_runtime_seconds_diagnostic_only": 0.38721399987116456,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    },
+    {
+      "policy": "CUT_35",
+      "s4_bus_count": 1525,
+      "s4_line_count": 637,
+      "bus_compression_fraction": 0.0013097576948264572,
+      "line_compression_fraction": 0.003129890453834116,
+      "s4_pf_converged": true,
+      "vm_rmse_pu": 0.000004887905955009205,
+      "vm_max_pu": 0.00003453532406427762,
+      "cutset_p_max_mw": 7.347785465051686,
+      "cutset_q_max_mvar": 0.8391246221334967,
+      "loss_relative_error": 0.0000810517697481874,
+      "post_fix_s4_pf_runtime_seconds_diagnostic_only": 0.38446758408099413,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    }
+  ],
+  "equivalent_cutoff_pairs": [
+    {
+      "policies": ["CUT_115", "CUT_110"],
+      "target_model_digest_equal": true,
+      "mapping_digest_equal": true,
+      "convergence_and_fidelity_equal": true
+    },
+    {
+      "policies": ["CUT_37", "CUT_35"],
+      "target_model_digest_equal": true,
+      "mapping_digest_equal": true,
+      "convergence_and_fidelity_equal": true
+    }
+  ],
+  "package_gate": {
+    "package_version": "0.5.0",
+    "package_metadata_commit": "944adb982a7447d3f718f37ba1547215cea666e5",
+    "full_offline_tests": {"passed": 417, "failed": 0, "warnings": 15992, "runtime_seconds": 63.71},
+    "fresh_wheel_only_install": true,
+    "installed_python": "3.13.9",
+    "installed_pypsa": "1.2.4",
+    "installed_wheel_pf_replay_tests": {"passed": 34, "failed": 0, "warnings": 48, "runtime_seconds": 24.13},
+    "uv_lock_check_offline": "PASS",
+    "compileall": "PASS",
+    "git_diff_check": "PASS",
+    "sdist": {
+      "filename": "psdcalc_reduction-0.5.0.tar.gz",
+      "sha256": "67fc522c062867f2989c438635b5aaf6e313ec1c413d7376364baa3fe1e48c7b",
+      "archive_member_count": 130
+    },
+    "wheel": {
+      "filename": "psdcalc_reduction-0.5.0-py3-none-any.whl",
+      "sha256": "055d9ef31dc4fdfdee292dc39181a0010a54f3dd28627ee05cca1afc0fbd9404",
+      "archive_member_count": 93
+    },
+    "dependency_versions_changed": false
+  },
+  "implementation": {
+    "tested_implementation_commit": "e32661df07fbb5e00f1009d4f46daa3fb921e0e6",
+    "tested_implementation_tree": "75c4e37bdd6dcc40e66b85986cd2cfe487250357",
+    "physical_equivalence_claim": false
+  }
+}
