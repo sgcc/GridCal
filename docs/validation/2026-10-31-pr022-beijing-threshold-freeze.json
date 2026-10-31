@@ -1,0 +1,13 @@
+{
+  "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+  "threshold_version": 1,
+  "threshold_set_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+  "frozen_commit": "2bccf8d594777e6c202fea04fd94a9f54a5b777d",
+  "frozen_tree": "33c436bac56569e6df41a79c642ea53e5e3f27f7",
+  "implementation_commit": "4fb0c846eebf297685133529af060264e107bd60",
+  "implementation_tree": "9cfbb09cd04c5592e516ed77014f92c72959456a",
+  "frozen_before_real_case": true,
+  "status": "FROZEN_BEFORE_REAL_CASE",
+  "pre_registration_date": "2026-10-31",
+  "rationale": "This freeze record binds the project-specific thresholds and formula definitions to the exact implementation and threshold commits before any Beijing PF result was read. Values are project acceptance limits, not IEEE or industry standards."
+}
