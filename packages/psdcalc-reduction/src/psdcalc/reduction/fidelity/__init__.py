@@ -27,6 +27,27 @@ from psdcalc.reduction.fidelity.mapping import (
     aggregate_corridor_flows,
     derive_pf_comparison_mapping,
 )
+from psdcalc.reduction.fidelity.metrics import (
+    MetricError,
+    PowerFlowComparison,
+    align_component_angles,
+    compare_power_flow_results,
+    evaluate_metric_thresholds,
+    metric_policy_digest,
+    operating_point_digest,
+    relative_error,
+    summarize_errors,
+    thresholds_digest,
+    wrap_deg,
+)
+from psdcalc.reduction.fidelity.pypsa_executor import (
+    PowerFlowExecutionError,
+    PowerFlowExecutionResult,
+    PowerFlowExecutionStatus,
+    PowerFlowSubnetworkStatus,
+    PypsaAcPowerFlowExecutor,
+    structural_input_signature,
+)
 
 __all__ = [
     "PF_FIDELITY_SOURCE_STAGE",
@@ -52,4 +73,21 @@ __all__ = [
     "PfMappingError",
     "aggregate_corridor_flows",
     "derive_pf_comparison_mapping",
+    "MetricError",
+    "PowerFlowComparison",
+    "align_component_angles",
+    "compare_power_flow_results",
+    "evaluate_metric_thresholds",
+    "metric_policy_digest",
+    "operating_point_digest",
+    "relative_error",
+    "summarize_errors",
+    "thresholds_digest",
+    "wrap_deg",
+    "PowerFlowExecutionError",
+    "PowerFlowExecutionResult",
+    "PowerFlowExecutionStatus",
+    "PowerFlowSubnetworkStatus",
+    "PypsaAcPowerFlowExecutor",
+    "structural_input_signature",
 ]

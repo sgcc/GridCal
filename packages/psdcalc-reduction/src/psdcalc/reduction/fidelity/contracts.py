@@ -168,20 +168,41 @@ class PowerFlowErrorSummary:
     rmse: float | None
     p95_absolute: float | None
     max_absolute: float | None
+    mean_absolute: float | None = None
 
     def __post_init__(self) -> None:
         if (isinstance(self.sample_count, bool) or
                 not isinstance(self.sample_count, int) or self.sample_count < 0):
             raise PowerFlowContractError("sample_count must be a nonnegative integer")
-        values = (self.rmse, self.p95_absolute, self.max_absolute)
+        values = (self.rmse, self.p95_absolute, self.max_absolute, self.mean_absolute)
         if self.sample_count == 0 and any(value is not None for value in values):
             raise PowerFlowContractError("zero-sample metrics must be None")
         if self.sample_count > 0 and any(value is None for value in values):
-            raise PowerFlowContractError("non-empty metric summaries require RMSE, P95, and max")
-        for name in ("rmse", "p95_absolute", "max_absolute"):
+            raise PowerFlowContractError("non-empty summaries require RMSE, P95, max, and mean")
+        for name in ("rmse", "p95_absolute", "max_absolute", "mean_absolute"):
             value = getattr(self, name)
             if value is not None:
                 object.__setattr__(self, name, _finite_number(value, name))
+
+    @property
+    def count(self) -> int:
+        """Return the sample count using the scalar accumulator terminology."""
+        return self.sample_count
+
+    @property
+    def p95_abs(self) -> float | None:
+        """Return the 95th percentile of absolute residuals."""
+        return self.p95_absolute
+
+    @property
+    def max_abs(self) -> float | None:
+        """Return the maximum absolute residual."""
+        return self.max_absolute
+
+    @property
+    def mean_abs(self) -> float | None:
+        """Return the mean absolute residual."""
+        return self.mean_absolute
 
 
 @dataclass(frozen=True)
@@ -226,6 +247,10 @@ class PowerFlowMetricSet:
     cutset_q: PowerFlowErrorSummary
     cluster_injection: PowerFlowInjectionMetrics
     passive_branch_losses: PowerFlowLossMetrics
+    bus_voltage_preserved: PowerFlowErrorSummary | None = None
+    bus_voltage_aggregated: PowerFlowErrorSummary | None = None
+    branch_p1: PowerFlowErrorSummary | None = None
+    branch_q1: PowerFlowErrorSummary | None = None
 
     def __post_init__(self) -> None:
         for name in ("bus_voltage", "angle", "branch_p", "branch_q", "cutset_p", "cutset_q"):
@@ -235,6 +260,10 @@ class PowerFlowMetricSet:
             raise PowerFlowContractError("cluster_injection must be PowerFlowInjectionMetrics")
         if not isinstance(self.passive_branch_losses, PowerFlowLossMetrics):
             raise PowerFlowContractError("passive_branch_losses must be PowerFlowLossMetrics")
+        for name in ("bus_voltage_preserved", "bus_voltage_aggregated", "branch_p1", "branch_q1"):
+            value = getattr(self, name)
+            if value is not None and not isinstance(value, PowerFlowErrorSummary):
+                raise PowerFlowContractError(f"{name} must be PowerFlowErrorSummary or None")
 
 
 @dataclass(frozen=True)
@@ -247,6 +276,9 @@ class PowerFlowCoverage:
     comparable_branch_count: int
     absorbed_internal_branch_count: int
     target_corridor_count: int
+    preserved_bus_count: int = 0
+    aggregated_bus_count: int = 0
+    excluded_object_count: int = 0
 
     def __post_init__(self) -> None:
         for name in self.__dataclass_fields__:
@@ -260,6 +292,8 @@ class PowerFlowCoverage:
             raise PowerFlowContractError("branch coverage counts exceed source_branch_count")
         if self.target_corridor_count > self.comparable_branch_count:
             raise PowerFlowContractError("target_corridor_count exceeds comparable branches")
+        if self.preserved_bus_count + self.aggregated_bus_count > self.mapped_bus_count:
+            raise PowerFlowContractError("Bus comparison counts exceed mapped_bus_count")
 
     @property
     def bus_coverage_fraction(self) -> float | None:
@@ -286,6 +320,8 @@ class PowerFlowFidelityReport:
     structural_report_digest: str
     source_structural_report_digest: str
     mapping_digest: str
+    solver_contract_digest: str
+    metric_policy_digest: str
     s1_model_digest: str
     s4_model_digest: str
     source_stage: str
@@ -295,9 +331,13 @@ class PowerFlowFidelityReport:
     source_pf_status: PfSolveStatus
     target_pf_status: PfSolveStatus
     bus_voltage_metrics: PowerFlowErrorSummary | None
+    bus_voltage_preserved_metrics: PowerFlowErrorSummary | None
+    bus_voltage_aggregated_metrics: PowerFlowErrorSummary | None
     angle_metrics: PowerFlowErrorSummary | None
     branch_p_metrics: PowerFlowErrorSummary | None
     branch_q_metrics: PowerFlowErrorSummary | None
+    branch_p1_metrics: PowerFlowErrorSummary | None
+    branch_q1_metrics: PowerFlowErrorSummary | None
     cutset_p_metrics: PowerFlowErrorSummary | None
     cutset_q_metrics: PowerFlowErrorSummary | None
     injection_metrics: PowerFlowInjectionMetrics | None
@@ -325,7 +365,92 @@ class PowerFlowFidelityReport:
             self.branch_p_metrics, self.branch_q_metrics,
             self.cutset_p_metrics, self.cutset_q_metrics,
             self.injection_metrics, self.loss_metrics,
+            self.bus_voltage_preserved_metrics, self.bus_voltage_aggregated_metrics,
+            self.branch_p1_metrics, self.branch_q1_metrics,
         )
+
+    def to_public_dict(self) -> dict[str, object]:
+        """Serialize aggregate evidence without network names, IDs, or raw arrays."""
+        def summary(value: PowerFlowErrorSummary | None) -> dict[str, object] | None:
+            if value is None:
+                return None
+            return {
+                "count": value.sample_count,
+                "rmse": value.rmse,
+                "p95_abs": value.p95_absolute,
+                "max_abs": value.max_absolute,
+                "mean_abs": value.mean_absolute,
+            }
+
+        coverage = {
+            "source_bus_count": self.coverage.source_bus_count,
+            "mapped_bus_count": self.coverage.mapped_bus_count,
+            "preserved_bus_count": self.coverage.preserved_bus_count,
+            "aggregated_bus_count": self.coverage.aggregated_bus_count,
+            "source_branch_count": self.coverage.source_branch_count,
+            "comparable_branch_count": self.coverage.comparable_branch_count,
+            "absorbed_internal_branch_count": self.coverage.absorbed_internal_branch_count,
+            "target_corridor_count": self.coverage.target_corridor_count,
+            "excluded_object_count": self.coverage.excluded_object_count,
+            "bus_coverage_fraction": self.coverage.bus_coverage_fraction,
+            "branch_coverage_fraction": self.coverage.branch_coverage_fraction,
+        }
+        return {
+            "model_id": self.model_id,
+            "run_id": self.run_id,
+            "config_sha256": self.config_sha256,
+            "structural_report_digest": self.structural_report_digest,
+            "source_structural_report_digest": self.source_structural_report_digest,
+            "mapping_digest": self.mapping_digest,
+            "solver_contract_digest": self.solver_contract_digest,
+            "metric_policy_digest": self.metric_policy_digest,
+            "s1_model_digest": self.s1_model_digest,
+            "s4_model_digest": self.s4_model_digest,
+            "source_stage": self.source_stage,
+            "target_stage": self.target_stage,
+            "target_structural_status": self.target_structural_status,
+            "source_pf_status": self.source_pf_status.value,
+            "target_pf_status": self.target_pf_status.value,
+            "fidelity_status": self.fidelity_status.value,
+            "operating_point": {
+                "snapshot_count": len(self.operating_point.snapshots),
+                "solver": self.operating_point.solver,
+                "tolerance": self.operating_point.tolerance,
+                "max_iterations": self.operating_point.max_iterations,
+                "distribute_slack": self.operating_point.distribute_slack,
+                "slack_weights": self.operating_point.slack_weights,
+                "use_seed": self.operating_point.use_seed,
+                "control_policy": self.operating_point.control_policy,
+                "tap_policy": self.operating_point.tap_policy,
+                "phase_shift_policy": self.operating_point.phase_shift_policy,
+                "topology_digest": self.operating_point.topology_digest,
+                "device_schedule_digest": self.operating_point.device_schedule_digest,
+            },
+            "coverage": coverage,
+            "metrics": {
+                "bus_voltage": summary(self.bus_voltage_metrics),
+                "bus_voltage_preserved": summary(self.bus_voltage_preserved_metrics),
+                "bus_voltage_aggregated": summary(self.bus_voltage_aggregated_metrics),
+                "angle": summary(self.angle_metrics),
+                "branch_p0": summary(self.branch_p_metrics),
+                "branch_q0": summary(self.branch_q_metrics),
+                "branch_p1": summary(self.branch_p1_metrics),
+                "branch_q1": summary(self.branch_q1_metrics),
+                "cutset_p": summary(self.cutset_p_metrics),
+                "cutset_q": summary(self.cutset_q_metrics),
+                "cluster_injection_p": summary(
+                    self.injection_metrics.p_mw if self.injection_metrics else None),
+                "cluster_injection_q": summary(
+                    self.injection_metrics.q_mvar if self.injection_metrics else None),
+                "passive_branch_loss_abs_diff_mw": (
+                    self.loss_metrics.passive_branch_active_abs_diff_mw
+                    if self.loss_metrics else None),
+                "passive_branch_loss_relative_diff": (
+                    self.loss_metrics.passive_branch_active_relative_diff
+                    if self.loss_metrics else None),
+            },
+            "thresholds_digest": self.thresholds_digest,
+        }
 
     def __post_init__(self) -> None:
         for name in ("model_id", "run_id"):
@@ -334,6 +459,7 @@ class PowerFlowFidelityReport:
                 raise PowerFlowContractError(f"{name} must be non-empty")
         for name in ("config_sha256", "structural_report_digest",
                      "source_structural_report_digest", "mapping_digest",
+                     "solver_contract_digest", "metric_policy_digest",
                      "s1_model_digest", "s4_model_digest"):
             _valid_sha256(getattr(self, name), name)
         if self.source_stage != PF_FIDELITY_SOURCE_STAGE:
@@ -353,8 +479,10 @@ class PowerFlowFidelityReport:
             raise PowerFlowContractError("fidelity_status must be PfFidelityStatus")
         if not isinstance(self.coverage, PowerFlowCoverage):
             raise PowerFlowContractError("coverage must be PowerFlowCoverage")
-        for name in ("bus_voltage_metrics", "angle_metrics", "branch_p_metrics",
-                     "branch_q_metrics", "cutset_p_metrics", "cutset_q_metrics"):
+        for name in ("bus_voltage_metrics", "bus_voltage_preserved_metrics",
+                     "bus_voltage_aggregated_metrics", "angle_metrics", "branch_p_metrics",
+                     "branch_q_metrics", "branch_p1_metrics", "branch_q1_metrics",
+                     "cutset_p_metrics", "cutset_q_metrics"):
             value = getattr(self, name)
             if value is not None and not isinstance(value, PowerFlowErrorSummary):
                 raise PowerFlowContractError(f"{name} must be PowerFlowErrorSummary or None")
@@ -412,8 +540,11 @@ class PowerFlowFidelityReport:
 
     def _metric_values(self) -> tuple[object, ...]:
         """Return all optional metric payloads for status-invariant checks."""
-        return (self.bus_voltage_metrics, self.angle_metrics, self.branch_p_metrics,
-                self.branch_q_metrics, self.cutset_p_metrics, self.cutset_q_metrics,
+        return (self.bus_voltage_metrics, self.bus_voltage_preserved_metrics,
+                self.bus_voltage_aggregated_metrics, self.angle_metrics,
+                self.branch_p_metrics, self.branch_q_metrics,
+                self.branch_p1_metrics, self.branch_q1_metrics,
+                self.cutset_p_metrics, self.cutset_q_metrics,
                 self.injection_metrics, self.loss_metrics)
 
     def _require_no_metrics(self) -> None:

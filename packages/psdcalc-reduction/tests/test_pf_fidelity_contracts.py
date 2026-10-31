@@ -43,9 +43,10 @@ def _operating_point(*, snapshots: tuple[object, ...] = ("static-0",)) -> PowerF
 def _summary(n: int = 2) -> PowerFlowErrorSummary:
     return PowerFlowErrorSummary(
         sample_count=n,
-        rmse=0.01,
-        p95_absolute=0.02,
-        max_absolute=0.03,
+        rmse=0.01 if n else None,
+        p95_absolute=0.02 if n else None,
+        max_absolute=0.03 if n else None,
+        mean_absolute=0.015 if n else None,
     )
 
 
@@ -66,6 +67,8 @@ def _report(
         structural_report_digest="d" * 64,
         source_structural_report_digest="e" * 64,
         mapping_digest="f" * 64,
+        solver_contract_digest="3" * 64,
+        metric_policy_digest="4" * 64,
         s1_model_digest="1" * 64,
         s4_model_digest="2" * 64,
         source_stage=PF_FIDELITY_SOURCE_STAGE,
@@ -75,9 +78,13 @@ def _report(
         source_pf_status=source_status,
         target_pf_status=target_status,
         bus_voltage_metrics=metrics,
+        bus_voltage_preserved_metrics=metrics,
+        bus_voltage_aggregated_metrics=_summary(0) if metrics_present else None,
         angle_metrics=metrics,
         branch_p_metrics=metrics,
         branch_q_metrics=metrics,
+        branch_p1_metrics=metrics,
+        branch_q1_metrics=metrics,
         cutset_p_metrics=metrics,
         cutset_q_metrics=metrics,
         injection_metrics=(PowerFlowInjectionMetrics(metrics, metrics)
@@ -91,6 +98,7 @@ def _report(
             comparable_branch_count=1,
             absorbed_internal_branch_count=0,
             target_corridor_count=1,
+            preserved_bus_count=2,
         ),
         fidelity_status=status,
         thresholds_digest=thresholds_digest,
@@ -222,7 +230,8 @@ def test_unsupported_snapshot_scope_can_be_recorded_without_solving() -> None:
         model_id="case-a", run_id="run-a", config_sha256="c" * 64,
         structural_report_digest="d" * 64,
         source_structural_report_digest="e" * 64,
-        mapping_digest="f" * 64, s1_model_digest="1" * 64,
+        mapping_digest="f" * 64, solver_contract_digest="3" * 64,
+        metric_policy_digest="4" * 64, s1_model_digest="1" * 64,
         s4_model_digest="2" * 64,
         source_stage=PF_FIDELITY_SOURCE_STAGE,
         target_stage=PF_FIDELITY_TARGET_STAGE,
@@ -230,8 +239,10 @@ def test_unsupported_snapshot_scope_can_be_recorded_without_solving() -> None:
         operating_point=_operating_point(snapshots=("s0", "s1")),
         source_pf_status=PfSolveStatus.NOT_RUN,
         target_pf_status=PfSolveStatus.NOT_RUN,
-        bus_voltage_metrics=None, angle_metrics=None,
+        bus_voltage_metrics=None, bus_voltage_preserved_metrics=None,
+        bus_voltage_aggregated_metrics=None, angle_metrics=None,
         branch_p_metrics=None, branch_q_metrics=None,
+        branch_p1_metrics=None, branch_q1_metrics=None,
         cutset_p_metrics=None, cutset_q_metrics=None,
         injection_metrics=None, loss_metrics=None,
         coverage=PowerFlowCoverage(2, 2, 0, 0, 0, 0),
@@ -239,4 +250,35 @@ def test_unsupported_snapshot_scope_can_be_recorded_without_solving() -> None:
         failure_reason="time-series scope is unsupported in this stage",
     )
     assert len(report.operating_point.snapshots) == 2
+
+
+def test_public_report_contains_only_aggregate_metrics_counts_and_digests() -> None:
+    report = _report(
+        PfFidelityStatus.PF_FIDELITY_MEASURED,
+        source_status=PfSolveStatus.CONVERGED,
+        target_status=PfSolveStatus.CONVERGED,
+        metrics_present=True,
+    )
+    public = report.to_public_dict()
+    serialized = str(public)
+    assert public["solver_contract_digest"] == "3" * 64
+    assert public["metric_policy_digest"] == "4" * 64
+    assert public["coverage"]["preserved_bus_count"] == 2
+    assert "StableId" not in serialized
+    assert "load_bus" not in serialized
+    assert "line" not in serialized
+
+
+def test_coverage_separates_preserved_aggregated_and_excluded_objects() -> None:
+    coverage = PowerFlowCoverage(
+        source_bus_count=5, mapped_bus_count=4,
+        source_branch_count=3, comparable_branch_count=2,
+        absorbed_internal_branch_count=1, target_corridor_count=1,
+        preserved_bus_count=1, aggregated_bus_count=3,
+        excluded_object_count=1,
+    )
+    assert coverage.preserved_bus_count == 1
+    assert coverage.aggregated_bus_count == 3
+    assert coverage.excluded_object_count == 1
+    assert coverage.branch_coverage_fraction == pytest.approx(2 / 3)
 

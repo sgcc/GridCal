@@ -87,6 +87,8 @@ class PfCutsetComparisonEntry:
     source_branch_id: StableId
     target_branch_id: StableId
     orientation_sign: Literal[-1, 1]
+    source_terminal_index: Literal[0, 1]
+    target_terminal_index: Literal[0, 1]
 
 
 @dataclass(frozen=True)
@@ -251,9 +253,11 @@ def derive_pf_comparison_mapping(
             continue
         assert entry.orientation_sign is not None
         cutsets[left].append(PfCutsetComparisonEntry(
-            left, entry.source_branch_id, entry.target_branch_id, entry.orientation_sign))
+            left, entry.source_branch_id, entry.target_branch_id, entry.orientation_sign,
+            0, 0 if entry.orientation_sign == 1 else 1))
         cutsets[right].append(PfCutsetComparisonEntry(
-            right, entry.source_branch_id, entry.target_branch_id, entry.orientation_sign))
+            right, entry.source_branch_id, entry.target_branch_id, entry.orientation_sign,
+            1, 1 if entry.orientation_sign == 1 else 0))
 
     absorbed_count = sum(e.comparison_type == "absorbed_internal" for e in branch_entries)
     comparable_count = len(branch_entries) - absorbed_count
@@ -262,6 +266,8 @@ def derive_pf_comparison_mapping(
         source_branch_count=len(branch_entries), comparable_branch_count=comparable_count,
         absorbed_internal_branch_count=absorbed_count,
         target_corridor_count=len(corridor_members),
+        preserved_bus_count=sum(e.comparison_type == "preserved_singleton" for e in bus_entries),
+        aggregated_bus_count=sum(e.comparison_type == "aggregated_group_member" for e in bus_entries),
     )
     canonical = {
         "buses": [
