@@ -20,6 +20,45 @@
     "unsupported_equivalents_fail_closed": true,
     "ac_readiness_independently_rejects_invalid_materialized_lines": true
   },
+  "review_blocker_remediation": {
+    "structural_report_digest_verification": "ENABLED",
+    "canonical_source_and_target_reports_persisted_and_rehashed_on_replay": true,
+    "cross_structural_run_report_rebinding_rejected": true,
+    "complete_supported_pf_input_digest": "ENABLED",
+    "storage_unit_and_store_metadata_input_fields_static_and_dynamic": true,
+    "storage_unit_counts_by_policy": {
+      "BASE": {"s1": 0, "s4": 0},
+      "CUT_330": {"s1": 0, "s4": 0},
+      "CUT_230": {"s1": 0, "s4": 0},
+      "CUT_115": {"s1": 0, "s4": 0},
+      "CUT_110": {"s1": 0, "s4": 0},
+      "CUT_37": {"s1": 0, "s4": 0},
+      "CUT_35": {"s1": 0, "s4": 0}
+    },
+    "store_counts_by_policy": {
+      "BASE": {"s1": 0, "s4": 0},
+      "CUT_330": {"s1": 0, "s4": 0},
+      "CUT_230": {"s1": 0, "s4": 0},
+      "CUT_115": {"s1": 0, "s4": 0},
+      "CUT_110": {"s1": 0, "s4": 0},
+      "CUT_37": {"s1": 0, "s4": 0},
+      "CUT_35": {"s1": 0, "s4": 0}
+    },
+    "beijing_storage_input_impact": "NONE",
+    "structural_rerun_required": false,
+    "threshold_set_runtime_binding": "ENABLED",
+    "threshold_file_sha256_unchanged": true,
+    "threshold_set_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "pf_evidence_replay_required": true,
+    "pf_evidence_replay_performed": true,
+    "replayed_policies": ["BASE", "CUT_330", "CUT_230", "CUT_115", "CUT_110", "CUT_37", "CUT_35"],
+    "structural_models_and_mappings_reused": true,
+    "source_parsing_l1_l2_and_planning_rerun": false,
+    "numerical_drift": "NONE",
+    "compared_numerical_fields": [
+      "convergence", "voltage", "angle", "branch_p_q", "cutset_p_q", "injection", "loss"
+    ]
+  },
   "threshold_provenance": {
     "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
     "threshold_digest": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
@@ -169,29 +208,34 @@
   "package_gate": {
     "package_version": "0.5.0",
     "package_metadata_commit": "944adb982a7447d3f718f37ba1547215cea666e5",
-    "full_offline_tests": {"passed": 417, "failed": 0, "warnings": 15992, "runtime_seconds": 63.71},
+    "full_offline_tests": {"passed": 449, "failed": 0, "warnings": 16073, "runtime_seconds": 83.75},
     "fresh_wheel_only_install": true,
     "installed_python": "3.13.9",
     "installed_pypsa": "1.2.4",
-    "installed_wheel_pf_replay_tests": {"passed": 34, "failed": 0, "warnings": 48, "runtime_seconds": 24.13},
+    "installed_wheel_synthetic_pf_and_replay": {
+      "status": "PASS",
+      "replay_verified": true,
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "pf_fidelity_status": "PF_FIDELITY_WITHIN_TOLERANCE"
+    },
     "uv_lock_check_offline": "PASS",
     "compileall": "PASS",
     "git_diff_check": "PASS",
     "sdist": {
       "filename": "psdcalc_reduction-0.5.0.tar.gz",
-      "sha256": "67fc522c062867f2989c438635b5aaf6e313ec1c413d7376364baa3fe1e48c7b",
-      "archive_member_count": 130
+      "sha256": "18a414fe30add188873bafcdf80df3e0c9877710c17a466c9b7650e46185112c",
+      "archive_member_count": 184
     },
     "wheel": {
       "filename": "psdcalc_reduction-0.5.0-py3-none-any.whl",
-      "sha256": "055d9ef31dc4fdfdee292dc39181a0010a54f3dd28627ee05cca1afc0fbd9404",
-      "archive_member_count": 93
+      "sha256": "085fa3052bf4e82d390985e165ff0af8362680cf1e222b72f34c2b8ac0a2a6ed",
+      "archive_member_count": 94
     },
     "dependency_versions_changed": false
   },
   "implementation": {
-    "tested_implementation_commit": "e32661df07fbb5e00f1009d4f46daa3fb921e0e6",
-    "tested_implementation_tree": "75c4e37bdd6dcc40e66b85986cd2cfe487250357",
+    "tested_implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+    "tested_implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
     "physical_equivalence_claim": false
   }
 }

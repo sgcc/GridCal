@@ -63,23 +63,34 @@ Equivalent-cutoff determinism also held. `CUT_115`/`CUT_110` and `CUT_37`/`CUT_3
 
 | Evidence | Value |
 |---|---|
-| Tested implementation commit | `e32661df07fbb5e00f1009d4f46daa3fb921e0e6` |
-| Tested implementation tree | `75c4e37bdd6dcc40e66b85986cd2cfe487250357` |
+| Tested implementation commit | `ecc0e935d5fa62d2caf2f71485fd34f661b96377` |
+| Tested implementation tree | `7f29e11f2adc9be5e73ecae07223c89b92e54bcc` |
 | Package version | `0.5.0` |
-| Package metadata commit | `944adb982a7447d3f718f37ba1547215cea666e5` |
-| Full offline package tests | 417 passed, 0 failed; 15,992 warnings; 63.71 s |
-| Offline wheel PF/replay smoke tests | 34 passed, 0 failed; 48 warnings; 24.13 s |
+| Full offline package tests | 449 passed, 0 failed; 16,073 warnings; 83.75 s |
+| Installed-wheel synthetic PF and replay | Pass; PyPSA `1.2.4`; replay verified both structural and PF fidelity statuses |
 | Offline lock check | Pass |
 | Compileall | Pass |
 | `git diff --check` | Pass |
 | Fresh wheel-only install | Pass in a new Python 3.13.9 environment with locked dependencies installed offline |
 | Installed package version | `0.5.0` |
 | Installed PyPSA version | `1.2.4` |
-| sdist SHA-256 | `67fc522c062867f2989c438635b5aaf6e313ec1c413d7376364baa3fe1e48c7b` |
-| wheel SHA-256 | `055d9ef31dc4fdfdee292dc39181a0010a54f3dd28627ee05cca1afc0fbd9404` |
-| sdist / wheel archive members | 130 / 93 |
+| sdist SHA-256 | `18a414fe30add188873bafcdf80df3e0c9877710c17a466c9b7650e46185112c` |
+| wheel SHA-256 | `085fa3052bf4e82d390985e165ff0af8362680cf1e222b72f34c2b8ac0a2a6ed` |
+| sdist / wheel archive members | 184 / 94 |
 
-Warnings were dominated by upstream PyPSA/Pandas deprecations, plus test-cache and existing dtype notices. No dependency versions were changed for the 0.5.0 package metadata update.
+Warnings were dominated by upstream PyPSA/Pandas deprecations, plus existing dtype notices. Dependency declarations and locked versions were unchanged.
+
+## 🔐 Review-blocker remediation and evidence replay
+
+The review remediation binds the PF evidence to canonical S1 and S4 structural report payloads. Both report artifacts are persisted, hashed internally, and reloaded and rehashed on replay. A report from a different structural run is rejected.
+
+The PF-input digest now covers metadata-declared input fields for `StorageUnit` and `Store`, including static and selected-snapshot dynamic inputs while excluding solved outputs. For each of the seven retained policy runs, S1/S4 StorageUnit counts were `0/0` and S1/S4 Store counts were `0/0`; therefore `BEIJING_STORAGE_INPUT_IMPACT=NONE` and `STRUCTURAL_RERUN_REQUIRED=NO`.
+
+The frozen threshold file remains byte-identical to the preregistered record with SHA-256 `4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24`. Runtime limits are resolved from the frozen formulas and S1 cutset reference magnitudes, then independently recomputed during replay. Thus `PF_EVIDENCE_REPLAY_REQUIRED=YES` and `PF_EVIDENCE_REPLAY_PERFORMED=YES`.
+
+All seven persisted S1/S4 model pairs and mapping artifacts passed the new input-digest checks and were reused; source parsing, L1 simplification, L2 quotient, and structural planning were not rerun. The regenerated PF evidence was replayed for BASE, CUT_330, CUT_230, CUT_115, CUT_110, CUT_37, and CUT_35. Convergence, voltage, angle, branch P/Q, cutset P/Q, injection, and loss metrics matched the previous accepted evidence within the pre-existing replay tolerance: `BEIJING_NUMERICAL_RESULT_DRIFT=NONE`.
+
+The final tested implementation is commit `ecc0e935d5fa62d2caf2f71485fd34f661b96377`, tree `7f29e11f2adc9be5e73ecae07223c89b92e54bcc`. Package and documentation commits are not represented as the Beijing-tested implementation tree. The wheel and sdist above were rebuilt from this implementation; no version bump beyond `0.5.0` was made.
 
 ## 🚧 Fidelity boundary
 
