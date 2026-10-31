@@ -22,7 +22,8 @@ def test_schema_resource_matches_model_and_source() -> None:
 
 
 @pytest.mark.parametrize("name", ["reduction.first-batch.yaml",
-                                   "reduction.three-voltage.yaml"])
+                                   "reduction.three-voltage.yaml",
+                                   "reduction.voltage-cutoff.synthetic.yaml"])
 def test_example_resource_matches_source(name: str) -> None:
     """Ship the maintained YAML example in the importable package."""
     resource = files("psdcalc.reduction.resources").joinpath(
