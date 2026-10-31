@@ -20,6 +20,7 @@ from psdcalc.reduction.exceptions import (
 from psdcalc.reduction.pipelines.multi_voltage import MultiVoltageQuotientPipeline
 from psdcalc.reduction.metrics.stage_inventory import CompressionStage, StageInventory
 from psdcalc.reduction.reporting.comparison import build_pipeline_comparison
+from psdcalc.reduction.reporting.voltage_matrix import CrossScenarioCompressionReport
 from psdcalc.reduction.validation.multi_voltage_final import network_semantic_signature
 
 
@@ -130,6 +131,13 @@ def test_three_voltage_pipeline_persists_final_structural_evidence(
     assert sum(row.final_bus_count for row in comparison.voltage_layers) == comparison.accepted_final_bus_count
     assert len([row for row in comparison.energy_aggregates
                 if row.scope == "global"]) == 4
+    assert comparison.voltage_policy.policy_id == "BASE"
+    assert comparison.voltage_policy.round_trip_validated is True
+    assert len(comparison.mappings["semantic_sha256"]) == 64
+    matrix = CrossScenarioCompressionReport.create((comparison,))
+    assert matrix.scenarios[0].final_structural_status == (
+        "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID")
+    assert matrix.source_sha256 == comparison.source_sha256
 
     assert result.structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
     assert result.manifest.status == result.structural.status

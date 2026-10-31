@@ -31,12 +31,15 @@ from psdcalc.reduction.metrics.stage_inventory import (
     CompressionStage, StageInventory, pypsa_stage_inventory,
 )
 from psdcalc.reduction.metrics.energy import collect_energy_aggregates
-from psdcalc.reduction.reporting.comparison import EnergyAggregateSummary
+from psdcalc.reduction.reporting.comparison import (
+    EnergyAggregateSummary, VoltagePolicyReportSummary,
+)
 from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.planners.layer_energy import VoltageLayerEnergyPlanner
 from psdcalc.reduction.policies.voltage_cutoff import (
-    VoltageCutoffPolicy, voltage_policy_evidence, voltage_policy_protection,
+    ResolvedVoltagePolicy, VoltageCutoffPolicy, voltage_policy_evidence,
+    voltage_policy_protection,
 )
 from psdcalc.reduction.planners.multi_voltage_busmap import MultiVoltageBusmapValidator
 from psdcalc.reduction.protection.engine import ProtectionEngine
@@ -74,6 +77,9 @@ class MultiVoltagePipelineResult:
     stage_inventories: Mapping[str, StageInventory] | None = None
     phase_runtime: Mapping[str, float] | None = None
     stage_energy: Mapping[str, tuple[EnergyAggregateSummary, ...]] | None = None
+    voltage_policy: VoltagePolicyReportSummary | None = None
+    voltage_policy_layer_costs: Mapping[str, Mapping[str, int]] | None = None
+    protection_costs: Mapping[str, int] | None = None
 
 
 def _write_sidecar(store: ArtifactStore, relative: str,
@@ -110,6 +116,40 @@ def _save_maps(store: ArtifactStore, mappings: MappingBundle,
     for name, path in names.items():
         store.record_artifact(prefix + name, str(path.relative_to(store.run_dir)))
     return tuple(str(path.relative_to(store.run_dir)) for path in names.values())
+
+
+def _policy_layer_costs(
+    network: pypsa.Network,
+    sidecar: IdentitySidecar,
+    resolved: ResolvedVoltagePolicy,
+    aliases: Mapping[str, float],
+) -> dict[str, dict[str, int]]:
+    """Count cutoff memberships by canonical layer from source-side policy IDs."""
+    layers = VoltageLayerClassifier().classify(
+        network, sidecar, aliases=aliases)
+    bus_layer: dict[object, str] = {}
+    result: dict[str, dict[str, int]] = {}
+    for layer in layers:
+        layer_buses = set(layer.bus_ids)
+        bus_layer.update((bus_id, layer.key) for bus_id in layer.bus_ids)
+        retained_buses = len(layer_buses & resolved.retained_bus_ids)
+        result[layer.key] = {
+            "cutoff_retained_bus_count": retained_buses,
+            "cutoff_retained_line_count": 0,
+            "cutoff_mandatory_singleton_count": retained_buses,
+            "cutoff_identity_preserved_line_count": 0,
+        }
+    for name, row in network.lines.iterrows():
+        line_id = sidecar.source_id("Line", str(name))
+        if line_id not in resolved.retained_line_ids:
+            continue
+        bus0 = sidecar.source_id("Bus", str(row.bus0))
+        bus1 = sidecar.source_id("Bus", str(row.bus1))
+        layer0 = bus_layer.get(bus0)
+        if layer0 is not None and layer0 == bus_layer.get(bus1):
+            result[layer0]["cutoff_retained_line_count"] += 1
+            result[layer0]["cutoff_identity_preserved_line_count"] += 1
+    return result
 
 
 class MultiVoltageQuotientPipeline:
@@ -562,6 +602,73 @@ class MultiVoltageQuotientPipeline:
                 store.record_artifact(record.operation_id, relative)
             store.set_multi_voltage_result(
                 structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID")
+            report_policy: VoltagePolicyReportSummary | None = None
+            report_resolution: ResolvedVoltagePolicy | None = None
+            policy_layer_costs: Mapping[str, Mapping[str, int]] = {}
+            if (policy_request_from_disk is not None
+                    and policy_source_from_disk is not None
+                    and policy_sidecar_from_disk is not None):
+                report_resolution = policy_request_from_disk.resolve(
+                    policy_source_from_disk, policy_sidecar_from_disk)
+                report_policy = VoltagePolicyReportSummary(
+                    policy_id=report_resolution.policy_id,
+                    enabled=policy_request_from_disk.enabled,
+                    mode=policy_request_from_disk.mode,
+                    requested_cutoff_kv=report_resolution.requested_cutoff_kv,
+                    source_voltage_layers=report_resolution.source_voltage_layers,
+                    retained_voltage_layers=report_resolution.retained_voltage_layers,
+                    compressible_voltage_layers=(
+                        report_resolution.compressible_voltage_layers),
+                    retained_bus_count=report_resolution.retained_bus_count,
+                    retained_line_count=report_resolution.retained_line_count,
+                    resolved_policy_fingerprint=(
+                        report_resolution.resolved_policy_fingerprint),
+                    cutoff_mandatory_singleton_count=(
+                        report_resolution.retained_bus_count),
+                    cutoff_identity_preserved_line_count=(
+                        report_resolution.retained_line_count),
+                    round_trip_validated=structural.checks.get(
+                        "voltage_policy_round_trip", False),
+                )
+                policy_layer_costs = _policy_layer_costs(
+                    policy_source_from_disk, policy_sidecar_from_disk,
+                    report_resolution, config.voltage_layers.aliases)
+            parallel_line_ids = set(report_parallel_plan.protected_lines)
+            l_plus_line_ids = {
+                item.base_line_id for item in (built.source_ledger.l_plus
+                                                if built.source_ledger else ())
+            }
+            cutoff_line_ids = (
+                set(report_resolution.retained_line_ids)
+                if report_resolution is not None else set())
+            configured_line_ids = {
+                item for item in protection.preserved_components
+                if item.component == "Line"
+            }
+            unique_protected_lines = (parallel_line_ids | l_plus_line_ids
+                                      | cutoff_line_ids | configured_line_ids)
+            unique_protected_buses = (
+                set(protection.singleton_buses)
+                | set(report_parallel_plan.mandatory_singletons)
+                | (set(report_resolution.retained_bus_ids)
+                   if report_resolution is not None else set())
+            )
+            protection_costs = {
+                "unique_protected_bus_count": len(unique_protected_buses),
+                "unique_protected_line_count": len(unique_protected_lines),
+                "cutoff_retained_bus_count": (report_policy.retained_bus_count
+                                               if report_policy else 0),
+                "cutoff_retained_line_count": (report_policy.retained_line_count
+                                                if report_policy else 0),
+                "cutoff_mandatory_singleton_membership_count": (
+                    report_policy.cutoff_mandatory_singleton_count
+                    if report_policy else 0),
+                "cutoff_identity_preserved_line_membership_count": (
+                    report_policy.cutoff_identity_preserved_line_count
+                    if report_policy else 0),
+                "parallel_protected_line_membership_count": len(parallel_line_ids),
+                "l_plus_base_line_membership_count": len(l_plus_line_ids),
+            }
             return MultiVoltagePipelineResult(
                 final_path, final_sidecar_path, persisted_composed, structural,
                 store.manifest, opportunity, records, stage_inventories,
@@ -569,4 +676,7 @@ class MultiVoltageQuotientPipeline:
                  "builder": builder_seconds,
                  "persist_reload_gate": persist_reload_gate_seconds},
                 stage_energy,
+                report_policy,
+                policy_layer_costs,
+                protection_costs,
             )
