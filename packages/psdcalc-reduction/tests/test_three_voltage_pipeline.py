@@ -140,6 +140,10 @@ def test_three_voltage_pipeline_persists_final_structural_evidence(
     assert matrix.source_sha256 == comparison.source_sha256
 
     assert result.structural.status == "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+    assert result.ac_readiness.status.value == "AC_MODEL_READY"
+    assert all(result.ac_readiness.checks.values())
+    assert result.manifest.artifacts["ac_model_readiness"] == (
+        "validation/ac_model_readiness.json")
     assert result.manifest.status == result.structural.status
     resolved_path = store.run_dir / "resolved_config.yaml"
     resolved_bytes = resolved_path.read_bytes()
@@ -153,6 +157,7 @@ def test_three_voltage_pipeline_persists_final_structural_evidence(
     assert result.final_network_path.exists()
     assert result.target_sidecar_path.exists()
     assert (store.run_dir / "validation/multi_voltage_structural.json").exists()
+    assert (store.run_dir / "validation/ac_model_readiness.json").exists()
     assert (store.run_dir / "validation/opportunity.json").exists()
     assert (store.run_dir / "levels/L1.nc").exists()
     assert (store.run_dir / "maps/bus_map.parquet").exists()
