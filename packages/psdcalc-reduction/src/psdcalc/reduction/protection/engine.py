@@ -23,6 +23,16 @@ class ProtectionSet:
     singleton_buses: frozenset[StableId]
     cannot_link: frozenset[frozenset[StableId]]
 
+    def union(self, other: "ProtectionSet") -> "ProtectionSet":
+        """Combine two protection contracts by set union in every category."""
+        return ProtectionSet(
+            traced=self.traced | other.traced,
+            preserved_components=self.preserved_components | other.preserved_components,
+            terminal_buses=self.terminal_buses | other.terminal_buses,
+            singleton_buses=self.singleton_buses | other.singleton_buses,
+            cannot_link=self.cannot_link | other.cannot_link,
+        )
+
 
 class ProtectionEngine:
     """Evaluate selectors and preserve five distinct protection actions."""

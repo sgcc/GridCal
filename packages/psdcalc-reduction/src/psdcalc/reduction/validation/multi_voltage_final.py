@@ -14,11 +14,15 @@ from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.protection.engine import ProtectionSet
 from psdcalc.reduction.topology.parallel_corridors import ProtectedParallelPlan
 from psdcalc.reduction.topology.parallel_provenance import ParallelSourceLedger
-from psdcalc.reduction.exceptions import IdentityError, MappingError
+from psdcalc.reduction.exceptions import ConfigSemanticError, IdentityError, MappingError
+from psdcalc.reduction.policies.voltage_cutoff import (
+    ResolvedVoltagePolicy, VoltageCutoffPolicy, voltage_policy_evidence,
+)
 from psdcalc.reduction.validation.multi_voltage import AggregationInvariantSpec
 
 from psdcalc.reduction.validation.multi_voltage import MultiVoltageStructuralValidator
 from psdcalc.reduction.validation.protected_parallel import (
+    LineSemanticHash,
     ProtectedParallelStructuralValidator,
 )
 
@@ -177,6 +181,11 @@ class MultiVoltageFinalValidator:
                  parallel_mapping_round_trip: bool = True,
                  parallel_sidecar_round_trip: bool = True,
                  parallel_corridor_policy: str = "aggregate_corridor",
+                 voltage_policy_request: VoltageCutoffPolicy | None = None,
+                 voltage_policy_persisted: Mapping[str, object] | None = None,
+                 voltage_policy_source_network: pypsa.Network | None = None,
+                 voltage_policy_source_sidecar: IdentitySidecar | None = None,
+                 voltage_policy_round_trip_ready: bool = False,
                  ) -> MultiVoltageStructuralResult:
         """Validate reloaded structure; propagate unsupported configuration errors."""
         checks = {}
@@ -277,6 +286,156 @@ class MultiVoltageFinalValidator:
         except (IdentityError, MappingError, KeyError) as exc:
             checks['original_mapping_coverage'] = False
             details['original_mapping_coverage'] = f'{type(exc).__name__}: {exc}'
+        policy_resolved: ResolvedVoltagePolicy | None = None
+        policy_source = voltage_policy_source_network
+        policy_sidecar = voltage_policy_source_sidecar
+        try:
+            if (voltage_policy_request is None or voltage_policy_persisted is None
+                    or policy_source is None or policy_sidecar is None):
+                raise ValueError("Persisted voltage-policy inputs are missing")
+            policy_resolved = voltage_policy_request.resolve(policy_source, policy_sidecar)
+            checks['voltage_policy_resolved'] = _resolved_policy_evidence_matches(
+                voltage_policy_request, policy_source, policy_sidecar,
+                voltage_policy_persisted)
+            if not checks['voltage_policy_resolved']:
+                details['voltage_policy_resolved'] = (
+                    "Persisted request, source layers, StableIds, counts, or "
+                    "recomputed fingerprint do not match authoritative source")
+            checks['voltage_policy_voltage_membership'] = (
+                _voltage_policy_membership_is_valid(
+                    voltage_policy_request, policy_resolved,
+                    policy_source, policy_sidecar))
+            checks['voltage_policy_singleton_buses'] = (
+                _retained_bus_mappings_are_identity(
+                    policy_resolved, composed_mappings, quotient_network,
+                    target_sidecar))
+            checks['voltage_policy_line_identity'] = (
+                _retained_line_mappings_are_identity(
+                    policy_resolved, policy_source, policy_sidecar,
+                    quotient_network, target_sidecar, composed_mappings))
+        except (ConfigSemanticError, IdentityError, MappingError, KeyError,
+                TypeError, ValueError, AttributeError) as exc:
+            checks['voltage_policy_resolved'] = False
+            checks['voltage_policy_voltage_membership'] = False
+            checks['voltage_policy_singleton_buses'] = False
+            checks['voltage_policy_line_identity'] = False
+            details['voltage_policy_resolved'] = f'{type(exc).__name__}: {exc}'
+        checks['voltage_policy_round_trip'] = (
+            voltage_policy_round_trip_ready
+            and checks.get('voltage_policy_resolved', False)
+            and checks.get('voltage_policy_voltage_membership', False)
+            and checks.get('voltage_policy_singleton_buses', False)
+            and checks.get('voltage_policy_line_identity', False)
+        )
+        if not checks['voltage_policy_round_trip']:
+            details.setdefault(
+                'voltage_policy_round_trip',
+                "Persisted config, source, sidecars, mappings, policy evidence, "
+                "and final NetCDF were not reconstructed consistently")
         return MultiVoltageStructuralResult(
             'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID' if all(checks.values()) else 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID',
             checks, details, parallel_corridor_policy, protected_object_results)
+
+
+def _voltage_policy_request_is_valid(policy: VoltageCutoffPolicy) -> bool:
+    """Check that the persisted request has valid BASE or cutoff semantics."""
+    if policy.enabled:
+        return (policy.mode == "freeze_at_or_above"
+                and policy.cutoff_kv is not None
+                and math.isfinite(policy.cutoff_kv)
+                and policy.cutoff_kv > 0)
+    return policy.mode == "freeze_at_or_above" and policy.cutoff_kv is None
+
+
+def _resolved_policy_evidence_matches(
+    policy: VoltageCutoffPolicy,
+    source_network: pypsa.Network,
+    source_sidecar: IdentitySidecar,
+    persisted: Mapping[str, object],
+) -> bool:
+    """Recompute and compare the entire request, resolution, and fingerprint."""
+    if not _voltage_policy_request_is_valid(policy):
+        return False
+    resolved = policy.resolve(source_network, source_sidecar)
+    return dict(persisted) == voltage_policy_evidence(policy, resolved)
+
+
+def _voltage_policy_membership_is_valid(
+    policy: VoltageCutoffPolicy,
+    resolved: ResolvedVoltagePolicy,
+    network: pypsa.Network,
+    sidecar: IdentitySidecar,
+) -> bool:
+    """Verify complete, disjoint membership from authoritative source v_nom."""
+    source_buses = {
+        sidecar.source_id("Bus", str(name)): float(row.v_nom)
+        for name, row in network.buses.iterrows()
+    }
+    retained = set(resolved.retained_bus_ids)
+    compressible = set(source_buses) - retained
+    if retained & compressible or retained | compressible != set(source_buses):
+        return False
+    if not policy.enabled:
+        return (not retained and not resolved.retained_line_ids
+                and resolved.retained_bus_count == 0
+                and resolved.retained_line_count == 0)
+    cutoff = float(policy.cutoff_kv)
+    return (all(source_buses[sid] >= cutoff for sid in retained)
+            and all(source_buses[sid] < cutoff for sid in compressible)
+            and tuple(sorted(set(resolved.source_voltage_layers)))
+            == resolved.source_voltage_layers
+            and tuple(sorted(set(resolved.retained_voltage_layers)))
+            == resolved.retained_voltage_layers
+            and tuple(sorted(set(resolved.compressible_voltage_layers)))
+            == resolved.compressible_voltage_layers)
+
+
+def _retained_bus_mappings_are_identity(
+    resolved: ResolvedVoltagePolicy,
+    mappings: MappingBundle,
+    final_network: pypsa.Network,
+    target_sidecar: IdentitySidecar,
+) -> bool:
+    """Require retained source Buses to map one-to-one to themselves."""
+    targets: dict[StableId, list[StableId]] = {}
+    for row in mappings.bus_map:
+        if row.target_id is not None:
+            targets.setdefault(row.target_id, []).append(row.source_id)
+    final_ids = {
+        target_sidecar.source_id("Bus", str(name))
+        for name in final_network.buses.index
+    }
+    for source_id in resolved.retained_bus_ids:
+        rows = [row for row in mappings.bus_map if row.source_id == source_id]
+        if (len(rows) != 1 or rows[0].mapping_type != "preserved"
+                or rows[0].target_id != source_id
+                or rows[0].target_id not in final_ids
+                or targets.get(source_id) != [source_id]):
+            return False
+    return True
+
+
+def _retained_line_mappings_are_identity(
+    resolved: ResolvedVoltagePolicy,
+    source_network: pypsa.Network,
+    source_sidecar: IdentitySidecar,
+    final_network: pypsa.Network,
+    target_sidecar: IdentitySidecar,
+    mappings: MappingBundle,
+) -> bool:
+    """Require retained source Lines to map and hash-identically after reload."""
+    line_hasher = LineSemanticHash()
+    final_ids = {
+        target_sidecar.source_id("Line", str(name))
+        for name in final_network.lines.index
+    }
+    for source_id in resolved.retained_line_ids:
+        rows = [row for row in mappings.branch_map if row.source_id == source_id]
+        if (len(rows) != 1 or rows[0].mapping_type != "preserved"
+                or rows[0].target_id != source_id
+                or rows[0].target_id not in final_ids):
+            return False
+        if (line_hasher.digest(source_network, source_sidecar, source_id)
+                != line_hasher.digest(final_network, target_sidecar, source_id)):
+            return False
+    return True

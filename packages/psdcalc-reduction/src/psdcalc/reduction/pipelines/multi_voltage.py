@@ -35,6 +35,9 @@ from psdcalc.reduction.reporting.comparison import EnergyAggregateSummary
 from psdcalc.reduction.mapping.compose import compose_maps
 from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.planners.layer_energy import VoltageLayerEnergyPlanner
+from psdcalc.reduction.policies.voltage_cutoff import (
+    VoltageCutoffPolicy, voltage_policy_evidence, voltage_policy_protection,
+)
 from psdcalc.reduction.planners.multi_voltage_busmap import MultiVoltageBusmapValidator
 from psdcalc.reduction.protection.engine import ProtectionEngine
 from psdcalc.reduction.reporting.opportunity import (
@@ -164,6 +167,18 @@ class MultiVoltageQuotientPipeline:
                 config.protection.rules, profile=config.task.profile,
                 base_dir=self._protection_base_dir or source_path.parent,
             )
+            voltage_policy = VoltageCutoffPolicy(
+                config.voltage_policy.enabled,
+                config.voltage_policy.mode,
+                config.voltage_policy.cutoff_kv,
+            ).resolve(original_network, source_sidecar)
+            voltage_policy_request = VoltageCutoffPolicy(
+                config.voltage_policy.enabled,
+                config.voltage_policy.mode,
+                config.voltage_policy.cutoff_kv,
+            )
+            cutoff_protection = voltage_policy_protection(voltage_policy)
+            protection = protection.union(cutoff_protection)
             baseline_protection = protection
             policy = config.aggregation.parallel_corridors.policy
             source_ledger = self._source_ledger or ParallelSourceLedger(
@@ -177,16 +192,16 @@ class MultiVoltageQuotientPipeline:
                     voltage_aliases=config.voltage_layers.aliases,
                     lplus_base_lines=frozenset(
                         item.base_line_id for item in source_ledger.l_plus))
-                protection = ProtectionSet(
-                    protection.traced,
-                    protection.preserved_components | frozenset(
+                protection = protection.union(ProtectionSet(
+                    traced=frozenset(),
+                    preserved_components=frozenset(
                         item.shunt_id for item in source_ledger.l_plus) |
-                    initial_parallel.protected_lines | frozenset(
-                        item.base_line_id for item in source_ledger.l_plus),
-                    protection.terminal_buses,
-                    protection.singleton_buses | initial_parallel.mandatory_singletons,
-                    protection.cannot_link,
-                )
+                        initial_parallel.protected_lines | frozenset(
+                            item.base_line_id for item in source_ledger.l_plus),
+                    terminal_buses=frozenset(),
+                    singleton_buses=initial_parallel.mandatory_singletons,
+                    cannot_link=frozenset(),
+                ))
             store.set_metadata(
                 input_hash=input_hash,
                 topology_signature=adapter.topology_signature(
@@ -198,6 +213,15 @@ class MultiVoltageQuotientPipeline:
                                    "psdcalc-reduction": __version__},
             )
             _write_sidecar(store, "input/source_ids.json", source_sidecar, "source_ids")
+            store.path("voltage_policy").mkdir(parents=True, exist_ok=True)
+            store.write_json(
+                "voltage_policy/resolved_policy.json",
+                voltage_policy_evidence(voltage_policy_request, voltage_policy),
+            )
+            store.record_artifact(
+                "voltage_policy_evidence",
+                "voltage_policy/resolved_policy.json",
+            )
             if policy == "preserve_protected_members":
                 source_dir = store.path("input/source_provenance")
                 for path in source_ledger.save_parquet(source_dir):
@@ -392,6 +416,46 @@ class MultiVoltageQuotientPipeline:
                 raise SignatureError("Target identity sidecar changed during readback")
             if hash_path(source_path) != input_hash:
                 raise SignatureError("Original input SHA changed during pipeline")
+            policy_request_from_disk: VoltageCutoffPolicy | None = None
+            policy_evidence_from_disk: Mapping[str, object] | None = None
+            policy_source_from_disk: pypsa.Network | None = None
+            policy_sidecar_from_disk: IdentitySidecar | None = None
+            policy_round_trip_ready = False
+            try:
+                resolved_config_path = store.path("resolved_config.yaml")
+                resolved_config_sha_path = store.path("resolved_config.sha256")
+                resolved_config_sha = resolved_config_sha_path.read_text(
+                    encoding="utf-8").strip()
+                disk_config = yaml.safe_load(
+                    resolved_config_path.read_text(encoding="utf-8"))
+                disk_voltage_policy = disk_config["voltage_policy"]
+                policy_request_from_disk = VoltageCutoffPolicy(
+                    enabled=disk_voltage_policy["enabled"],
+                    mode=disk_voltage_policy["mode"],
+                    cutoff_kv=disk_voltage_policy["cutoff_kv"],
+                )
+                source_sidecar_from_disk = IdentitySidecar.from_rows(json.loads(
+                    store.path("input/source_ids.json").read_text(
+                        encoding="utf-8")))
+                policy_source_from_disk = adapter.load(
+                    source_path, config.input.format)
+                policy_sidecar_from_disk = source_sidecar_from_disk
+                policy_evidence_from_disk = json.loads(
+                    store.path("voltage_policy/resolved_policy.json").read_text(
+                        encoding="utf-8"))
+                policy_round_trip_ready = (
+                    hash_file(resolved_config_path) == resolved_config_sha
+                    == store.manifest.config_hash
+                    and source_sidecar_from_disk.to_rows() == source_sidecar.to_rows()
+                    and network_persistence_difference(
+                        original_network, policy_source_from_disk) is None
+                    and composed_maps_match and sidecar_match
+                    and final_path.is_file()
+                    and policy_evidence_from_disk is not None
+                )
+            except (OSError, ValueError, TypeError, KeyError,
+                    ConfigSemanticError, BackendCapabilityError):
+                policy_round_trip_ready = False
             structural = MultiVoltageFinalValidator().validate(
                 topology.network, reloaded, loaded_parent, target_sidecar,
                 persisted_quotient, invariants, protection,
@@ -408,6 +472,11 @@ class MultiVoltageQuotientPipeline:
                                              composed_maps_match),
                 parallel_sidecar_round_trip=sidecar_match,
                 parallel_corridor_policy=policy,
+                voltage_policy_request=policy_request_from_disk,
+                voltage_policy_persisted=policy_evidence_from_disk,
+                voltage_policy_source_network=policy_source_from_disk,
+                voltage_policy_source_sidecar=policy_sidecar_from_disk,
+                voltage_policy_round_trip_ready=policy_round_trip_ready,
             )
             persist_reload_gate_seconds = perf_counter() - persistence_start
             try:

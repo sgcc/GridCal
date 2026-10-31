@@ -1371,6 +1371,37 @@
       },
       "title": "VoltageLayersConfig",
       "type": "object"
+    },
+    "VoltagePolicyConfig": {
+      "additionalProperties": false,
+      "description": "Optional structural policy that freezes actual voltage layers.",
+      "properties": {
+        "cutoff_kv": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cutoff Kv"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "mode": {
+          "const": "freeze_at_or_above",
+          "default": "freeze_at_or_above",
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "title": "VoltagePolicyConfig",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -1442,6 +1473,9 @@
     },
     "voltage_layers": {
       "$ref": "#/$defs/VoltageLayersConfig"
+    },
+    "voltage_policy": {
+      "$ref": "#/$defs/VoltagePolicyConfig"
     }
   },
   "required": [

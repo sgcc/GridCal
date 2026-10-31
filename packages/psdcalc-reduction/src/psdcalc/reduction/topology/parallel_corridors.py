@@ -45,6 +45,15 @@ class ProtectedParallelPlan:
     protected_lines: frozenset[StableId]
     mandatory_singletons: frozenset[StableId]
 
+    @property
+    def protected_corridor_lines(self) -> frozenset[StableId]:
+        """Return members protected because their physical corridor is protected."""
+        return frozenset(
+            source_id
+            for corridor in self.corridors if corridor.protected
+            for source_id in corridor.members
+        )
+
 
 class ParallelCorridorAnalyzer:
     """Classify Line corridors with one bridge pass per voltage layer."""

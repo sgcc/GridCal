@@ -2,7 +2,7 @@
 
 from typing import Any, Literal, Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 import math
 
 
@@ -375,10 +375,39 @@ class PluginsConfig(StrictModel):
     modules: list[str] = Field(default_factory=list)
 
 
+class VoltagePolicyConfig(StrictModel):
+    """Optional structural policy that freezes actual voltage layers."""
+
+    enabled: bool = False
+    mode: Literal["freeze_at_or_above"] = "freeze_at_or_above"
+    cutoff_kv: float | None = None
+
+    @field_validator("cutoff_kv", mode="before")
+    @classmethod
+    def reject_boolean_cutoff(cls, value: Any) -> Any:
+        """Prevent Python bool values from being coerced to numeric cutoffs."""
+        if isinstance(value, bool):
+            raise ValueError("cutoff_kv must be a number, not bool")
+        return value
+
+    @model_validator(mode="after")
+    def validate_cutoff(self) -> "VoltagePolicyConfig":
+        """Reject ambiguous disabled cutoffs and invalid enabled values."""
+        if not self.enabled and self.cutoff_kv is not None:
+            raise ValueError("disabled voltage_policy must not specify cutoff_kv")
+        if self.enabled and (
+            self.cutoff_kv is None or not math.isfinite(self.cutoff_kv)
+            or self.cutoff_kv <= 0
+        ):
+            raise ValueError("enabled voltage_policy requires positive finite cutoff_kv")
+        return self
+
+
 class ReductionConfig(StrictModel):
     """Resolved first-batch reduction configuration."""
 
     schema_version: Literal["0.1.0"]
+    voltage_policy: VoltagePolicyConfig = Field(default_factory=VoltagePolicyConfig)
     run: RunConfig
     input: InputConfig
     task: TaskConfig

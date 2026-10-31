@@ -10,7 +10,6 @@ import pypsa
 
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.exceptions import BackendCapabilityError, MaterializationError
-from psdcalc.reduction.topology.parallel_corridors import ProtectedParallelPlan
 from psdcalc.reduction.topology.parallel_provenance import ParallelSourceLedger
 
 
@@ -35,17 +34,17 @@ class DetachedShunt:
 
 
 class ProtectedParallelLineHandler:
-    """Keep protected Line identities outside the ordinary PyPSA quotient."""
+    """Keep identity-preserved Line rows outside the ordinary PyPSA quotient."""
 
     def detach(
         self, child: pypsa.Network, sidecar: IdentitySidecar,
-        plan: ProtectedParallelPlan,
+        identity_preserved_line_ids: frozenset[StableId],
     ) -> tuple[DetachedLine, ...]:
-        """Remove every protected member from a detached layer clone."""
+        """Remove every identity-preserved Line from a detached layer clone."""
         rows: list[DetachedLine] = []
         for name in sorted(child.lines.index):
             sid = sidecar.source_id("Line", str(name))
-            if sid not in plan.protected_lines:
+            if sid not in identity_preserved_line_ids:
                 continue
             dynamic = {
                 attribute: frame[str(name)].copy(deep=True)
@@ -56,9 +55,9 @@ class ProtectedParallelLineHandler:
                 sid, str(name), child.lines.loc[name].to_dict(), dynamic))
         if rows:
             child.remove("Line", [row.backend_name for row in rows])
-        if any(sidecar.source_id("Line", str(name)) in plan.protected_lines
+        if any(sidecar.source_id("Line", str(name)) in identity_preserved_line_ids
                for name in child.lines.index):
-            raise MaterializationError("Protected Line remained in quotient input")
+            raise MaterializationError("Identity-preserved Line remained in quotient input")
         return tuple(rows)
 
     def detach_l_plus_shunts(

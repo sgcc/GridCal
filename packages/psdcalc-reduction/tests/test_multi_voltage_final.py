@@ -21,6 +21,9 @@ def test_final_clean_reload_and_corruption(tmp_path):
     from psdcalc.reduction.config.models import AggregationConfig
     from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
     from psdcalc.reduction.protection.engine import ProtectionEngine
+    from psdcalc.reduction.policies.voltage_cutoff import (
+        VoltageCutoffPolicy, voltage_policy_evidence,
+    )
     from psdcalc.reduction.validation.multi_voltage_final import MultiVoltageFinalValidator
     network = three_voltage_network()
     adapter = PypsaAdapter()
@@ -32,12 +35,20 @@ def test_final_clean_reload_and_corruption(tmp_path):
     path = tmp_path / 'child.nc'
     built.network.export_to_netcdf(path)
     child = pypsa.Network(path)
+    policy = VoltageCutoffPolicy(False)
+    policy_evidence = voltage_policy_evidence(
+        policy, policy.resolve(network, sidecar))
     def validate():
         return MultiVoltageFinalValidator().validate(network, child, sidecar,
             built.target_sidecar, built.mappings, (), protection,
             voltage_layer_map=built.voltage_layer_map, original_network=network,
             original_sidecar=sidecar, composed_mappings=built.mappings,
-            original_input_signature=baseline)
+            original_input_signature=baseline,
+            voltage_policy_request=policy,
+            voltage_policy_persisted=policy_evidence,
+            voltage_policy_source_network=network,
+            voltage_policy_source_sidecar=sidecar,
+            voltage_policy_round_trip_ready=True)
     assert validate().status == 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID'
     child.transformers.loc['tx_hm', 'x'] = 99
     assert validate().status == 'MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID'

@@ -150,6 +150,10 @@ class MultiVoltageQuotientBuilder:
                     f"Cross-layer Link is unsupported: {name}"
                 )
         parallel_plan = None
+        identity_preserved_line_ids = frozenset(
+            source_id for source_id in protection.preserved_components
+            if source_id.component == "Line"
+        )
         if policy == "preserve_protected_members":
             source_ledger.validate(
                 simplified_network, parent_sidecar,
@@ -167,10 +171,23 @@ class MultiVoltageQuotientBuilder:
                 protection.singleton_buses | parallel_plan.mandatory_singletons,
                 protection.cannot_link,
             )
+            identity_preserved_line_ids |= parallel_plan.protected_lines
+            identity_preserved_line_ids |= frozenset(
+                item.base_line_id for item in source_ledger.l_plus
+            )
+        unknown_identity_lines = identity_preserved_line_ids - {
+            parent_sidecar.source_id("Line", str(name))
+            for name in simplified_network.lines.index
+        }
+        if unknown_identity_lines:
+            raise MaterializationError(
+                "Identity-preserved Line is absent: " +
+                ", ".join(sorted(item.encode() for item in unknown_identity_lines))
+            )
         allowed_line_dynamic_names = frozenset(
             parent_sidecar.backend_name(line_id)
-            for line_id in parallel_plan.protected_lines
-        ) if parallel_plan is not None else frozenset()
+            for line_id in identity_preserved_line_ids
+        )
         MultiVoltageStructuralValidator().validate_supported_dynamic(
             simplified_network, invariants,
             allowed_line_dynamic_names=allowed_line_dynamic_names)
@@ -180,6 +197,7 @@ class MultiVoltageQuotientBuilder:
         layer_results = LayerQuotientMaterializer().materialize(
             simplified_network, parent_sidecar, layers, busmaps,
             aggregation, protection, parallel_plan, source_ledger,
+            identity_preserved_line_ids,
         )
         reconnected = CrossLayerComponentReconnector().reconnect(
             simplified_network, parent_sidecar, layer_results, busmaps
@@ -203,13 +221,16 @@ class MultiVoltageQuotientBuilder:
             voltage_layer_map=voltage_layer_map,
             allowed_line_dynamic_names=allowed_line_dynamic_names,
         )
-        if parallel_plan is not None:
+        if parallel_plan is not None or identity_preserved_line_ids:
+            validation_plan = parallel_plan or ProtectedParallelPlan(
+                (), frozenset(), frozenset())
             parallel_checks, parallel_details = (
                 ProtectedParallelStructuralValidator().check(
                     simplified_network, reconnected.network, parent_sidecar,
-                    reconnected.target_sidecar, mapping, parallel_plan,
+                    reconnected.target_sidecar, mapping, validation_plan,
                     busmaps.global_busmap, source_ledger=source_ledger,
-                    protection=protection))
+                    protection=protection,
+                    identity_preserved_line_ids=identity_preserved_line_ids))
             evidence = PreliminaryStructuralEvidence(
                 "builder", False,
                 {**evidence.checks, **parallel_checks},
@@ -247,7 +268,7 @@ class MultiVoltageQuotientBuilder:
             parameters={"transformer_count": len(tx_rows),
                         "parallel_corridor_policy": policy,
                         "protected_parallel_line_count": (
-                            len(parallel_plan.protected_lines)
+                            len(parallel_plan.protected_corridor_lines)
                             if parallel_plan is not None else 0),
                         "requested_cluster_count": busmaps.requested_cluster_count,
                         "planned_cluster_count": busmaps.planned_cluster_count,
