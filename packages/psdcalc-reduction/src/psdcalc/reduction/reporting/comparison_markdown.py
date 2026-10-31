@@ -53,6 +53,33 @@ def render_comparison_markdown(report: CompressionComparisonReport) -> str:
                      f"{row.candidate_bus_count} | {row.final_bus_count} | "
                      f"{row.candidate_compression_fraction:.6f} | "
                      f"{row.accepted_compression_fraction if row.accepted_compression_fraction is not None else '—'} |")
+    policy = report.voltage_policy
+    lines += ["", "## C1. Voltage policy", "",
+              "| Policy | Enabled | Mode | Requested cutoff kV | Source layers | Retained layers | Compressible layers | Retained Bus | Retained Line | Fingerprint | Round-trip validated |",
+              "|---|---|---|---:|---|---|---|---:|---:|---|---|"]
+    def layers(values: tuple[float, ...]) -> str:
+        return ", ".join(str(value) for value in values) or "—"
+    lines.append(
+        f"| {policy.policy_id} | {policy.enabled} | {policy.mode} | "
+        f"{policy.requested_cutoff_kv if policy.requested_cutoff_kv is not None else '—'} | "
+        f"{layers(policy.source_voltage_layers)} | {layers(policy.retained_voltage_layers)} | "
+        f"{layers(policy.compressible_voltage_layers)} | {policy.retained_bus_count} | "
+        f"{policy.retained_line_count} | {policy.resolved_policy_fingerprint} | "
+        f"{policy.round_trip_validated} |"
+    )
+    lines += ["", "## C2. Protection cost", "",
+              "| Unique protected Bus | Unique protected Line | Cutoff Bus membership | Cutoff Line membership | Parallel Line membership | L+ base Line membership |",
+              "|---:|---:|---:|---:|---:|---:|"]
+    lines.append("| " + " | ".join(str(report.protection_costs.get(key, 0)) for key in (
+        "unique_protected_bus_count", "unique_protected_line_count",
+        "cutoff_mandatory_singleton_membership_count",
+        "cutoff_identity_preserved_line_membership_count",
+        "parallel_protected_line_membership_count",
+        "l_plus_base_line_membership_count")) + " |")
+    if report.named_gates:
+        lines += ["", "## H1. Named structural Gates", "",
+                  "| Gate | Passed |", "|---|---|"]
+        lines.extend(f"| {name} | {passed} |" for name, passed in sorted(report.named_gates.items()))
     lines += ["", "## D. Device mapping", "",
               "| Component | Source | Target | Preserved | Aggregated | Absorbed | Moved |",
               "|---|---:|---:|---:|---:|---:|---:|"]

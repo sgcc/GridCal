@@ -7,6 +7,10 @@ task:
   reduction_role: structural_quotient
   final_authority: original
 pipeline: {materialization_family: multi_voltage_quotient}
+voltage_policy:
+  enabled: false
+  mode: freeze_at_or_above
+  cutoff_kv: null
 voltage_layers:
   aliases: {}
 simplification:

@@ -62,11 +62,21 @@ def _dynamic(network: pypsa.Network, component_name: str,
     for attribute, frame in sorted(component.dynamic.items()):
         if backend_name not in frame.columns:
             continue
-        if attribute not in component.defaults.index or not str(
-                component.defaults.loc[attribute, "status"]).startswith("Input"):
+        if attribute not in component.defaults.index:
+            raise BackendCapabilityError(
+                f"Unsupported populated {component_name} dynamic attribute: {attribute}")
+        status = str(component.defaults.loc[attribute, "status"])
+        if status.startswith("Output"):
+            # PyPSA may fill solver-result series on a newly reconnected row.
+            # Those values are generated outputs, not source Line semantics.
+            continue
+        if not status.startswith("Input"):
             raise BackendCapabilityError(
                 f"Unsupported populated {component_name} dynamic attribute: {attribute}")
         raw = frame[backend_name].reindex(network.snapshots)
+        if raw.isna().all():
+            # An all-empty input series carries no dynamic value beyond static.
+            continue
         if view is None:
             view = dense_view or network.copy()
             if dense_view is None:
@@ -184,6 +194,7 @@ class ProtectedParallelStructuralValidator:
         source_sidecar: IdentitySidecar, target_sidecar: IdentitySidecar,
         mappings: MappingBundle, plan: ProtectedParallelPlan,
         busmap: Mapping[StableId, StableId], *,
+        identity_preserved_line_ids: frozenset[StableId] = frozenset(),
         source_ledger: ParallelSourceLedger | None = None,
         persisted_ledger: ParallelSourceLedger | None = None,
         protection: ProtectionSet | None = None,
@@ -261,9 +272,9 @@ class ProtectedParallelStructuralValidator:
                 fail("protected_parallel_singleton_endpoints",
                      f"Protected Bus target is missing: {endpoint.encode()}")
 
+        expected = set(plan.protected_lines | identity_preserved_line_ids)
         protected_rows = [row for row in mappings.line_map
-                          if row.source_id in plan.protected_lines]
-        expected = set(plan.protected_lines)
+                          if row.source_id in expected]
         mapped = {row.source_id for row in protected_rows}
         if (len(protected_rows) != len(expected) or mapped != expected or
                 any(row.target_id != row.source_id or

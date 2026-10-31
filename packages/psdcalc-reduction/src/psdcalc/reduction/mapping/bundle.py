@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from collections.abc import Iterable
 import json
+import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -196,3 +197,24 @@ class MappingBundle:
                                for row in getattr(self, name)))
             for name in ("bus_map", "branch_map", "device_map", "control_map")
         }
+
+    def semantic_digest(self) -> str:
+        """Hash sorted StableId transitions without backend names or row order."""
+        transitions = [
+            {
+                "component": row.source_id.component,
+                "source_id": row.source_id.encode(),
+                "target_id": row.target_id.encode() if row.target_id else None,
+                "mapping_type": row.mapping_type,
+            }
+            for name in ("bus_map", "branch_map", "device_map", "control_map",
+                         "region_map", "boundary_map", "equivalent_component_map")
+            for row in getattr(self, name)
+        ]
+        canonical = json.dumps(
+            sorted(transitions, key=lambda item: (
+                item["component"], item["source_id"],
+                item["target_id"] or "", item["mapping_type"])),
+            sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

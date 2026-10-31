@@ -47,6 +47,42 @@ class VoltageLayerComparison:
     minimum_required_bus_count: int
     candidate_compression_fraction: float
     accepted_compression_fraction: float | None
+    cutoff_retained_bus_count: int = 0
+    cutoff_retained_line_count: int = 0
+    cutoff_mandatory_singleton_count: int = 0
+    cutoff_identity_preserved_line_count: int = 0
+
+
+@dataclass(frozen=True)
+class VoltagePolicyReportSummary:
+    """Anonymous source-resolved policy evidence for one run."""
+
+    policy_id: str
+    enabled: bool
+    mode: str
+    requested_cutoff_kv: float | None
+    source_voltage_layers: tuple[float, ...]
+    retained_voltage_layers: tuple[float, ...]
+    compressible_voltage_layers: tuple[float, ...]
+    retained_bus_count: int
+    retained_line_count: int
+    resolved_policy_fingerprint: str
+    cutoff_mandatory_singleton_count: int = 0
+    cutoff_identity_preserved_line_count: int = 0
+    round_trip_validated: bool = False
+
+
+def _base_voltage_policy_summary() -> VoltagePolicyReportSummary:
+    """Return explicit BASE policy evidence for compatible report callers."""
+    import hashlib
+    return VoltagePolicyReportSummary(
+        policy_id="BASE", enabled=False, mode="freeze_at_or_above",
+        requested_cutoff_kv=None, source_voltage_layers=(),
+        retained_voltage_layers=(), compressible_voltage_layers=(),
+        retained_bus_count=0, retained_line_count=0,
+        resolved_policy_fingerprint=hashlib.sha256(b"BASE").hexdigest(),
+        round_trip_validated=False,
+    )
 
 
 @dataclass(frozen=True)
@@ -149,6 +185,11 @@ class CompressionComparisonReport:
     accepted_final_line_count: int | None = None
     accepted_bus_compression_fraction: float | None = None
     accepted_line_compression_fraction: float | None = None
+    source_sha256: str | None = None
+    voltage_policy: VoltagePolicyReportSummary = field(
+        default_factory=_base_voltage_policy_summary)
+    named_gates: Mapping[str, bool] = field(default_factory=dict)
+    protection_costs: Mapping[str, int] = field(default_factory=dict)
 
     @classmethod
     def create(
@@ -164,6 +205,10 @@ class CompressionComparisonReport:
         parallel_corridors: Mapping[str, int] | None = None,
         mappings: Mapping[str, object] | None = None,
         runtime: Mapping[str, float | int | str] | None = None,
+        source_sha256: str | None = None,
+        voltage_policy: VoltagePolicyReportSummary | None = None,
+        named_gates: Mapping[str, bool] | None = None,
+        protection_costs: Mapping[str, int] | None = None,
     ) -> "CompressionComparisonReport":
         """Derive candidate and accepted counts exclusively from stage and Gate evidence."""
         if not _PUBLIC_ID.fullmatch(model_id) or not _PUBLIC_ID.fullmatch(run_id):
@@ -172,6 +217,9 @@ class CompressionComparisonReport:
                 not re.fullmatch(r"[0-9a-f]{40}", code_sha) or
                 not re.fullmatch(r"[0-9a-f]{40}", tree_sha)):
             raise ValueError("Invalid public evidence SHA")
+        if source_sha256 is not None and not re.fullmatch(
+                r"[0-9a-f]{64}", source_sha256):
+            raise ValueError("Invalid source SHA-256")
         expected = tuple(stage.value for stage in CompressionStage)
         if tuple(stages) != expected or any(
                 stages[key].stage.value != key for key in expected):
@@ -221,6 +269,10 @@ class CompressionComparisonReport:
             final.line_count if valid else None,
             (source.bus_count - final.bus_count) / source.bus_count if valid else None,
             (source.line_count - final.line_count) / source.line_count if valid else None,
+            source_sha256,
+            voltage_policy or _base_voltage_policy_summary(),
+            dict(sorted((named_gates or {}).items())),
+            dict(sorted((protection_costs or {}).items())),
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -281,6 +333,14 @@ def build_pipeline_comparison(
             int(counts["minimum_required_bus_count"]),
             (source_count - candidate_count) / source_count,
             ((source_count - final_count) / source_count) if valid else None,
+            int(result.voltage_policy_layer_costs.get(key, {}).get(
+                "cutoff_retained_bus_count", 0)),
+            int(result.voltage_policy_layer_costs.get(key, {}).get(
+                "cutoff_retained_line_count", 0)),
+            int(result.voltage_policy_layer_costs.get(key, {}).get(
+                "cutoff_mandatory_singleton_count", 0)),
+            int(result.voltage_policy_layer_costs.get(key, {}).get(
+                "cutoff_identity_preserved_line_count", 0)),
         ))
     source_counts = {
         "Bus": len(projected_network.buses), "Line": len(projected_network.lines),
@@ -347,8 +407,13 @@ def build_pipeline_comparison(
         topology=topology, parallel_corridors=parallel,
         mappings={"source_rows": sum(source_counts.values()),
                   "covered_rows": sum(row.source_count * row.mapping_coverage_fraction
-                                      for row in transitions)},
+                                      for row in transitions),
+                  "semantic_sha256": result.composed_mappings.semantic_digest()},
         runtime=runtime,
         failed_checks=tuple(name for name, passed in result.structural.checks.items()
                             if not passed),
+        source_sha256=result.manifest.input_hash,
+        voltage_policy=result.voltage_policy,
+        named_gates=result.structural.checks,
+        protection_costs=result.protection_costs,
     )

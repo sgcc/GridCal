@@ -53,6 +53,17 @@ class MultiVoltageBusmapValidator:
                 buses.add(sidecar.source_id("Bus", str(row.bus)))
         for _, row in network.shunt_impedances.iterrows():
             buses.add(sidecar.source_id("Bus", str(row.bus)))
+        for component_id in protection.preserved_components:
+            if component_id.component != "Line":
+                continue
+            line_name = sidecar.backend_name(component_id)
+            if line_name not in network.lines.index:
+                raise PartitionError(
+                    f"Identity-preserved Line is missing: {component_id.encode()}"
+                )
+            row = network.lines.loc[line_name]
+            buses.add(sidecar.source_id("Bus", str(row.bus0)))
+            buses.add(sidecar.source_id("Bus", str(row.bus1)))
         analysis = analyze_cycle_corridors(network)
         for name in analysis.cycle_lines:
             a, b = analysis.line_corridors[name]

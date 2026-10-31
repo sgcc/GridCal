@@ -159,14 +159,17 @@ class LayerQuotientMaterializer:
                     protection: ProtectionSet,
                     parallel_plan: ProtectedParallelPlan | None = None,
                     source_ledger: ParallelSourceLedger | None = None,
+                    identity_preserved_line_ids: frozenset[StableId] = frozenset(),
                     ) -> tuple[LayerQuotient, ...]:
         """Return detached per-layer quotients with globally unique names."""
         output: list[LayerQuotient] = []
         for layer in layers:
             child = self._layer_copy(simplified_network, parent_sidecar, layer)
             handler = ProtectedParallelLineHandler()
-            detached = (handler.detach(child, parent_sidecar, parallel_plan)
-                        if parallel_plan is not None else ())
+            line_ids = identity_preserved_line_ids | (
+                parallel_plan.protected_lines if parallel_plan is not None else frozenset()
+            )
+            detached = handler.detach(child, parent_sidecar, line_ids) if line_ids else ()
             detached_shunts = (handler.detach_l_plus_shunts(
                 child, parent_sidecar, source_ledger, detached)
                 if source_ledger is not None and detached else ())

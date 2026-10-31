@@ -34,6 +34,41 @@ def minimal_config() -> dict:
     }
 
 
+def test_voltage_policy_omission_matches_explicit_base() -> None:
+    omitted = load_config(minimal_config())
+    explicit_data = minimal_config()
+    explicit_data["voltage_policy"] = {
+        "enabled": False, "mode": "freeze_at_or_above", "cutoff_kv": None,
+    }
+    explicit = load_config(explicit_data)
+    assert omitted.voltage_policy == explicit.voltage_policy
+
+
+def test_voltage_policy_accepts_positive_enabled_cutoff() -> None:
+    data = minimal_config()
+    data["voltage_policy"] = {"enabled": True, "cutoff_kv": 110}
+    assert load_config(data).voltage_policy.cutoff_kv == 110
+
+
+@pytest.mark.parametrize("policy", [
+    {"enabled": True},
+    {"enabled": False, "cutoff_kv": 110},
+    {"enabled": True, "cutoff_kv": 0},
+    {"enabled": True, "cutoff_kv": -1},
+    {"enabled": True, "cutoff_kv": float("nan")},
+    {"enabled": True, "cutoff_kv": float("inf")},
+    {"enabled": True, "cutoff_kv": True},
+    {"enabled": False, "mode": "nearest_layer"},
+    {"enabled": False, "surprise": 1},
+])
+def test_voltage_policy_rejects_invalid_contract(policy: dict) -> None:
+    from pydantic import ValidationError
+    from psdcalc.reduction.config.models import VoltagePolicyConfig
+
+    with pytest.raises(ValidationError):
+        VoltagePolicyConfig.model_validate(policy)
+
+
 def test_unknown_nested_field_is_schema_error() -> None:
     data = minimal_config()
     data["partition"]["mystery"] = True
