@@ -293,6 +293,31 @@ def test_threshold_evaluation_is_separate_from_measurement() -> None:
     assert "branch_p_max_mw" in diagnostic_result.diagnostic_failures
 
 
+def test_absolute_loss_threshold_is_diagnostic_for_v1_contract() -> None:
+    source, source_sidecar = _network()
+    target, target_sidecar = _network(x=12.0)
+    mapping = _mapping(source, source_sidecar, target, target_sidecar)
+    metrics = compare_power_flow_results(
+        _solve(source, source_sidecar), _solve(target, target_sidecar), mapping, _policy()).metrics
+    thresholds = PowerFlowMetricThresholds(
+        vm_max_pu=100.0, vm_rmse_pu=100.0,
+        cutset_p_max_mw=1000.0, cutset_q_max_mvar=1000.0,
+        loss_abs_max_mw=0.0, loss_rel_max=100.0)
+
+    from psdcalc.reduction.fidelity.metrics import evaluate_metric_thresholds_detailed
+
+    result = evaluate_metric_thresholds_detailed(metrics, thresholds)
+    assert result.fidelity_status.value == "PF_FIDELITY_WITHIN_TOLERANCE"
+    assert result.hard_failures == ()
+    assert "loss_abs_max_mw" in result.diagnostic_failures
+
+    from psdcalc.reduction.fidelity.persistence import PowerFlowThresholdSchema
+
+    definitions = {item.name: item for item in PowerFlowThresholdSchema().definitions}
+    assert definitions["loss_abs_mw"].classification == "DIAGNOSTIC"
+    assert definitions["loss_abs_mw"].mandatory is False
+
+
 def test_metric_threshold_evaluator_rejects_unconfigured_thresholds() -> None:
     with pytest.raises(MetricError, match="not configured"):
         evaluate_metric_thresholds(None, PowerFlowMetricThresholds())

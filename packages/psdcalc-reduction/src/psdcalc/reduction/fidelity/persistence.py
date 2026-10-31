@@ -128,7 +128,7 @@ class PowerFlowThresholdSchema:
             ThresholdDefinition("injection_p_max_mw", "MW", "DIAGNOSTIC", False),
             ThresholdDefinition("injection_q_rmse_mvar", "Mvar", "DIAGNOSTIC", False),
             ThresholdDefinition("injection_q_max_mvar", "Mvar", "DIAGNOSTIC", False),
-            ThresholdDefinition("loss_abs_mw", "MW", "HARD", True),
+            ThresholdDefinition("loss_abs_mw", "MW", "DIAGNOSTIC", False),
             ThresholdDefinition("loss_relative", "fraction", "HARD", True),
             ThresholdDefinition("target_pf_convergence", "status", "HARD", True),
             ThresholdDefinition("mapping_coverage", "fraction", "HARD", True),

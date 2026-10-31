@@ -300,8 +300,6 @@ def evaluate_metric_thresholds_detailed(
         "vm_rmse_pu": (metrics.bus_voltage.rmse, thresholds.vm_rmse_pu),
         "cutset_p_max_mw": (metrics.cutset_p.max_absolute, thresholds.cutset_p_max_mw),
         "cutset_q_max_mvar": (metrics.cutset_q.max_absolute, thresholds.cutset_q_max_mvar),
-        "loss_abs_max_mw": (metrics.passive_branch_losses.passive_branch_active_abs_diff_mw,
-                             thresholds.loss_abs_max_mw),
         "loss_rel_max": (metrics.passive_branch_losses.passive_branch_active_relative_diff,
                           thresholds.loss_rel_max),
     }
@@ -322,6 +320,8 @@ def evaluate_metric_thresholds_detailed(
         "injection_p_max_mw": (metrics.cluster_injection.p_mw.max_absolute, thresholds.injection_p_max_mw),
         "injection_q_rmse_mvar": (metrics.cluster_injection.q_mvar.rmse, thresholds.injection_q_rmse_mvar),
         "injection_q_max_mvar": (metrics.cluster_injection.q_mvar.max_absolute, thresholds.injection_q_max_mvar),
+        "loss_abs_max_mw": (metrics.passive_branch_losses.passive_branch_active_abs_diff_mw,
+                            thresholds.loss_abs_max_mw),
     }
     if set(hard_values) != POWER_FLOW_HARD_THRESHOLD_FIELDS:
         raise MetricError("HARD threshold classification does not match its evaluator")

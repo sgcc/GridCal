@@ -21,7 +21,7 @@ class PowerFlowContractError(ValueError):
 
 POWER_FLOW_HARD_THRESHOLD_FIELDS = frozenset({
     "vm_rmse_pu", "vm_max_pu", "cutset_p_max_mw", "cutset_q_max_mvar",
-    "loss_abs_max_mw", "loss_rel_max",
+    "loss_rel_max",
 })
 POWER_FLOW_DIAGNOSTIC_THRESHOLD_FIELDS = frozenset({
     "vm_p95_pu", "angle_rmse_deg", "angle_p95_deg", "angle_max_deg",
@@ -30,6 +30,7 @@ POWER_FLOW_DIAGNOSTIC_THRESHOLD_FIELDS = frozenset({
     "cutset_p_rmse_mw", "cutset_q_rmse_mvar",
     "injection_p_rmse_mw", "injection_p_max_mw",
     "injection_q_rmse_mvar", "injection_q_max_mvar",
+    "loss_abs_max_mw",
 })
 
 
