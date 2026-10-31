@@ -7,6 +7,7 @@ from datetime import date, datetime
 from enum import Enum
 import hashlib
 import importlib.metadata
+from importlib.resources import files
 import json
 import math
 from pathlib import Path
@@ -50,6 +51,7 @@ from psdcalc.reduction.fidelity.metrics import (
     evaluate_metric_thresholds_detailed,
     metric_policy_digest,
     operating_point_digest,
+    reference_cutset_magnitudes,
 )
 from psdcalc.reduction.fidelity.pypsa_executor import (
     PowerFlowExecutionResult,
@@ -58,8 +60,13 @@ from psdcalc.reduction.fidelity.pypsa_executor import (
 )
 
 
-EVIDENCE_SCHEMA_VERSION = "1.0"
-_MODEL_COMPONENTS = frozenset({"Bus", "Line", "Transformer", "Generator", "Load", "ShuntImpedance"})
+EVIDENCE_SCHEMA_VERSION = "2.0"
+FROZEN_THRESHOLD_SET_ID = "PR022_AC_PF_FIDELITY_V1"
+FROZEN_THRESHOLD_SET_SHA256 = "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+_MODEL_COMPONENTS = frozenset({
+    "Bus", "Line", "Transformer", "Generator", "Load", "ShuntImpedance",
+    "StorageUnit", "Store",
+})
 _BUS_REFERENCE_FIELDS = frozenset({"bus", "bus0", "bus1", "bus2", "bus3"})
 
 
@@ -156,6 +163,166 @@ class PowerFlowThresholdProvenance:
 
 
 @dataclass(frozen=True)
+class StructuralReportEvidence:
+    """Canonical structural report bound to one structural run and model digest."""
+
+    payload: Mapping[str, object]
+    stage: str
+    structural_run_id: str
+    artifact_reference: str
+    model_digest: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.payload, Mapping) or not self.payload:
+            raise PowerFlowPersistenceError("PF_STRUCTURAL_REPORT_INVALID", "report payload must be a non-empty mapping")
+        if self.stage not in {"S1", "S4"}:
+            raise PowerFlowPersistenceError("PF_STRUCTURAL_REPORT_INVALID", "structural report stage must be S1 or S4")
+        if not self.structural_run_id.strip() or not self.artifact_reference.strip():
+            raise PowerFlowPersistenceError("PF_STRUCTURAL_REPORT_INVALID", "structural run and artifact reference are required")
+        _check_sha256(self.model_digest, "structural model_digest")
+        if not isinstance(self.payload.get("status"), str):
+            raise PowerFlowPersistenceError("PF_STRUCTURAL_REPORT_INVALID", "structural report status is required")
+
+    @classmethod
+    def from_network(
+        cls,
+        payload: Mapping[str, object],
+        *,
+        stage: str,
+        structural_run_id: str,
+        artifact_reference: str,
+        network: pypsa.Network,
+        sidecar: IdentitySidecar,
+    ) -> "StructuralReportEvidence":
+        """Bind a report payload to the canonical PF-input digest of its network."""
+        return cls(payload=dict(payload), stage=stage, structural_run_id=structural_run_id,
+                   artifact_reference=artifact_reference,
+                   model_digest=canonical_model_digest(network, sidecar))
+
+    def canonical_payload(self) -> dict[str, object]:
+        """Return report content plus immutable stage/run/artifact/model bindings."""
+        return _normalize({
+            "report": self.payload,
+            "stage": self.stage,
+            "structural_run_id": self.structural_run_id,
+            "artifact_reference": self.artifact_reference,
+            "model_digest": self.model_digest,
+        })  # type: ignore[return-value]
+
+
+@dataclass(frozen=True)
+class FrozenThresholdSet:
+    """Verified raw bytes and frozen V1 definition loaded from its unchanged artifact."""
+
+    payload: Mapping[str, object]
+    sha256: str
+    raw_bytes: bytes
+
+    @classmethod
+    def load(cls, path: Path | None = None) -> "FrozenThresholdSet":
+        """Load the packaged frozen threshold file and require its preregistered SHA-256."""
+        artifact = path or Path(str(files("psdcalc.reduction.resources").joinpath(
+            "pr022-beijing-threshold-set-v1.json")))
+        try:
+            raw_bytes = artifact.read_bytes()
+            payload = json.loads(raw_bytes)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise PowerFlowPersistenceError("PF_THRESHOLD_SET_INVALID", str(exc)) from exc
+        actual = hashlib.sha256(raw_bytes).hexdigest()
+        if actual != FROZEN_THRESHOLD_SET_SHA256:
+            raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "frozen threshold-set SHA-256 mismatch")
+        if (payload.get("threshold_set_id") != FROZEN_THRESHOLD_SET_ID or
+                payload.get("threshold_version") != 1 or
+                payload.get("status") != "FROZEN_BEFORE_REAL_CASE"):
+            raise PowerFlowPersistenceError("PF_THRESHOLD_SET_INVALID", "frozen threshold-set identity is invalid")
+        hard = payload.get("hard")
+        if not isinstance(hard, dict) or hard.get("cutset_p_max_absolute_error_mw", {}).get("rule") != \
+                "max(5 MW, 0.01 * reference_magnitude_mw)" or hard.get(
+                "cutset_q_max_absolute_error_mvar", {}).get("rule") != \
+                "max(5 MVAr, 0.02 * reference_magnitude_mvar)":
+            raise PowerFlowPersistenceError("PF_THRESHOLD_SET_INVALID", "frozen formula definitions are invalid")
+        if (hard["cutset_p_max_absolute_error_mw"].get("reference_magnitude_definition") !=
+                "maximum absolute S1 reference P over the mapped cluster cutset aggregates for this policy" or
+                hard["cutset_q_max_absolute_error_mvar"].get("reference_magnitude_definition") !=
+                "maximum absolute S1 reference Q over the mapped cluster cutset aggregates for this policy"):
+            raise PowerFlowPersistenceError("PF_THRESHOLD_SET_INVALID", "frozen reference magnitude definitions are invalid")
+        return cls(payload=payload, sha256=actual, raw_bytes=raw_bytes)
+
+    @property
+    def definition_digest(self) -> str:
+        """Digest the canonical parsed definition independently of raw-byte SHA."""
+        return _digest(self.payload)
+
+    def resolve(self, reference_p_mw: float, reference_q_mvar: float) -> "ResolvedPowerFlowThresholds":
+        """Resolve frozen formulas using maximum absolute source cutset aggregates."""
+        p_ref = _finite_reference(reference_p_mw, "reference_p_mw")
+        q_ref = _finite_reference(reference_q_mvar, "reference_q_mvar")
+        hard = self.payload["hard"]
+        p_floor, p_fraction = _formula_floor_fraction(
+            hard["cutset_p_max_absolute_error_mw"]["rule"], "MW")
+        q_floor, q_fraction = _formula_floor_fraction(
+            hard["cutset_q_max_absolute_error_mvar"]["rule"], "MVAr")
+        thresholds = PowerFlowMetricThresholds(
+            vm_rmse_pu=float(hard["vm_rmse_pu_max"]),
+            vm_max_pu=float(hard["vm_max_absolute_error_pu"]),
+            cutset_p_max_mw=max(p_floor, p_fraction * p_ref),
+            cutset_q_max_mvar=max(q_floor, q_fraction * q_ref),
+            loss_rel_max=float(hard["passive_branch_active_loss_relative_error_max"]),
+        )
+        values = {
+            "threshold_set_id": FROZEN_THRESHOLD_SET_ID,
+            "threshold_set_version": "1",
+            "threshold_set_sha256": self.sha256,
+            "definition_digest": self.definition_digest,
+            "reference_cutset_p_mw": p_ref,
+            "reference_cutset_q_mvar": q_ref,
+            "resolved_thresholds": asdict(thresholds),
+            "mapping_coverage_fraction": 1.0,
+            "preserved_comparison_coverage_fraction": 1.0,
+        }
+        return ResolvedPowerFlowThresholds(
+            threshold_set_id=FROZEN_THRESHOLD_SET_ID,
+            threshold_set_version="1", threshold_set_sha256=self.sha256,
+            definition_digest=self.definition_digest,
+            reference_cutset_p_mw=p_ref, reference_cutset_q_mvar=q_ref,
+            thresholds=thresholds, mapping_coverage_fraction=1.0,
+            preserved_comparison_coverage_fraction=1.0,
+            digest=_digest(values),
+        )
+
+
+@dataclass(frozen=True)
+class ResolvedPowerFlowThresholds:
+    """Runtime scalar thresholds resolved only from the frozen set and S1 references."""
+
+    threshold_set_id: str
+    threshold_set_version: str
+    threshold_set_sha256: str
+    definition_digest: str
+    reference_cutset_p_mw: float
+    reference_cutset_q_mvar: float
+    thresholds: PowerFlowMetricThresholds
+    mapping_coverage_fraction: float
+    preserved_comparison_coverage_fraction: float
+    digest: str
+
+    def to_payload(self) -> dict[str, object]:
+        """Return the full canonical resolution record persisted for independent replay."""
+        return {
+            "threshold_set_id": self.threshold_set_id,
+            "threshold_set_version": self.threshold_set_version,
+            "threshold_set_sha256": self.threshold_set_sha256,
+            "definition_digest": self.definition_digest,
+            "reference_cutset_p_mw": self.reference_cutset_p_mw,
+            "reference_cutset_q_mvar": self.reference_cutset_q_mvar,
+            "resolved_thresholds": asdict(self.thresholds),
+            "mapping_coverage_fraction": self.mapping_coverage_fraction,
+            "preserved_comparison_coverage_fraction": self.preserved_comparison_coverage_fraction,
+            "resolved_thresholds_digest": self.digest,
+        }
+
+
+@dataclass(frozen=True)
 class PowerFlowFidelityEvidenceBundle:
     """Typed persisted run evidence; report values remain aggregate and anonymous."""
 
@@ -176,6 +343,7 @@ class PowerFlowFidelityEvidenceBundle:
     threshold_provenance: PowerFlowThresholdProvenance | None
     threshold_digest: str | None
     threshold_set_id: str
+    resolved_thresholds: Mapping[str, object] | None
     solver_provenance: Mapping[str, str]
     solver_provenance_digest: str
     source_execution_summary: Mapping[str, object]
@@ -219,8 +387,8 @@ class PowerFlowFidelityEvidenceStore:
         *,
         model_id: str,
         config_sha256: str,
-        structural_report_digest: str,
-        source_structural_report_digest: str,
+        source_structural_report: StructuralReportEvidence,
+        target_structural_report: StructuralReportEvidence,
         structural_status: str,
         source_network: pypsa.Network,
         source_sidecar: IdentitySidecar,
@@ -231,26 +399,50 @@ class PowerFlowFidelityEvidenceStore:
         metric_policy: PowerFlowMetricPolicy,
         thresholds: PowerFlowMetricThresholds | None = None,
         threshold_provenance: PowerFlowThresholdProvenance | None = None,
+        threshold_set: FrozenThresholdSet | None = None,
     ) -> PowerFlowFidelityEvidenceBundle:
         """Export clean PF inputs, reload, execute and atomically register evidence artifacts."""
         _check_sha256(config_sha256, "config_sha256")
-        _check_sha256(structural_report_digest, "structural_report_digest")
-        _check_sha256(source_structural_report_digest, "source_structural_report_digest")
         if not model_id.strip():
             raise PowerFlowPersistenceError("PF_EVIDENCE_INVALID", "model_id must be non-empty")
         if structural_status not in {PF_FIDELITY_VALID_STRUCTURAL_STATUS, "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID"}:
             raise PowerFlowPersistenceError("PF_EVIDENCE_INVALID", "unsupported structural status")
-        if (thresholds is None) != (threshold_provenance is None):
+        if threshold_set is not None and thresholds is not None:
+            raise PowerFlowPersistenceError("PF_THRESHOLD_PROVENANCE_INVALID", "supply a frozen set or raw thresholds, not both")
+        if (thresholds is None) != (threshold_provenance is None) and threshold_set is None:
             raise PowerFlowPersistenceError(
                 "PF_THRESHOLD_PROVENANCE_INVALID",
                 "threshold values and provenance must be supplied together",
             )
+        if threshold_provenance is not None and threshold_provenance.threshold_set_id == FROZEN_THRESHOLD_SET_ID and threshold_set is None:
+            raise PowerFlowPersistenceError(
+                "PF_THRESHOLD_PROVENANCE_INVALID", "V1 runtime values must be resolved from the frozen threshold artifact")
+        if threshold_set is not None and threshold_set.sha256 != FROZEN_THRESHOLD_SET_SHA256:
+            raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "frozen threshold-set SHA-256 mismatch")
         self._prepare_directory()
         adapter = PypsaAdapter()
         source_digest = canonical_model_digest(source_network, source_sidecar)
         target_digest = canonical_model_digest(target_network, target_sidecar)
+        source_report_payload = _validate_structural_report_binding(
+            source_structural_report, expected_stage="S1", expected_model_digest=source_digest,
+            expected_statuses={"STRUCTURALLY_VALID", PF_FIDELITY_VALID_STRUCTURAL_STATUS})
+        target_report_payload = _validate_structural_report_binding(
+            target_structural_report, expected_stage="S4", expected_model_digest=target_digest,
+            expected_statuses={"MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+                               "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID"})
+        if target_report_payload["report"]["status"] != structural_status:
+            raise PowerFlowPersistenceError("PF_STRUCTURAL_REPORT_INVALID", "target report status differs from structural_status")
+        if source_report_payload["structural_run_id"] != target_report_payload["structural_run_id"]:
+            raise PowerFlowPersistenceError(
+                "PF_STRUCTURAL_REPORT_INVALID", "source and target reports must come from the same structural run")
+        source_structural_report_digest = _digest(source_report_payload)
+        structural_report_digest = _digest(target_report_payload)
         source_path = self.directory / "source_model.nc"
         target_path = self.directory / "target_model.nc"
+        _write_json(self.directory / "source_structural_report.json", source_report_payload)
+        _write_json(self.directory / "target_structural_report.json", target_report_payload)
+        if threshold_set is not None:
+            (self.directory / "threshold_set_v1.json").write_bytes(threshold_set.raw_bytes)
         adapter.export(_structural_input_copy(source_network), source_path, "netcdf")
         adapter.export(_structural_input_copy(target_network), target_path, "netcdf")
         _write_sidecar_parquet(source_sidecar, self.directory / "source_sidecar.parquet")
@@ -273,9 +465,21 @@ class PowerFlowFidelityEvidenceStore:
             self.executor, loaded_source, loaded_source_sidecar,
             loaded_target, loaded_target_sidecar, operating_point_contract,
         )
+        resolved_thresholds = None
+        if threshold_set is not None:
+            if source_result is None or source_result.status is not PowerFlowExecutionStatus.PF_CONVERGED:
+                raise PowerFlowPersistenceError("PF_THRESHOLD_REFERENCE_UNAVAILABLE", "V1 cutset thresholds require a converged source PF")
+            reference_p, reference_q = reference_cutset_magnitudes(source_result, loaded_mapping)
+            resolved_thresholds = threshold_set.resolve(reference_p, reference_q)
+            thresholds = resolved_thresholds.thresholds
+            threshold_provenance = PowerFlowThresholdProvenance(
+                threshold_set_id=resolved_thresholds.threshold_set_id,
+                version=resolved_thresholds.threshold_set_version,
+                rationale="Resolved from frozen PR022_AC_PF_FIDELITY_V1 using S1 cutset reference magnitudes.",
+                pre_registration_date="2026-10-31")
         op_digest = operating_point_digest(operating_point_contract)
         policy_digest = metric_policy_digest(metric_policy)
-        threshold_digest = _threshold_evidence_digest(thresholds, threshold_provenance)
+        threshold_digest = _threshold_evidence_digest(thresholds, threshold_provenance, resolved_thresholds)
         solver_contract = _solver_contract_digest(operating_point_contract)
         report = _build_report(
             model_id=model_id,
@@ -309,6 +513,7 @@ class PowerFlowFidelityEvidenceStore:
             metric_policy=metric_policy,
             thresholds=thresholds,
             threshold_provenance=threshold_provenance,
+            resolved_thresholds=resolved_thresholds.to_payload() if resolved_thresholds else None,
             threshold_digest_value=threshold_digest,
             report=report,
             structural_status=structural_status,
@@ -346,6 +551,29 @@ class PowerFlowFidelityEvidenceStore:
             raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "source model digest mismatch")
         if target_digest != raw["target_model_digest"]:
             raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "target model digest mismatch")
+        structural_bindings = (
+            ("source_structural_report.json", "source_structural_report_digest", "S1",
+             {"STRUCTURALLY_VALID", PF_FIDELITY_VALID_STRUCTURAL_STATUS}, source_digest),
+            ("target_structural_report.json", "structural_report_digest", "S4",
+             {"MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+              "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_INVALID"}, target_digest),
+        )
+        structural_digests: dict[str, str] = {}
+        for filename, digest_key, stage, statuses, model_digest in structural_bindings:
+            try:
+                structural_payload = json.loads((self.directory / filename).read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", f"{filename} is missing or invalid") from exc
+            _verify_structural_report_payload(
+                structural_payload, expected_stage=stage, expected_model_digest=model_digest,
+                expected_statuses=statuses,
+            )
+            structural_digest = _digest(structural_payload)
+            if structural_digest != raw.get(digest_key):
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", f"{filename} digest mismatch")
+            structural_digests[digest_key] = structural_digest
+        if structural_payload["report"]["status"] != raw.get("structural_status"):
+            raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "target structural status differs from bound report")
         contract = _contract_from_dict(raw["operating_point_contract"])
         if (raw["solver_provenance"].get("solver") != contract.solver or
                 raw["solver_provenance"].get("solver_contract_digest") != _solver_contract_digest(contract)):
@@ -367,9 +595,21 @@ class PowerFlowFidelityEvidenceStore:
         expected_threshold_set_id = provenance.threshold_set_id if provenance else "UNCONFIGURED"
         if raw.get("threshold_set_id") != expected_threshold_set_id:
             raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "threshold set identity mismatch")
-        threshold_digest = _threshold_evidence_digest(thresholds, provenance)
-        if threshold_digest != raw.get("threshold_digest"):
-            raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "threshold digest mismatch")
+        threshold_set = None
+        if raw.get("resolved_thresholds") is not None:
+            threshold_file = self.directory / "threshold_set_v1.json"
+            threshold_set = FrozenThresholdSet.load(threshold_file)
+            if threshold_set.sha256 != raw.get("threshold_set_sha256"):
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "bound threshold-set SHA mismatch")
+            if raw.get("threshold_set_id") != FROZEN_THRESHOLD_SET_ID:
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "threshold set identity mismatch")
+        else:
+            if provenance is not None and provenance.threshold_set_id == FROZEN_THRESHOLD_SET_ID:
+                raise PowerFlowPersistenceError(
+                    "PF_EVIDENCE_DIGEST_MISMATCH", "V1 evidence is missing its frozen threshold resolution")
+            threshold_digest = _threshold_evidence_digest(thresholds, provenance)
+            if threshold_digest != raw.get("threshold_digest"):
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "threshold digest mismatch")
         tolerance = ReplayNumericTolerance(**raw["replay_tolerance"])
         if _digest(asdict(tolerance)) != raw.get("replay_tolerance_digest"):
             raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "replay tolerance digest mismatch")
@@ -384,14 +624,29 @@ class PowerFlowFidelityEvidenceStore:
         if _canonical_metric_rows(metrics_rows) != _canonical_metric_rows(expected_metric_rows):
             raise PowerFlowPersistenceError(
                 "PF_EVIDENCE_DIGEST_MISMATCH", "aggregate metrics artifact differs from the bound report")
-        structural_digest = raw["structural_report_digest"]
-        source_structural_digest = raw["source_structural_report_digest"]
-        _check_sha256(structural_digest, "structural_report_digest")
-        _check_sha256(source_structural_digest, "source_structural_report_digest")
         source_result, target_result = _execute_pair(
             self.executor, source_network, source_sidecar,
             target_network, target_sidecar, contract,
         )
+        resolved_thresholds = None
+        if threshold_set is not None:
+            if source_result.status is not PowerFlowExecutionStatus.PF_CONVERGED:
+                raise PowerFlowPersistenceError("PF_THRESHOLD_REFERENCE_UNAVAILABLE", "V1 cutset thresholds require a converged source PF")
+            reference_p, reference_q = reference_cutset_magnitudes(source_result, mapping)
+            resolved_thresholds = threshold_set.resolve(reference_p, reference_q)
+            persisted_resolution = raw.get("resolved_thresholds")
+            if not isinstance(persisted_resolution, dict) or not _semantic_equal(
+                    persisted_resolution, resolved_thresholds.to_payload(), tolerance):
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "resolved frozen thresholds changed on replay")
+            if thresholds is None or asdict(thresholds) != asdict(resolved_thresholds.thresholds):
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "runtime thresholds differ from frozen resolution")
+            if provenance is None or provenance.threshold_set_id != FROZEN_THRESHOLD_SET_ID:
+                raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "frozen threshold provenance is missing")
+        threshold_digest = _threshold_evidence_digest(thresholds, provenance, resolved_thresholds)
+        if threshold_digest != raw.get("threshold_digest"):
+            raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "threshold digest mismatch")
+        structural_digest = structural_digests["structural_report_digest"]
+        source_structural_digest = structural_digests["source_structural_report_digest"]
         rebuilt = _build_report(
             model_id=raw["model_id"], run_id=raw["run_id"],
             config_sha256=raw["config_sha256"],
@@ -450,9 +705,15 @@ class PowerFlowFidelityEvidenceStore:
             ("pf_fidelity_report", report_path),
             ("pf_fidelity_metrics", metrics_path),
             ("pf_fidelity_comparison_map", self.directory / "comparison_map.parquet"),
+            ("pf_fidelity_source_structural_report", self.directory / "source_structural_report.json"),
+            ("pf_fidelity_target_structural_report", self.directory / "target_structural_report.json"),
         ):
             relative = path.relative_to(self.artifact_store.run_dir).as_posix()
             self.artifact_store.record_artifact(name, relative)
+        threshold_path = self.directory / "threshold_set_v1.json"
+        if threshold_path.is_file():
+            self.artifact_store.record_artifact(
+                "pf_fidelity_threshold_set_v1", threshold_path.relative_to(self.artifact_store.run_dir).as_posix())
         self.artifact_store.set_metadata(software_versions={
             "python": platform.python_version(),
             "pypsa": importlib.metadata.version("pypsa"),
@@ -466,6 +727,8 @@ def canonical_model_digest(network: pypsa.Network, sidecar: IdentitySidecar) -> 
     components: list[dict[str, object]] = []
     for component in sorted(network.components, key=lambda item: item.name):
         if component.name not in _MODEL_COMPONENTS:
+            continue
+        if component.static.empty and not any(not frame.empty for frame in component.dynamic.values()):
             continue
         defaults = component.defaults
         if not isinstance(defaults, pd.DataFrame) or "status" not in defaults.columns:
@@ -643,6 +906,7 @@ def _make_bundle(*, model_id: str, run_id: str, source_digest: str, target_diges
                  metric_policy: PowerFlowMetricPolicy,
                  thresholds: PowerFlowMetricThresholds | None,
                  threshold_provenance: PowerFlowThresholdProvenance | None,
+                 resolved_thresholds: Mapping[str, object] | None,
                  threshold_digest_value: str | None,
                  report: PowerFlowFidelityReport, structural_status: str,
                  replay_tolerance: ReplayNumericTolerance,
@@ -665,6 +929,7 @@ def _make_bundle(*, model_id: str, run_id: str, source_digest: str, target_diges
         operating_point_digest=operating_point_digest(contract), metric_policy=metric_policy,
         metric_policy_digest=metric_policy_digest(metric_policy), thresholds=thresholds,
         threshold_provenance=threshold_provenance,
+        resolved_thresholds=resolved_thresholds,
         threshold_digest=threshold_digest_value,
         threshold_set_id=(threshold_provenance.threshold_set_id if threshold_provenance
                           else "UNCONFIGURED"), solver_provenance=solver_provenance,
@@ -712,6 +977,8 @@ def _bundle_payload(bundle: PowerFlowFidelityEvidenceBundle) -> dict[str, object
                                   if bundle.threshold_provenance else None),
         "threshold_digest": bundle.threshold_digest,
         "threshold_set_id": bundle.threshold_set_id,
+        "resolved_thresholds": dict(bundle.resolved_thresholds) if bundle.resolved_thresholds else None,
+        "threshold_set_sha256": (bundle.resolved_thresholds or {}).get("threshold_set_sha256"),
         "solver_provenance": dict(bundle.solver_provenance),
         "solver_provenance_digest": bundle.solver_provenance_digest,
         "source_execution_summary": dict(bundle.source_execution_summary),
@@ -930,8 +1197,16 @@ def _solver_contract_digest(contract: PowerFlowOperatingPointContract) -> str:
 def _threshold_evidence_digest(
     thresholds: PowerFlowMetricThresholds | None,
     provenance: PowerFlowThresholdProvenance | None,
+    resolved: ResolvedPowerFlowThresholds | None = None,
 ) -> str | None:
     """Bind configured threshold values to their preregistration provenance."""
+    if resolved is not None:
+        if thresholds is None or provenance is None or asdict(thresholds) != asdict(resolved.thresholds):
+            raise PowerFlowPersistenceError("PF_THRESHOLD_PROVENANCE_INVALID", "resolved threshold values do not match runtime scalars")
+        if provenance.threshold_set_id != resolved.threshold_set_id or provenance.version != resolved.threshold_set_version:
+            raise PowerFlowPersistenceError("PF_THRESHOLD_PROVENANCE_INVALID", "resolved threshold identity differs from provenance")
+        return _digest({"resolved_thresholds": resolved.to_payload(),
+                        "provenance": asdict(provenance)})
     if thresholds is None and provenance is None:
         return None
     if thresholds is None or provenance is None:
@@ -945,6 +1220,65 @@ def _frame_payload(frame: pd.DataFrame) -> dict[str, object]:
     return {"index": [_normalize(value) for value in frame.index],
             "columns": [_normalize(value) for value in frame.columns],
             "values": [[_normalize(value) for value in row] for row in frame.to_numpy().tolist()]}
+
+
+def _finite_reference(value: object, name: str) -> float:
+    """Validate a nonnegative finite S1 reference magnitude without coercion."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, np.number)):
+        raise PowerFlowPersistenceError("PF_THRESHOLD_REFERENCE_INVALID", f"{name} must be numeric")
+    result = float(value)
+    if not math.isfinite(result) or result < 0.0:
+        raise PowerFlowPersistenceError("PF_THRESHOLD_REFERENCE_INVALID", f"{name} must be finite and nonnegative")
+    return result
+
+
+def _formula_floor_fraction(rule: object, unit: str) -> tuple[float, float]:
+    """Parse a frozen max(floor, fraction * reference_magnitude) formula."""
+    if not isinstance(rule, str):
+        raise PowerFlowPersistenceError("PF_THRESHOLD_SET_INVALID", "formula rule must be text")
+    match = re.fullmatch(
+        rf"max\(([0-9]+(?:\.[0-9]+)?) {re.escape(unit)}, ([0-9]+(?:\.[0-9]+)?) \* reference_magnitude_{unit.lower()}\)",
+        rule,
+    )
+    if match is None:
+        raise PowerFlowPersistenceError("PF_THRESHOLD_SET_INVALID", "unsupported frozen formula syntax")
+    return float(match.group(1)), float(match.group(2))
+
+
+def _validate_structural_report_binding(
+    evidence: StructuralReportEvidence,
+    *, expected_stage: str,
+    expected_model_digest: str,
+    expected_statuses: set[str],
+) -> dict[str, object]:
+    """Validate in-memory report identity and return the canonical persisted envelope."""
+    if not isinstance(evidence, StructuralReportEvidence):
+        raise PowerFlowPersistenceError("PF_STRUCTURAL_REPORT_INVALID", "structural report evidence is required")
+    payload = evidence.canonical_payload()
+    _verify_structural_report_payload(payload, expected_stage=expected_stage,
+                                       expected_model_digest=expected_model_digest,
+                                       expected_statuses=expected_statuses)
+    return payload
+
+
+def _verify_structural_report_payload(
+    payload: object,
+    *, expected_stage: str,
+    expected_model_digest: str,
+    expected_statuses: set[str],
+) -> None:
+    """Validate a persisted structural report envelope against model and stage bindings."""
+    if not isinstance(payload, dict):
+        raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "structural report envelope is not an object")
+    report = payload.get("report")
+    run_id = payload.get("structural_run_id")
+    artifact_reference = payload.get("artifact_reference")
+    if (payload.get("stage") != expected_stage or payload.get("model_digest") != expected_model_digest or
+            not isinstance(run_id, str) or not run_id or not isinstance(artifact_reference, str) or
+            not artifact_reference or Path(artifact_reference).is_absolute() or
+            ".." in Path(artifact_reference).parts or not isinstance(report, dict) or
+            report.get("status") not in expected_statuses):
+        raise PowerFlowPersistenceError("PF_EVIDENCE_DIGEST_MISMATCH", "structural report run/stage/model binding mismatch")
 
 
 def _normalize(value: object) -> object:

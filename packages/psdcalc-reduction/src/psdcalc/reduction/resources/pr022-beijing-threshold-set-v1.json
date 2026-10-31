@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+  "threshold_version": 1,
+  "status": "FROZEN_BEFORE_REAL_CASE",
+  "pre_registration_date": "2026-10-31",
+  "frozen_before_real_case": true,
+  "rationale": "Project-specific structural-reduction acceptance limits chosen before Beijing PF results are read. These values are not IEEE, regulatory, or industry-standard limits.",
+  "source_reference": "PYPSA_FULL_PROJECTION; reuse only when source model, operating-point, and solver-contract digests match.",
+  "metric_policy": {
+    "p_denominator_floor_mw": 0.000001,
+    "q_denominator_floor_mvar": 0.000001,
+    "loss_denominator_floor_mw": 0.000001
+  },
+  "hard": {
+    "source_pf_converged": true,
+    "target_pf_converged": true,
+    "mapping_coverage_fraction": 1.0,
+    "preserved_comparison_coverage_fraction": 1.0,
+    "vm_rmse_pu_max": 0.005,
+    "vm_max_absolute_error_pu": 0.01,
+    "cutset_p_max_absolute_error_mw": {
+      "rule": "max(5 MW, 0.01 * reference_magnitude_mw)",
+      "reference_magnitude_definition": "maximum absolute S1 reference P over the mapped cluster cutset aggregates for this policy",
+      "applies_to": "maximum absolute cutset P error"
+    },
+    "cutset_q_max_absolute_error_mvar": {
+      "rule": "max(5 MVAr, 0.02 * reference_magnitude_mvar)",
+      "reference_magnitude_definition": "maximum absolute S1 reference Q over the mapped cluster cutset aggregates for this policy",
+      "applies_to": "maximum absolute cutset Q error"
+    },
+    "passive_branch_active_loss_relative_error_max": 0.02
+  },
+  "diagnostic_only": [
+    "vm_p95_pu",
+    "angle_rmse_deg",
+    "angle_p95_deg",
+    "angle_max_deg",
+    "branch_p_rmse_mw",
+    "branch_p_p95_mw",
+    "branch_p_max_mw",
+    "branch_q_rmse_mvar",
+    "branch_q_p95_mvar",
+    "branch_q_max_mvar",
+    "cutset_p_rmse_mw",
+    "cutset_q_rmse_mvar",
+    "cluster_injection_p_rmse_mw",
+    "cluster_injection_p_max_mw",
+    "cluster_injection_q_rmse_mvar",
+    "cluster_injection_q_max_mvar",
+    "passive_branch_active_loss_absolute_error_mw",
+    "runtime_ratio_s4_over_s1"
+  ],
+  "threshold_evaluation": {
+    "hard_failures_change_fidelity_status": true,
+    "diagnostic_failures_change_fidelity_status": false,
+    "mapping_coverage_definition": "Every source Bus is mapped; every source Line or Transformer is either explicitly comparable or explicitly absorbed_internal; no required PF comparison object is missing.",
+    "preserved_comparison_coverage_definition": "Every preserved singleton Bus is represented in both solved results and in the preserved-Bus voltage metric sample count.",
+    "branch_p_q_max_are_hard": false
+  }
+}

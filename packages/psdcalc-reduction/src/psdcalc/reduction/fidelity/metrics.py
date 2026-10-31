@@ -278,6 +278,23 @@ def compare_power_flow_results(
     return PowerFlowComparison(metrics, coverage, offsets)
 
 
+def reference_cutset_magnitudes(
+    source: PowerFlowExecutionResult, mapping: PfComparisonMapping,
+) -> tuple[float, float]:
+    """Return max absolute S1 P/Q aggregate over the mapped cutsets by cluster."""
+    if source.status is not PowerFlowExecutionStatus.PF_CONVERGED or not source.converged:
+        raise MetricError("cutset reference magnitudes require a converged source PF")
+    p_values: list[float] = []
+    q_values: list[float] = []
+    for entries in mapping.cutsets_by_cluster.values():
+        p_values.append(sum(_branch_terminal(source, entry.source_branch_id,
+                                             entry.source_terminal_index, "p") for entry in entries))
+        q_values.append(sum(_branch_terminal(source, entry.source_branch_id,
+                                             entry.source_terminal_index, "q") for entry in entries))
+    return (max((abs(value) for value in p_values), default=0.0),
+            max((abs(value) for value in q_values), default=0.0))
+
+
 def evaluate_metric_thresholds(
     metrics: PowerFlowMetricSet | None,
     thresholds: PowerFlowMetricThresholds,
