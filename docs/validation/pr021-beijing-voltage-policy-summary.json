@@ -1,0 +1,370 @@
+{
+  "evidence_schema": "pr021-beijing-voltage-policy-summary/v1",
+  "evidence_binding": {
+    "case": "BPA10056814",
+    "tested_implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+    "tested_implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+    "package_version": "0.4.0",
+    "physical_fidelity_status": "PHYSICAL_FIDELITY_NOT_YET_EVALUATED",
+    "binding_statement": "Real-case results were produced from the tested implementation tree. Subsequent documentation-only commits do not alter the tested implementation.",
+    "core_implementation_commit": "fbb06be524b4b00fdcd8a61048ce12e386a62c95",
+    "report_implementation_commit": "50a913f10622e246260877036d27b21303e0b5e3"
+  },
+  "package_gate": {
+    "status": "PR021_PACKAGE_0_4_0_GATE_PASS",
+    "python_version": "3.13.9",
+    "pytest_passed": 330,
+    "pytest_failed": 0,
+    "sdist_sha256": "01e864a9f4acc4cbb527c9e1671a6e6264d13e8bebe5addfbedb57cc846c9789",
+    "wheel_sha256": "014ef81468306743fb9367e3fbfcf83bd69a38bd4eba6570891713aa39afe6c6"
+  },
+  "real_case_environment": {
+    "python_version": "3.11.15",
+    "pypsa_version": "1.2.4",
+    "highspy_version": "1.15.1",
+    "package_version": "0.4.0",
+    "supported_python_range": ">=3.11,<3.14",
+    "cross_version_result_equivalence_tested": false
+  },
+  "source_evidence": {
+    "dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+    "source_inventory": {
+      "bus": 1527,
+      "line": 639,
+      "projected_transformer_rows": 1344,
+      "generator": 56,
+      "load": 219,
+      "shunt_impedance": 135,
+      "link": 0,
+      "storage_unit": 0,
+      "store": 0
+    },
+    "projected_transformer_row_basis": {
+      "two_winding_rows": 96,
+      "three_winding_groups": 416,
+      "projected_three_winding_t_leg_rows": 1248,
+      "total_projected_transformer_rows": 1344
+    },
+    "actual_voltage_layers_kv": [
+      0.32,
+      0.6,
+      0.69,
+      0.8,
+      1.0,
+      1.14,
+      10.5,
+      13.8,
+      15.8,
+      16.0,
+      18.0,
+      20.0,
+      27.5,
+      37.0,
+      66.0,
+      115.0,
+      230.0,
+      525.0
+    ],
+    "absent_voltage_layers_kv": [
+      330,
+      110,
+      35
+    ],
+    "absent_layers_are_not_inferred_or_remapped": true,
+    "known_dc_card_count": 0,
+    "unsupported_card_count": 0
+  },
+  "parallel_and_l_plus_audit": {
+    "source_audit_consistent_across_all_scenarios": true,
+    "parallel_corridors": 194,
+    "double_circuit_corridors": 191,
+    "corridors_with_three_or_more_members": 3,
+    "parallel_only_cycles": 91,
+    "l_plus_associations": 18,
+    "finite_source_values": 11,
+    "blank_source_values": 7,
+    "parse_mismatch": 0,
+    "malformed": 0
+  },
+  "scenarios": [
+    {
+      "policy": "BASE",
+      "requested_cutoff_kv": null,
+      "retained_voltage_layers_kv": [],
+      "l1": {
+        "bus_count": 1392,
+        "line_count": 504
+      },
+      "candidate": {
+        "bus_count": 1392,
+        "line_count": 399
+      },
+      "accepted": {
+        "bus_count": 1392,
+        "line_count": 399
+      },
+      "accepted_compression_fraction": {
+        "bus": 0.08840864440078586,
+        "line": 0.3755868544600939
+      },
+      "final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "resolved_policy_fingerprint": "0cf409cf27f343aea661c37ff48118a62315fe7812a792439e2a592c68d8abf5",
+      "retained_identity_set_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mapping_semantic_sha256": "f71e32ec0d7f60ec1840cf1a61b94fe4d8fc80a4e3ac2555f6947f6147da7883",
+      "runtime_seconds": 83.5255137081258
+    },
+    {
+      "policy": "CUT_35",
+      "requested_cutoff_kv": 35.0,
+      "retained_voltage_layers_kv": [
+        37.0,
+        66.0,
+        115.0,
+        230.0,
+        525.0
+      ],
+      "l1": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "candidate": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted_compression_fraction": {
+        "bus": 0.0013097576948264572,
+        "line": 0.003129890453834116
+      },
+      "final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "resolved_policy_fingerprint": "0b9f6b686aa8655d8df0028323394ccf6ff819252b18d1be3127c50d7b2e0de9",
+      "retained_identity_set_digest": "bbcae61dbc11feed1346ff192f4d96b5b7e625f903cbe8b62390eed947410fc3",
+      "mapping_semantic_sha256": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf",
+      "runtime_seconds": 79.38502966612577
+    },
+    {
+      "policy": "CUT_37",
+      "requested_cutoff_kv": 37.0,
+      "retained_voltage_layers_kv": [
+        37.0,
+        66.0,
+        115.0,
+        230.0,
+        525.0
+      ],
+      "l1": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "candidate": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted_compression_fraction": {
+        "bus": 0.0013097576948264572,
+        "line": 0.003129890453834116
+      },
+      "final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "resolved_policy_fingerprint": "0b9f6b686aa8655d8df0028323394ccf6ff819252b18d1be3127c50d7b2e0de9",
+      "retained_identity_set_digest": "bbcae61dbc11feed1346ff192f4d96b5b7e625f903cbe8b62390eed947410fc3",
+      "mapping_semantic_sha256": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf",
+      "runtime_seconds": 79.92037120787427
+    },
+    {
+      "policy": "CUT_110",
+      "requested_cutoff_kv": 110.0,
+      "retained_voltage_layers_kv": [
+        115.0,
+        230.0,
+        525.0
+      ],
+      "l1": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "candidate": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted_compression_fraction": {
+        "bus": 0.0013097576948264572,
+        "line": 0.003129890453834116
+      },
+      "final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "resolved_policy_fingerprint": "620dc3dba2b46e65ea7dd6cccb5b64d9b70897c9f284fa2527977829e77ea0fd",
+      "retained_identity_set_digest": "1a4ee856ffc250cf19e3c758520c9a1eb230d54cf0f03068a81c273bc4bbe783",
+      "mapping_semantic_sha256": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf",
+      "runtime_seconds": 79.39155420893803
+    },
+    {
+      "policy": "CUT_115",
+      "requested_cutoff_kv": 115.0,
+      "retained_voltage_layers_kv": [
+        115.0,
+        230.0,
+        525.0
+      ],
+      "l1": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "candidate": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted": {
+        "bus_count": 1525,
+        "line_count": 637
+      },
+      "accepted_compression_fraction": {
+        "bus": 0.0013097576948264572,
+        "line": 0.003129890453834116
+      },
+      "final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "resolved_policy_fingerprint": "620dc3dba2b46e65ea7dd6cccb5b64d9b70897c9f284fa2527977829e77ea0fd",
+      "retained_identity_set_digest": "1a4ee856ffc250cf19e3c758520c9a1eb230d54cf0f03068a81c273bc4bbe783",
+      "mapping_semantic_sha256": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf",
+      "runtime_seconds": 79.61043687490746
+    },
+    {
+      "policy": "CUT_230",
+      "requested_cutoff_kv": 230.0,
+      "retained_voltage_layers_kv": [
+        230.0,
+        525.0
+      ],
+      "l1": {
+        "bus_count": 1396,
+        "line_count": 508
+      },
+      "candidate": {
+        "bus_count": 1395,
+        "line_count": 507
+      },
+      "accepted": {
+        "bus_count": 1395,
+        "line_count": 507
+      },
+      "accepted_compression_fraction": {
+        "bus": 0.08644400785854617,
+        "line": 0.20657276995305165
+      },
+      "final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "resolved_policy_fingerprint": "d1e41e3787653b83050758f352f86d6847514b207818ad84a393c3886127840d",
+      "retained_identity_set_digest": "7ccd24d1a334df1d64fb81a0be124056fa69dd631da9ad424b40fa5076e88482",
+      "mapping_semantic_sha256": "aceb280a8e1eb251cfd9f4157a07c13553f173b2ffdc2338987c8c4d603a62f1",
+      "runtime_seconds": 102.24786708317697
+    },
+    {
+      "policy": "CUT_330",
+      "requested_cutoff_kv": 330.0,
+      "retained_voltage_layers_kv": [
+        525.0
+      ],
+      "l1": {
+        "bus_count": 1392,
+        "line_count": 504
+      },
+      "candidate": {
+        "bus_count": 1392,
+        "line_count": 399
+      },
+      "accepted": {
+        "bus_count": 1392,
+        "line_count": 399
+      },
+      "accepted_compression_fraction": {
+        "bus": 0.08840864440078586,
+        "line": 0.3755868544600939
+      },
+      "final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "resolved_policy_fingerprint": "9bc79f4ffc72574e402701b965009b4b53ef2868f3ffcfe3d48dce0d457ee11a",
+      "retained_identity_set_digest": "a119e67b1dad940386e8c6d59e9148ff2292f967da55c26029833d31811028a4",
+      "mapping_semantic_sha256": "60866e72d9f7df0cc076598c1fc71dcc4d9f0c7d6c0ab0fef0e17d0fb82f92e6",
+      "runtime_seconds": 100.82283629104495
+    }
+  ],
+  "cutoff_equivalence": [
+    {
+      "policies": [
+        "CUT_110",
+        "CUT_115"
+      ],
+      "equal_fields": [
+        "retained_identity_set_digest",
+        "resolved_policy_fingerprint",
+        "l1",
+        "candidate",
+        "accepted",
+        "mapping_semantic_sha256",
+        "final_status"
+      ],
+      "all_equal": true
+    },
+    {
+      "policies": [
+        "CUT_35",
+        "CUT_37"
+      ],
+      "equal_fields": [
+        "retained_identity_set_digest",
+        "resolved_policy_fingerprint",
+        "l1",
+        "candidate",
+        "accepted",
+        "mapping_semantic_sha256",
+        "final_status"
+      ],
+      "all_equal": true
+    }
+  ],
+  "base_compatibility": {
+    "comparison": "PR-021 BASE versus PR-020 Beijing BASE",
+    "s1_inventory_equal": true,
+    "l1_inventory_equal": true,
+    "l2_final_inventory_equal": true,
+    "canonical_parquet_mapping_compare_equal": true,
+    "scope": "structural compatibility only"
+  },
+  "cross_scenario_report_artifacts": {
+    "json_sha256": "494ac84fe4261e70a7d499d22c70bcfef182fdce6accc6deb3aba72fcc3f1b8c",
+    "markdown_sha256": "ce3bb0084c03237d6bfa44774b8ad47f7b7f33e37792441aea65de94669cd67a",
+    "parquet_sha256": {
+      "deltas.parquet": "b36fa67c3db9707e5fdcefa8367ced447b73012f5b5a4938733d6060f0f8658a",
+      "device_transitions.parquet": "8a62dc2230e4b30cc6a49b3495782f4fe507b6384c900dec7ed6c43fe9c4fbe3",
+      "gates.parquet": "76d55e6df8121fa5b21a3ae56ed052e9d0ab576695f24f717a667d880e2337d3",
+      "runtime.parquet": "ba52c485078b1f86ecd1c101cf98eb9294d36b50b00da8027f8c6447891fa0ac",
+      "scenarios.parquet": "35991a72ca746c7a2baa13a2552d9b2366e2442b4d6e716c57ae11cb58b2522f",
+      "topology.parquet": "b945e038cdd8b22505b354dc58271ba5ac0ee00f79ba575be09294b2c12e680e",
+      "voltage_layers.parquet": "8c3ca543b49937a369f619738e6de9c12d21e5eb40cf37b60904eca219e9f98c"
+    },
+    "parquet_round_trip_validated": true
+  },
+  "observations": [
+    "CUT_330 and BASE produced the same scenario inventories and compression fractions.",
+    "CUT_230 had a small Bus compression change relative to BASE and a larger reduction in Line compression.",
+    "CUT_115 entered a structural-floor saturation region; the shared planner floor was 1525 Bus.",
+    "CUT_110/CUT_115 and CUT_35/CUT_37 show that requested cutoffs can differ while resolved retained layers and structural outputs match.",
+    "CUT_230 is an informative intermediate structural operating point; no optimality claim is made."
+  ],
+  "known_runtime_diagnostics": [
+    "PyArrow hardware sysctl queries were denied by the sandbox; Parquet readback and report validation completed."
+  ],
+  "validation_status": {
+    "real_case_gate": "PR021_REAL_CASE_GATE_PASS",
+    "all_scenarios_final_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+    "physical_fidelity_status": "PHYSICAL_FIDELITY_NOT_YET_EVALUATED",
+    "power_flow_run": false
+  }
+}
