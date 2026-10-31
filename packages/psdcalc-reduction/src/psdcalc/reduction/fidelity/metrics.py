@@ -7,12 +7,15 @@ import json
 import math
 from collections import defaultdict
 from dataclasses import asdict, dataclass
+from datetime import date, datetime
 from typing import Mapping, Sequence
 
 import numpy as np
 
 from psdcalc.reduction.core.ids import StableId
 from psdcalc.reduction.fidelity.contracts import (
+    POWER_FLOW_DIAGNOSTIC_THRESHOLD_FIELDS,
+    POWER_FLOW_HARD_THRESHOLD_FIELDS,
     PfFidelityStatus,
     PowerFlowCoverage,
     PowerFlowErrorSummary,
@@ -31,6 +34,15 @@ from psdcalc.reduction.fidelity.pypsa_executor import (
 
 class MetricError(ValueError):
     """Raised when metric inputs are incomplete, unsupported, or non-finite."""
+
+
+@dataclass(frozen=True)
+class PowerFlowThresholdEvaluation:
+    """Hard acceptance outcome plus separate diagnostic threshold failures."""
+
+    fidelity_status: PfFidelityStatus
+    hard_failures: tuple[str, ...]
+    diagnostic_failures: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -270,29 +282,92 @@ def evaluate_metric_thresholds(
     metrics: PowerFlowMetricSet | None,
     thresholds: PowerFlowMetricThresholds,
 ) -> PfFidelityStatus:
-    """Evaluate explicit thresholds separately from metric calculation."""
+    """Return acceptance status from HARD thresholds only."""
+    return evaluate_metric_thresholds_detailed(metrics, thresholds).fidelity_status
+
+
+def evaluate_metric_thresholds_detailed(
+    metrics: PowerFlowMetricSet | None,
+    thresholds: PowerFlowMetricThresholds,
+) -> PowerFlowThresholdEvaluation:
+    """Evaluate HARD acceptance and DIAGNOSTIC thresholds as separate outcomes."""
     if not thresholds.is_frozen:
         raise MetricError("fidelity acceptance thresholds are not configured")
     if metrics is None:
         raise MetricError("metrics are unavailable")
-    comparisons = (
-        (metrics.bus_voltage.max_absolute, thresholds.vm_max_pu),
-        (metrics.bus_voltage.rmse, thresholds.vm_rmse_pu),
-        (metrics.angle.max_absolute, thresholds.angle_max_deg),
-        (metrics.branch_p.max_absolute, thresholds.branch_p_max_mw),
-        (metrics.branch_q.max_absolute, thresholds.branch_q_max_mvar),
-        (metrics.cutset_p.max_absolute, thresholds.cutset_p_max_mw),
-        (metrics.cutset_q.max_absolute, thresholds.cutset_q_max_mvar),
-        (metrics.passive_branch_losses.passive_branch_active_abs_diff_mw,
-         thresholds.loss_abs_max_mw),
-        (metrics.passive_branch_losses.passive_branch_active_relative_diff,
-         thresholds.loss_rel_max),
-    )
-    if any(measured is None or threshold is None for measured, threshold in comparisons):
-        raise MetricError("configured threshold has no measured metric")
-    if all(float(measured) <= float(threshold) for measured, threshold in comparisons):
-        return PfFidelityStatus.PF_FIDELITY_WITHIN_TOLERANCE
-    return PfFidelityStatus.PF_FIDELITY_OUTSIDE_TOLERANCE
+    hard_values: dict[str, tuple[float | None, float | None]] = {
+        "vm_max_pu": (metrics.bus_voltage.max_absolute, thresholds.vm_max_pu),
+        "vm_rmse_pu": (metrics.bus_voltage.rmse, thresholds.vm_rmse_pu),
+        "cutset_p_max_mw": (metrics.cutset_p.max_absolute, thresholds.cutset_p_max_mw),
+        "cutset_q_max_mvar": (metrics.cutset_q.max_absolute, thresholds.cutset_q_max_mvar),
+        "loss_abs_max_mw": (metrics.passive_branch_losses.passive_branch_active_abs_diff_mw,
+                             thresholds.loss_abs_max_mw),
+        "loss_rel_max": (metrics.passive_branch_losses.passive_branch_active_relative_diff,
+                          thresholds.loss_rel_max),
+    }
+    diagnostic_values: dict[str, tuple[float | None, float | None]] = {
+        "vm_p95_pu": (metrics.bus_voltage.p95_absolute, thresholds.vm_p95_pu),
+        "angle_rmse_deg": (metrics.angle.rmse, thresholds.angle_rmse_deg),
+        "angle_p95_deg": (metrics.angle.p95_absolute, thresholds.angle_p95_deg),
+        "angle_max_deg": (metrics.angle.max_absolute, thresholds.angle_max_deg),
+        "branch_p_rmse_mw": (metrics.branch_p.rmse, thresholds.branch_p_rmse_mw),
+        "branch_p_p95_mw": (metrics.branch_p.p95_absolute, thresholds.branch_p_p95_mw),
+        "branch_p_max_mw": (metrics.branch_p.max_absolute, thresholds.branch_p_max_mw),
+        "branch_q_rmse_mvar": (metrics.branch_q.rmse, thresholds.branch_q_rmse_mvar),
+        "branch_q_p95_mvar": (metrics.branch_q.p95_absolute, thresholds.branch_q_p95_mvar),
+        "branch_q_max_mvar": (metrics.branch_q.max_absolute, thresholds.branch_q_max_mvar),
+        "cutset_p_rmse_mw": (metrics.cutset_p.rmse, thresholds.cutset_p_rmse_mw),
+        "cutset_q_rmse_mvar": (metrics.cutset_q.rmse, thresholds.cutset_q_rmse_mvar),
+        "injection_p_rmse_mw": (metrics.cluster_injection.p_mw.rmse, thresholds.injection_p_rmse_mw),
+        "injection_p_max_mw": (metrics.cluster_injection.p_mw.max_absolute, thresholds.injection_p_max_mw),
+        "injection_q_rmse_mvar": (metrics.cluster_injection.q_mvar.rmse, thresholds.injection_q_rmse_mvar),
+        "injection_q_max_mvar": (metrics.cluster_injection.q_mvar.max_absolute, thresholds.injection_q_max_mvar),
+    }
+    if set(hard_values) != POWER_FLOW_HARD_THRESHOLD_FIELDS:
+        raise MetricError("HARD threshold classification does not match its evaluator")
+    if set(diagnostic_values) != POWER_FLOW_DIAGNOSTIC_THRESHOLD_FIELDS:
+        raise MetricError("DIAGNOSTIC threshold classification does not match its evaluator")
+    hard_failures = _threshold_failures(hard_values, required=True)
+    diagnostic_failures = _threshold_failures(diagnostic_values, required=False)
+    status = (PfFidelityStatus.PF_FIDELITY_OUTSIDE_TOLERANCE if hard_failures else
+              PfFidelityStatus.PF_FIDELITY_WITHIN_TOLERANCE)
+    return PowerFlowThresholdEvaluation(status, hard_failures, diagnostic_failures)
+
+
+def _threshold_failures(
+    values: Mapping[str, tuple[float | None, float | None]], *, required: bool,
+) -> tuple[str, ...]:
+    """Return exceeded threshold names, failing on missing required observations."""
+    failures: list[str] = []
+    for name, (measured, threshold) in values.items():
+        if threshold is None and not required:
+            continue
+        if measured is None or threshold is None:
+            raise MetricError(f"configured threshold has no measured metric: {name}")
+        if float(measured) > float(threshold):
+            failures.append(name)
+    return tuple(sorted(failures))
+
+
+def _canonical_snapshot_value(value: object) -> object:
+    """Normalize immutable snapshot labels independently of NumPy scalar wrappers."""
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, tuple):
+        return {"type": "tuple", "items": [_canonical_snapshot_value(item) for item in value]}
+    if isinstance(value, (datetime, date)):
+        return {"type": "timestamp", "value": value.isoformat()}
+    if isinstance(value, bool):
+        return {"type": "bool", "value": value}
+    if isinstance(value, int):
+        return {"type": "int", "value": value}
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise MetricError("snapshot label must be finite")
+        return {"type": "float", "value": value}
+    if isinstance(value, str):
+        return {"type": "str", "value": value}
+    raise MetricError(f"unsupported snapshot label type: {type(value).__name__}")
 
 
 def operating_point_digest(contract: object) -> str:
@@ -301,8 +376,7 @@ def operating_point_digest(contract: object) -> str:
         payload = asdict(contract)
     except (TypeError, ValueError) as exc:
         raise MetricError("operating point cannot be canonically serialized") from exc
-    payload["snapshots"] = [f"{type(value).__qualname__}:{value!s}"
-                            for value in payload["snapshots"]]
+    payload["snapshots"] = [_canonical_snapshot_value(value) for value in payload["snapshots"]]
     return _digest(payload)
 
 

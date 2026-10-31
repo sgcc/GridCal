@@ -280,6 +280,18 @@ def test_threshold_evaluation_is_separate_from_measurement() -> None:
     assert evaluate_metric_thresholds(metrics, loose).value == "PF_FIDELITY_WITHIN_TOLERANCE"
     assert evaluate_metric_thresholds(metrics, strict).value == "PF_FIDELITY_OUTSIDE_TOLERANCE"
 
+    from psdcalc.reduction.fidelity.metrics import evaluate_metric_thresholds_detailed
+
+    diagnostic_only = PowerFlowMetricThresholds(
+        vm_max_pu=100.0, vm_rmse_pu=100.0,
+        cutset_p_max_mw=1000.0, cutset_q_max_mvar=1000.0,
+        loss_abs_max_mw=100.0, loss_rel_max=100.0,
+        angle_max_deg=0.0, branch_p_max_mw=0.0, branch_q_max_mvar=0.0)
+    diagnostic_result = evaluate_metric_thresholds_detailed(metrics, diagnostic_only)
+    assert diagnostic_result.fidelity_status.value == "PF_FIDELITY_WITHIN_TOLERANCE"
+    assert diagnostic_result.hard_failures == ()
+    assert "branch_p_max_mw" in diagnostic_result.diagnostic_failures
+
 
 def test_metric_threshold_evaluator_rejects_unconfigured_thresholds() -> None:
     with pytest.raises(MetricError, match="not configured"):

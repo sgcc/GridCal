@@ -30,9 +30,11 @@ from psdcalc.reduction.fidelity.mapping import (
 from psdcalc.reduction.fidelity.metrics import (
     MetricError,
     PowerFlowComparison,
+    PowerFlowThresholdEvaluation,
     align_component_angles,
     compare_power_flow_results,
     evaluate_metric_thresholds,
+    evaluate_metric_thresholds_detailed,
     metric_policy_digest,
     operating_point_digest,
     relative_error,
@@ -47,6 +49,18 @@ from psdcalc.reduction.fidelity.pypsa_executor import (
     PowerFlowSubnetworkStatus,
     PypsaAcPowerFlowExecutor,
     structural_input_signature,
+)
+from psdcalc.reduction.fidelity.persistence import (
+    PowerFlowFidelityEvidenceBundle,
+    PowerFlowFidelityEvidenceStore,
+    PowerFlowPersistenceError,
+    PowerFlowReplayResult,
+    PowerFlowThresholdSchema,
+    PowerFlowThresholdProvenance,
+    ReplayNumericTolerance,
+    ThresholdDefinition,
+    canonical_model_digest,
+    require_supported_pypsa_version,
 )
 
 __all__ = [
@@ -75,9 +89,11 @@ __all__ = [
     "derive_pf_comparison_mapping",
     "MetricError",
     "PowerFlowComparison",
+    "PowerFlowThresholdEvaluation",
     "align_component_angles",
     "compare_power_flow_results",
     "evaluate_metric_thresholds",
+    "evaluate_metric_thresholds_detailed",
     "metric_policy_digest",
     "operating_point_digest",
     "relative_error",
@@ -90,4 +106,14 @@ __all__ = [
     "PowerFlowSubnetworkStatus",
     "PypsaAcPowerFlowExecutor",
     "structural_input_signature",
+    "PowerFlowFidelityEvidenceBundle",
+    "PowerFlowFidelityEvidenceStore",
+    "PowerFlowPersistenceError",
+    "PowerFlowReplayResult",
+    "PowerFlowThresholdSchema",
+    "PowerFlowThresholdProvenance",
+    "ReplayNumericTolerance",
+    "ThresholdDefinition",
+    "canonical_model_digest",
+    "require_supported_pypsa_version",
 ]

@@ -19,6 +19,20 @@ class PowerFlowContractError(ValueError):
     """Raised when an operating-point or fidelity-report contract is invalid."""
 
 
+POWER_FLOW_HARD_THRESHOLD_FIELDS = frozenset({
+    "vm_rmse_pu", "vm_max_pu", "cutset_p_max_mw", "cutset_q_max_mvar",
+    "loss_abs_max_mw", "loss_rel_max",
+})
+POWER_FLOW_DIAGNOSTIC_THRESHOLD_FIELDS = frozenset({
+    "vm_p95_pu", "angle_rmse_deg", "angle_p95_deg", "angle_max_deg",
+    "branch_p_rmse_mw", "branch_p_p95_mw", "branch_p_max_mw",
+    "branch_q_rmse_mvar", "branch_q_p95_mvar", "branch_q_max_mvar",
+    "cutset_p_rmse_mw", "cutset_q_rmse_mvar",
+    "injection_p_rmse_mw", "injection_p_max_mw",
+    "injection_q_rmse_mvar", "injection_q_max_mvar",
+})
+
+
 class PfSolveStatus(StrEnum):
     """Outcome of one side's PF attempt, independent from reduction structure."""
 
@@ -140,11 +154,24 @@ class PowerFlowMetricThresholds:
 
     vm_max_pu: float | None = None
     vm_rmse_pu: float | None = None
+    vm_p95_pu: float | None = None
     angle_max_deg: float | None = None
+    angle_rmse_deg: float | None = None
+    angle_p95_deg: float | None = None
     branch_p_max_mw: float | None = None
+    branch_p_rmse_mw: float | None = None
+    branch_p_p95_mw: float | None = None
     branch_q_max_mvar: float | None = None
+    branch_q_rmse_mvar: float | None = None
+    branch_q_p95_mvar: float | None = None
+    cutset_p_rmse_mw: float | None = None
     cutset_p_max_mw: float | None = None
+    cutset_q_rmse_mvar: float | None = None
     cutset_q_max_mvar: float | None = None
+    injection_p_rmse_mw: float | None = None
+    injection_p_max_mw: float | None = None
+    injection_q_rmse_mvar: float | None = None
+    injection_q_max_mvar: float | None = None
     loss_abs_max_mw: float | None = None
     loss_rel_max: float | None = None
 
@@ -156,8 +183,8 @@ class PowerFlowMetricThresholds:
 
     @property
     def is_frozen(self) -> bool:
-        """Return whether every threshold needed by the first-stage schema is set."""
-        return all(getattr(self, name) is not None for name in self.__dataclass_fields__)
+        """Return whether every HARD fidelity threshold has been configured."""
+        return all(getattr(self, name) is not None for name in POWER_FLOW_HARD_THRESHOLD_FIELDS)
 
 
 @dataclass(frozen=True)
@@ -344,8 +371,11 @@ class PowerFlowFidelityReport:
     loss_metrics: PowerFlowLossMetrics | None
     coverage: PowerFlowCoverage
     fidelity_status: PfFidelityStatus
+    operating_point_digest: str | None = None
     thresholds_digest: str | None = None
     failure_reason: str | None = None
+    threshold_hard_failures: tuple[str, ...] = ()
+    threshold_diagnostic_failures: tuple[str, ...] = ()
 
     @property
     def metric_set(self) -> PowerFlowMetricSet | None:
@@ -396,14 +426,13 @@ class PowerFlowFidelityReport:
             "branch_coverage_fraction": self.coverage.branch_coverage_fraction,
         }
         return {
-            "model_id": self.model_id,
-            "run_id": self.run_id,
             "config_sha256": self.config_sha256,
             "structural_report_digest": self.structural_report_digest,
             "source_structural_report_digest": self.source_structural_report_digest,
             "mapping_digest": self.mapping_digest,
             "solver_contract_digest": self.solver_contract_digest,
             "metric_policy_digest": self.metric_policy_digest,
+            "operating_point_digest": self.operating_point_digest,
             "s1_model_digest": self.s1_model_digest,
             "s4_model_digest": self.s4_model_digest,
             "source_stage": self.source_stage,
@@ -412,20 +441,6 @@ class PowerFlowFidelityReport:
             "source_pf_status": self.source_pf_status.value,
             "target_pf_status": self.target_pf_status.value,
             "fidelity_status": self.fidelity_status.value,
-            "operating_point": {
-                "snapshot_count": len(self.operating_point.snapshots),
-                "solver": self.operating_point.solver,
-                "tolerance": self.operating_point.tolerance,
-                "max_iterations": self.operating_point.max_iterations,
-                "distribute_slack": self.operating_point.distribute_slack,
-                "slack_weights": self.operating_point.slack_weights,
-                "use_seed": self.operating_point.use_seed,
-                "control_policy": self.operating_point.control_policy,
-                "tap_policy": self.operating_point.tap_policy,
-                "phase_shift_policy": self.operating_point.phase_shift_policy,
-                "topology_digest": self.operating_point.topology_digest,
-                "device_schedule_digest": self.operating_point.device_schedule_digest,
-            },
             "coverage": coverage,
             "metrics": {
                 "bus_voltage": summary(self.bus_voltage_metrics),
@@ -450,6 +465,8 @@ class PowerFlowFidelityReport:
                     if self.loss_metrics else None),
             },
             "thresholds_digest": self.thresholds_digest,
+            "threshold_hard_failures": list(self.threshold_hard_failures),
+            "threshold_diagnostic_failures": list(self.threshold_diagnostic_failures),
         }
 
     def __post_init__(self) -> None:
@@ -494,6 +511,13 @@ class PowerFlowFidelityReport:
             raise PowerFlowContractError("loss_metrics must be PowerFlowLossMetrics or None")
         if self.thresholds_digest is not None:
             _valid_sha256(self.thresholds_digest, "thresholds_digest")
+        if self.operating_point_digest is not None:
+            _valid_sha256(self.operating_point_digest, "operating_point_digest")
+        for name in ("threshold_hard_failures", "threshold_diagnostic_failures"):
+            values = getattr(self, name)
+            if (not isinstance(values, tuple) or
+                    any(not isinstance(value, str) or not value for value in values)):
+                raise PowerFlowContractError(f"{name} must be a tuple of non-empty strings")
         status = self.fidelity_status
         if status is PfFidelityStatus.SOURCE_PF_NOT_CONVERGED:
             if (self.source_pf_status is not PfSolveStatus.NOT_CONVERGED or
