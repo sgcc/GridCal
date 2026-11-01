@@ -8,7 +8,8 @@ import math
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
-from typing import Mapping, Sequence
+from types import MappingProxyType
+from typing import Literal, Mapping, Sequence
 
 import numpy as np
 
@@ -37,12 +38,83 @@ class MetricError(ValueError):
 
 
 @dataclass(frozen=True)
+class PowerFlowMetricViolation:
+    """One exceeded threshold detail produced by the authoritative evaluator."""
+
+    metric_name: str
+    severity: Literal["HARD", "DIAGNOSTIC"]
+    observed_value: float
+    resolved_threshold: float
+    violation_magnitude: float
+    normalized_violation: float
+
+    def __post_init__(self) -> None:
+        """Require a finite upper-bound violation from the threshold evaluator."""
+        if not self.metric_name or self.severity not in {"HARD", "DIAGNOSTIC"}:
+            raise MetricError("threshold violation identity or severity is invalid")
+        for name in ("observed_value", "resolved_threshold", "violation_magnitude",
+                     "normalized_violation"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+                raise MetricError(f"{name} must be finite")
+        if self.violation_magnitude <= 0 or self.normalized_violation <= 0:
+            raise MetricError("exceeded thresholds require positive violation magnitudes")
+
+
+@dataclass(frozen=True)
 class PowerFlowThresholdEvaluation:
-    """Hard acceptance outcome plus separate diagnostic threshold failures."""
+    """Threshold outcomes and normalized violation details from PR-022 evaluation."""
 
     fidelity_status: PfFidelityStatus
     hard_failures: tuple[str, ...]
     diagnostic_failures: tuple[str, ...]
+    hard_violations: tuple[PowerFlowMetricViolation, ...] = ()
+    diagnostic_violations: tuple[PowerFlowMetricViolation, ...] = ()
+    metrics_digest: str | None = None
+    threshold_digest: str | None = None
+
+    def __post_init__(self) -> None:
+        """Bind detail names to their severity-specific outcome tuples."""
+        if tuple(sorted(set(self.hard_failures))) != self.hard_failures:
+            raise MetricError("hard_failures must be unique and sorted")
+        if tuple(sorted(set(self.diagnostic_failures))) != self.diagnostic_failures:
+            raise MetricError("diagnostic_failures must be unique and sorted")
+        if tuple(sorted(item.metric_name for item in self.hard_violations)) != self.hard_failures:
+            raise MetricError("hard violation details differ from hard_failures")
+        if tuple(sorted(item.metric_name for item in self.diagnostic_violations)) != self.diagnostic_failures:
+            raise MetricError("diagnostic violation details differ from diagnostic_failures")
+        for name in ("metrics_digest", "threshold_digest"):
+            value = getattr(self, name)
+            if value is not None and (len(value) != 64 or
+                    any(char not in "0123456789abcdef" for char in value)):
+                raise MetricError(f"{name} must be a lowercase SHA-256 digest or None")
+
+
+@dataclass(frozen=True)
+class PowerFlowResidualEvidence:
+    """Read-only object-indexed residuals emitted by the PR-022 comparison."""
+
+    bus_voltage_by_source_id: Mapping[StableId, float]
+    angle_by_source_id: Mapping[StableId, float]
+    branch_p_by_target_id: Mapping[StableId, float]
+    branch_q_by_target_id: Mapping[StableId, float]
+    cutset_p_by_target_bus_id: Mapping[StableId, float]
+    cutset_q_by_target_bus_id: Mapping[StableId, float]
+    injection_p_by_target_bus_id: Mapping[StableId, float]
+    injection_q_by_target_bus_id: Mapping[StableId, float]
+
+    def __post_init__(self) -> None:
+        """Freeze object-indexed residual mappings in canonical StableId order."""
+        for name in self.__dataclass_fields__:
+            values = getattr(self, name)
+            if not isinstance(values, Mapping):
+                raise MetricError(f"{name} must be a mapping")
+            canonical: dict[StableId, float] = {}
+            for source_id, value in sorted(values.items(), key=lambda row: row[0].encode()):
+                if not isinstance(source_id, StableId):
+                    raise MetricError(f"{name} keys must be StableId values")
+                canonical[source_id] = _finite_scalar(value, name)
+            object.__setattr__(self, name, MappingProxyType(canonical))
 
 
 @dataclass(frozen=True)
@@ -52,6 +124,7 @@ class PowerFlowComparison:
     metrics: PowerFlowMetricSet
     coverage: PowerFlowCoverage
     angle_component_offsets_deg: Mapping[str, float]
+    residuals: PowerFlowResidualEvidence | None = None
 
 
 def summarize_errors(
@@ -191,6 +264,8 @@ def compare_power_flow_results(
     _require_exact_coverage(target.branch_q1, target_branch_ids, "target branch Q1")
 
     branch_errors: dict[str, list[float]] = {name: [] for name in ("p0", "q0", "p1", "q1")}
+    branch_p_by_target: dict[StableId, float] = {}
+    branch_q_by_target: dict[StableId, float] = {}
     for target_id, members in mapping.corridor_members.items():
         totals = {name: 0.0 for name in branch_errors}
         for member in members:
@@ -203,10 +278,17 @@ def compare_power_flow_results(
         for port, target_values in (
                 ("p0", target.branch_p0), ("q0", target.branch_q0),
                 ("p1", target.branch_p1), ("q1", target.branch_q1)):
-            branch_errors[port].append(totals[port] - target_values[target_id])
+            residual = totals[port] - target_values[target_id]
+            branch_errors[port].append(residual)
+            if port == "p0":
+                branch_p_by_target[target_id] = residual
+            elif port == "q0":
+                branch_q_by_target[target_id] = residual
 
     cutset_p_errors: list[float] = []
     cutset_q_errors: list[float] = []
+    cutset_p_by_target_bus: dict[StableId, float] = {}
+    cutset_q_by_target_bus: dict[StableId, float] = {}
     for cluster_id, entries in mapping.cutsets_by_cluster.items():
         source_p = sum(_branch_terminal(source, entry.source_branch_id,
                                         entry.source_terminal_index, "p") for entry in entries)
@@ -222,16 +304,28 @@ def compare_power_flow_results(
                        for branch_id, terminal in targets_by_id.items())
         target_q = sum(_branch_terminal(target, branch_id, terminal, "q")
                        for branch_id, terminal in targets_by_id.items())
-        cutset_p_errors.append(source_p - target_p)
-        cutset_q_errors.append(source_q - target_q)
+        p_error = source_p - target_p
+        q_error = source_q - target_q
+        cutset_p_errors.append(p_error)
+        cutset_q_errors.append(q_error)
+        cutset_p_by_target_bus[cluster_id] = p_error
+        cutset_q_by_target_bus[cluster_id] = q_error
 
     source_cluster_p: dict[StableId, float] = defaultdict(float)
     source_cluster_q: dict[StableId, float] = defaultdict(float)
     for entry in mapping.bus_entries:
         source_cluster_p[entry.target_bus_id] += source.bus_p_mw[entry.source_bus_id]
         source_cluster_q[entry.target_bus_id] += source.bus_q_mvar[entry.source_bus_id]
-    injection_p = [source_cluster_p[bus] - target.bus_p_mw[bus] for bus in sorted(target_bus_ids)]
-    injection_q = [source_cluster_q[bus] - target.bus_q_mvar[bus] for bus in sorted(target_bus_ids)]
+    injection_p_by_target_bus = {
+        bus: source_cluster_p[bus] - target.bus_p_mw[bus]
+        for bus in sorted(target_bus_ids)
+    }
+    injection_q_by_target_bus = {
+        bus: source_cluster_q[bus] - target.bus_q_mvar[bus]
+        for bus in sorted(target_bus_ids)
+    }
+    injection_p = list(injection_p_by_target_bus.values())
+    injection_q = list(injection_q_by_target_bus.values())
 
     source_losses = _passive_branch_loss(source)
     target_losses = _passive_branch_loss(target)
@@ -275,7 +369,17 @@ def compare_power_flow_results(
         aggregated_bus_count=mapping.coverage.aggregated_bus_count,
         excluded_object_count=mapping.coverage.excluded_object_count,
     )
-    return PowerFlowComparison(metrics, coverage, offsets)
+    residuals = PowerFlowResidualEvidence(
+        bus_voltage_by_source_id=bus_voltage_errors,
+        angle_by_source_id=angle_errors,
+        branch_p_by_target_id=branch_p_by_target,
+        branch_q_by_target_id=branch_q_by_target,
+        cutset_p_by_target_bus_id=cutset_p_by_target_bus,
+        cutset_q_by_target_bus_id=cutset_q_by_target_bus,
+        injection_p_by_target_bus_id=injection_p_by_target_bus,
+        injection_q_by_target_bus_id=injection_q_by_target_bus,
+    )
+    return PowerFlowComparison(metrics, coverage, offsets, residuals)
 
 
 def reference_cutset_magnitudes(
@@ -306,8 +410,16 @@ def evaluate_metric_thresholds(
 def evaluate_metric_thresholds_detailed(
     metrics: PowerFlowMetricSet | None,
     thresholds: PowerFlowMetricThresholds,
+    *,
+    threshold_digest: str | None = None,
 ) -> PowerFlowThresholdEvaluation:
-    """Evaluate HARD acceptance and DIAGNOSTIC thresholds as separate outcomes."""
+    """Evaluate PR-022 thresholds and expose normalized exceeded-limit details.
+
+    ``threshold_digest`` binds details to the frozen threshold artifact used by
+    the caller. Normalization divides the positive excess by the absolute
+    resolved threshold; when that threshold is zero, the finite absolute excess
+    is used because no relative scale exists.
+    """
     if not thresholds.is_frozen:
         raise MetricError("fidelity acceptance thresholds are not configured")
     if metrics is None:
@@ -346,9 +458,46 @@ def evaluate_metric_thresholds_detailed(
         raise MetricError("DIAGNOSTIC threshold classification does not match its evaluator")
     hard_failures = _threshold_failures(hard_values, required=True)
     diagnostic_failures = _threshold_failures(diagnostic_values, required=False)
+    hard_violations = _violation_details(hard_values, "HARD")
+    diagnostic_violations = _violation_details(diagnostic_values, "DIAGNOSTIC")
     status = (PfFidelityStatus.PF_FIDELITY_OUTSIDE_TOLERANCE if hard_failures else
               PfFidelityStatus.PF_FIDELITY_WITHIN_TOLERANCE)
-    return PowerFlowThresholdEvaluation(status, hard_failures, diagnostic_failures)
+    return PowerFlowThresholdEvaluation(
+        status, hard_failures, diagnostic_failures, hard_violations,
+        diagnostic_violations, metric_set_digest(metrics), threshold_digest,
+    )
+
+
+def _violation_details(
+    values: Mapping[str, tuple[float | None, float | None]],
+    severity: Literal["HARD", "DIAGNOSTIC"],
+) -> tuple[PowerFlowMetricViolation, ...]:
+    """Extract exceeded limits with a finite, scale-relative violation score.
+
+    A zero upper bound has no relative scale, so its score is the absolute
+    positive exceedance. This preserves valid zero-threshold configurations.
+    """
+    output: list[PowerFlowMetricViolation] = []
+    for name, pair in sorted(values.items()):
+        observed, limit = pair
+        if observed is None or limit is None or observed <= limit:
+            continue
+        magnitude = float(observed - limit)
+        denominator = abs(float(limit))
+        output.append(PowerFlowMetricViolation(
+            name, severity, float(observed), float(limit), magnitude,
+            magnitude / denominator if denominator > 0.0 else magnitude,
+        ))
+    return tuple(output)
+
+
+def metric_set_digest(metrics: PowerFlowMetricSet) -> str:
+    """Hash an order-independent canonical representation of PR-022 summaries."""
+    if not isinstance(metrics, PowerFlowMetricSet):
+        raise MetricError("metrics must be a PowerFlowMetricSet")
+    payload = asdict(metrics)
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
 def _threshold_failures(

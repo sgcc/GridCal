@@ -166,21 +166,34 @@ class ErrorRegion:
     voltage_layer: str | None
     component_id: str | None
     fingerprint: str
+    source_branch_ids: tuple[StableId, ...] = ()
+    target_bus_ids: tuple[StableId, ...] = ()
+    target_branch_ids: tuple[StableId, ...] = ()
 
     @classmethod
     def create(cls, *, region_type: str, source_bus_ids: tuple[StableId, ...],
                action_ids: tuple[str, ...], voltage_layer: str | None,
-               component_id: str | None) -> "ErrorRegion":
+               component_id: str | None,
+               source_branch_ids: tuple[StableId, ...] = (),
+               target_bus_ids: tuple[StableId, ...] = (),
+               target_branch_ids: tuple[StableId, ...] = ()) -> "ErrorRegion":
         """Create a region with canonical ordering and a content fingerprint."""
         if not region_type:
             raise AdaptiveContractError("region_type must be non-empty")
         buses = tuple(sorted(set(source_bus_ids), key=StableId.encode))
+        branches = tuple(sorted(set(source_branch_ids), key=StableId.encode))
+        target_buses = tuple(sorted(set(target_bus_ids), key=StableId.encode))
+        target_branches = tuple(sorted(set(target_branch_ids), key=StableId.encode))
         actions = tuple(sorted(set(action_ids)))
         payload = {"schema_version": SCHEMA_VERSION, "region_type": region_type,
                    "source_bus_ids": [item.encode() for item in buses],
+                   "source_branch_ids": [item.encode() for item in branches],
+                   "target_bus_ids": [item.encode() for item in target_buses],
+                   "target_branch_ids": [item.encode() for item in target_branches],
                    "action_ids": actions, "voltage_layer": voltage_layer,
                    "component_id": component_id}
-        return cls(region_type, buses, actions, voltage_layer, component_id, _digest(payload))
+        return cls(region_type, buses, actions, voltage_layer, component_id,
+                   _digest(payload), branches, target_buses, target_branches)
 
 
 @dataclass(frozen=True)
@@ -198,11 +211,16 @@ class ErrorAttribution:
     region_fingerprints: tuple[str, ...] = ()
     candidate_action_ids: tuple[str, ...] = ()
     reason: str | None = None
+    violation_magnitude: float = 0.0
+    threshold_digest: str | None = None
+    source_comparison_identity: str = ""
+    target_comparison_identity: str = ""
 
     def __post_init__(self) -> None:
         if not self.metric_name or self.severity not in {"HARD", "DIAGNOSTIC"}:
             raise AdaptiveContractError("attribution metric and severity are invalid")
-        for name in ("observed_value", "resolved_threshold", "normalized_violation"):
+        for name in ("observed_value", "resolved_threshold", "normalized_violation",
+                     "violation_magnitude"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
                 raise AdaptiveContractError(f"{name} must be finite")
@@ -214,6 +232,37 @@ class ErrorAttribution:
             raise AdaptiveContractError("unattributable violations need a reason")
         if tuple(sorted(set(self.candidate_action_ids))) != self.candidate_action_ids:
             raise AdaptiveContractError("candidate_action_ids must be unique and sorted")
+        if tuple(sorted(set(self.region_fingerprints))) != self.region_fingerprints:
+            raise AdaptiveContractError("region_fingerprints must be unique and sorted")
+        if self.threshold_digest is not None:
+            _require_digest(self.threshold_digest, "threshold_digest")
+        for name in ("source_comparison_identity", "target_comparison_identity"):
+            if getattr(self, name):
+                _require_digest(getattr(self, name), name)
+        if self.status is AttributionStatus.UNATTRIBUTABLE and self.candidate_action_ids:
+            raise AdaptiveContractError("unattributable violations cannot name candidate actions")
+
+    @property
+    def fingerprint(self) -> str:
+        """Return the canonical attribution fingerprint, excluding runtime state."""
+        return _digest({
+            "schema_version": SCHEMA_VERSION,
+            "metric_name": self.metric_name,
+            "severity": self.severity,
+            "observed_value": float(self.observed_value),
+            "resolved_threshold": float(self.resolved_threshold),
+            "violation_magnitude": float(self.violation_magnitude),
+            "normalized_violation": float(self.normalized_violation),
+            "threshold_digest": self.threshold_digest,
+            "status": self.status.value,
+            "source_ids": [item.encode() for item in sorted(self.source_ids, key=StableId.encode)],
+            "target_ids": [item.encode() for item in sorted(self.target_ids, key=StableId.encode)],
+            "region_fingerprints": self.region_fingerprints,
+            "candidate_action_ids": self.candidate_action_ids,
+            "reason": self.reason,
+            "source_comparison_identity": self.source_comparison_identity,
+            "target_comparison_identity": self.target_comparison_identity,
+        })
 
 
 @dataclass(frozen=True)
@@ -226,7 +275,13 @@ class ExpansionCandidate:
     resulting_active_action_ids: tuple[str, ...]
     added_bus_count: int
     added_branch_count: int
-    expansion_cost: float
+    expansion_cost: float | None = None
+    triggering_attribution_ids: tuple[str, ...] = ()
+    direct_action_ids: tuple[str, ...] = ()
+    dependency_closure_action_ids: tuple[str, ...] = ()
+    region_fingerprints: tuple[str, ...] = ()
+    eligible: bool = True
+    rejection_reason: str | None = None
 
     def __post_init__(self) -> None:
         _require_digest(self.candidate_fingerprint, "candidate_fingerprint")
@@ -239,8 +294,26 @@ class ExpansionCandidate:
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise AdaptiveContractError(f"{name} must be a non-negative integer")
-        if not math.isfinite(self.expansion_cost) or self.expansion_cost < 0:
-            raise AdaptiveContractError("expansion_cost must be finite and non-negative")
+        for name in ("triggering_attribution_ids", "direct_action_ids",
+                     "dependency_closure_action_ids", "region_fingerprints"):
+            values = getattr(self, name)
+            if tuple(sorted(set(values))) != values:
+                raise AdaptiveContractError(f"{name} must be unique and sorted")
+        if self.expansion_cost is not None and (
+                not math.isfinite(self.expansion_cost) or self.expansion_cost < 0):
+            raise AdaptiveContractError("expansion_cost must be finite and non-negative or None")
+        if not isinstance(self.eligible, bool):
+            raise AdaptiveContractError("eligible must be a bool")
+        if self.eligible and self.rejection_reason is not None:
+            raise AdaptiveContractError("eligible candidates cannot have rejection_reason")
+        if not self.eligible and not self.rejection_reason:
+            raise AdaptiveContractError("ineligible candidates need rejection_reason")
+        expected = _digest({
+            "schema_version": SCHEMA_VERSION,
+            "deactivated_action_ids": self.deactivated_action_ids,
+        })
+        if self.candidate_fingerprint != expected:
+            raise AdaptiveContractError("candidate fingerprint must bind the canonical deactivation set")
 
 
 @dataclass(frozen=True)

@@ -6,6 +6,14 @@ from psdcalc.reduction.adaptive.actions import (
     MappingTransition,
     ReductionAction,
 )
+from psdcalc.reduction.adaptive.attribution import (
+    AttributionError,
+    ErrorAttributionEngine,
+    MetricFamily,
+    MetricSupport,
+    Stage3AttributionInput,
+    Stage3AttributionResult,
+)
 from psdcalc.reduction.adaptive.contracts import (
     ADAPTIVE_CLAIM_SCOPE,
     ADAPTIVE_STRATEGY,
@@ -38,6 +46,7 @@ from psdcalc.reduction.adaptive.journal import (
 
 __all__ = [
     "ADAPTIVE_CLAIM_SCOPE", "ADAPTIVE_STRATEGY", "ActionContractError",
+    "AttributionError", "ErrorAttributionEngine", "MetricFamily", "MetricSupport",
     "ActionOperation", "ActionSetSnapshot", "AdaptiveContractError",
     "AdaptiveReductionConfig", "AdaptiveReductionIteration", "AdaptiveReductionReport",
     "AdaptiveReductionState", "AdaptiveStoppingReason", "AdaptiveStrategy", "AttributionStatus",
@@ -46,4 +55,5 @@ __all__ = [
     "ErrorAttribution", "ErrorRegion",
     "ExpansionCandidate", "ExpansionDecision", "JournalIntegrityError", "MappingTransition",
     "ReductionAction", "ReductionActionJournal", "PypsaAdaptiveCandidateBuilder",
+    "Stage3AttributionInput", "Stage3AttributionResult",
 ]
