@@ -711,6 +711,18 @@ class AdaptiveReductionController:
             new_incumbent_fingerprint=new_fingerprint,
             action_set_delta=tuple(sorted(action_delta)),
             candidate_build_fingerprint=candidate.candidate_fingerprint,
+            metrics_digest=assessment.metrics_digest if assessment else None,
+            threshold_digest=assessment.threshold_digest if assessment else None,
+            attribution_digest=(_canonical_attribution_digest(assessment.attribution)
+                               if assessment else None),
+            error_region_fingerprints=(tuple(sorted(
+                row.fingerprint for row in assessment.attribution.regions)) if assessment else ()),
+            expansion_candidate_fingerprints=(tuple(sorted(
+                row.candidate_fingerprint for row in assessment.attribution.candidates))
+                if assessment else ()),
+            rejected_candidate_fingerprints=(tuple(sorted(
+                row.candidate_fingerprint for row in assessment.attribution.rejected_candidates))
+                if assessment else ()),
         )
 
     @staticmethod
@@ -778,6 +790,41 @@ def _normalized_hard_violation(evidence: AdaptiveFidelityEvidence) -> float:
     if not math.isfinite(value) or value < 0.0:
         raise AdaptiveControllerError("aggregate normalized HARD violation is invalid")
     return value
+
+
+def _canonical_attribution_digest(attribution: Stage3AttributionResult) -> str:
+    """Digest attribution evidence in canonical order for report determinism."""
+    def candidate_payload(candidate: ExpansionCandidate) -> dict[str, object]:
+        return {
+            "candidate_fingerprint": candidate.candidate_fingerprint,
+            "region_fingerprint": candidate.region_fingerprint,
+            "deactivated_action_ids": candidate.deactivated_action_ids,
+            "resulting_active_action_ids": candidate.resulting_active_action_ids,
+            "added_bus_count": candidate.added_bus_count,
+            "added_branch_count": candidate.added_branch_count,
+            "expansion_cost": candidate.expansion_cost,
+            "triggering_attribution_ids": candidate.triggering_attribution_ids,
+            "direct_action_ids": candidate.direct_action_ids,
+            "dependency_closure_action_ids": candidate.dependency_closure_action_ids,
+            "region_fingerprints": candidate.region_fingerprints,
+            "eligible": candidate.eligible,
+            "rejection_reason": candidate.rejection_reason,
+        }
+
+    return _digest({
+        "schema_version": SCHEMA_VERSION,
+        "fidelity_satisfied": attribution.fidelity_satisfied,
+        "hard_violation_present": attribution.hard_violation_present,
+        "hard_failures": tuple(sorted(attribution.hard_failures)),
+        "diagnostic_failures": tuple(sorted(attribution.diagnostic_failures)),
+        "attributions": tuple(sorted(row.fingerprint for row in attribution.attributions)),
+        "regions": tuple(sorted(row.fingerprint for row in attribution.regions)),
+        "candidates": tuple(sorted((candidate_payload(row) for row in attribution.candidates),
+                                   key=lambda row: row["candidate_fingerprint"])),
+        "rejected_candidates": tuple(sorted(
+            (candidate_payload(row) for row in attribution.rejected_candidates),
+            key=lambda row: row["candidate_fingerprint"])),
+    })
 
 
 def _expanded_object_counts(

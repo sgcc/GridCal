@@ -317,6 +317,7 @@ class PypsaAdaptiveCandidateBuilder:
         reduction_config: ReductionConfig,
         protection: ProtectionSet | None = None,
         protection_base_dir: Path | None = None,
+        protection_is_resolved: bool = False,
     ) -> None:
         self._source = source_network
         self._sidecar = source_sidecar
@@ -328,14 +329,21 @@ class PypsaAdaptiveCandidateBuilder:
         self._adapter.validate_model(source_network, source_sidecar)
         self._config = reduction_config
         self._config_digest = _config_digest(reduction_config)
-        compiled_protection = ProtectionEngine().compile(
-            self._adapter.inventory(source_network, source_sidecar),
-            reduction_config.protection.rules,
-            profile=reduction_config.task.profile,
-            base_dir=(protection_base_dir or Path(reduction_config.input.path).resolve().parent),
-        )
-        self._protection = (compiled_protection.union(protection)
-                            if protection is not None else compiled_protection)
+        if protection_is_resolved:
+            if protection is None:
+                raise CandidateReconstructionError(
+                    "resolved protection replay requires an explicit ProtectionSet"
+                )
+            self._protection = protection
+        else:
+            compiled_protection = ProtectionEngine().compile(
+                self._adapter.inventory(source_network, source_sidecar),
+                reduction_config.protection.rules,
+                profile=reduction_config.task.profile,
+                base_dir=(protection_base_dir or Path(reduction_config.input.path).resolve().parent),
+            )
+            self._protection = (compiled_protection.union(protection)
+                                if protection is not None else compiled_protection)
         self._execution_order = _catalog_topological_order(self._actions)
         for action in self._actions:
             if not action.verify_fingerprint():
@@ -378,6 +386,16 @@ class PypsaAdaptiveCandidateBuilder:
             "schema_version": "1.0",
             "actions": [action.canonical_payload() for action in self._actions],
         })
+
+    @property
+    def reduction_config(self) -> ReductionConfig:
+        """Return the immutable resolved config used to rebuild every candidate."""
+        return self._config
+
+    @property
+    def protection_set(self) -> ProtectionSet:
+        """Return the fully compiled protection overlay used by candidate replay."""
+        return self._protection
 
     def build(self, active_action_ids: tuple[str, ...]) -> BuiltCandidate:
         """Rebuild a candidate from the frozen S1 and the explicit active action set."""

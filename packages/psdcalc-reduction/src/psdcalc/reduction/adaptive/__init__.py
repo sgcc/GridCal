@@ -52,6 +52,12 @@ from psdcalc.reduction.adaptive.controller import (
     RuntimePowerFlowOutcome,
 )
 from psdcalc.reduction.adaptive.pypsa_runtime import PypsaAdaptiveRuntime
+from psdcalc.reduction.adaptive.evidence import (
+    AdaptiveEvidenceError,
+    AdaptiveEvidenceErrorCode,
+    AdaptiveReductionEvidenceStore,
+    AdaptiveReplayResult,
+)
 
 __all__ = [
     "ADAPTIVE_CLAIM_SCOPE", "ADAPTIVE_STRATEGY", "ActionContractError",
@@ -68,4 +74,6 @@ __all__ = [
     "AdaptiveCandidateSnapshot", "AdaptiveControllerError", "AdaptiveFidelityEvidence",
     "AdaptiveReductionController", "AdaptiveRuntime", "RuntimePowerFlowOutcome",
     "PypsaAdaptiveRuntime",
+    "AdaptiveEvidenceError", "AdaptiveEvidenceErrorCode",
+    "AdaptiveReductionEvidenceStore", "AdaptiveReplayResult",
 ]

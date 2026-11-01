@@ -404,6 +404,76 @@ class CandidateEvaluation:
             for value in values:
                 _require_digest(value, name)
 
+    def to_dict(self) -> dict[str, object]:
+        """Return the complete candidate evaluation as canonical JSON-compatible data."""
+        payload = _canonicalize(self)
+        if not isinstance(payload, dict):
+            raise AdaptiveContractError("candidate evaluation did not serialize to an object")
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> CandidateEvaluation:
+        """Restore and validate one complete candidate evaluation from JSON data."""
+        if not isinstance(payload, Mapping) or set(payload) != set(cls.__dataclass_fields__):
+            raise AdaptiveContractError("candidate evaluation fields do not match the schema")
+        values = dict(payload)
+
+        candidate_data = values.get("candidate")
+        if not isinstance(candidate_data, Mapping) or set(candidate_data) != set(
+            ExpansionCandidate.__dataclass_fields__
+        ):
+            raise AdaptiveContractError("candidate payload fields do not match the schema")
+        candidate_values = dict(candidate_data)
+        for name in (
+            "deactivated_action_ids", "resulting_active_action_ids", "triggering_attribution_ids",
+            "direct_action_ids", "dependency_closure_action_ids", "region_fingerprints",
+        ):
+            raw = candidate_values[name]
+            if not isinstance(raw, (list, tuple)):
+                raise AdaptiveContractError(f"candidate {name} must be an array")
+            candidate_values[name] = tuple(raw)
+        candidate = ExpansionCandidate(**candidate_values)
+
+        raw_attributions = values.get("hard_violations")
+        if not isinstance(raw_attributions, (list, tuple)):
+            raise AdaptiveContractError("hard_violations must be an array")
+        attributions: list[ErrorAttribution] = []
+        for raw in raw_attributions:
+            if not isinstance(raw, Mapping) or set(raw) != set(ErrorAttribution.__dataclass_fields__):
+                raise AdaptiveContractError("error attribution fields do not match the schema")
+            attribution_values = dict(raw)
+            try:
+                attribution_values["status"] = AttributionStatus(attribution_values["status"])
+                for name in ("source_ids", "target_ids"):
+                    ids = attribution_values[name]
+                    if not isinstance(ids, (list, tuple)):
+                        raise AdaptiveContractError(f"attribution {name} must be an array")
+                    attribution_values[name] = tuple(
+                        item if isinstance(item, StableId) else StableId.decode(item) for item in ids
+                    )
+                for name in (
+                    "region_fingerprints", "candidate_action_ids", "related_action_ids",
+                ):
+                    sequence = attribution_values[name]
+                    if not isinstance(sequence, (list, tuple)):
+                        raise AdaptiveContractError(f"attribution {name} must be an array")
+                    attribution_values[name] = tuple(sequence)
+                attributions.append(ErrorAttribution(**attribution_values))
+            except (TypeError, ValueError) as exc:
+                raise AdaptiveContractError(f"invalid error attribution payload: {exc}") from exc
+
+        values["candidate"] = candidate
+        values["hard_violations"] = tuple(attributions)
+        for name in (
+            "diagnostic_failures", "attributed_region_fingerprints",
+            "remaining_candidate_fingerprints", "rejected_candidate_fingerprints",
+        ):
+            raw = values[name]
+            if not isinstance(raw, (list, tuple)):
+                raise AdaptiveContractError(f"{name} must be an array")
+            values[name] = tuple(raw)
+        return cls(**values)
+
 
 @dataclass(frozen=True)
 class ExpansionDecision:
@@ -448,13 +518,20 @@ class AdaptiveReductionIteration:
     new_incumbent_fingerprint: str | None = None
     action_set_delta: tuple[str, ...] = ()
     candidate_build_fingerprint: str | None = None
+    metrics_digest: str | None = None
+    threshold_digest: str | None = None
+    attribution_digest: str | None = None
+    error_region_fingerprints: tuple[str, ...] = ()
+    expansion_candidate_fingerprints: tuple[str, ...] = ()
+    rejected_candidate_fingerprints: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if isinstance(self.iteration_index, bool) or self.iteration_index < 0:
             raise AdaptiveContractError("iteration_index must be a non-negative integer")
         for name in ("action_set_fingerprint", "model_digest", "mapping_digest",
                      "candidate_fingerprint", "parent_incumbent_fingerprint",
-                     "new_incumbent_fingerprint", "candidate_build_fingerprint"):
+                     "new_incumbent_fingerprint", "candidate_build_fingerprint",
+                     "metrics_digest", "threshold_digest", "attribution_digest"):
             value = getattr(self, name)
             if value is not None:
                 _require_digest(value, name)
@@ -465,6 +542,11 @@ class AdaptiveReductionIteration:
             raise AdaptiveContractError("diagnostic_failures must be unique and sorted")
         if tuple(sorted(set(self.action_set_delta))) != self.action_set_delta:
             raise AdaptiveContractError("action_set_delta must be unique and sorted")
+        for name in ("error_region_fingerprints", "expansion_candidate_fingerprints",
+                     "rejected_candidate_fingerprints"):
+            values = getattr(self, name)
+            if tuple(sorted(set(values))) != values:
+                raise AdaptiveContractError(f"{name} must be unique and sorted")
 
 
 @dataclass(frozen=True)

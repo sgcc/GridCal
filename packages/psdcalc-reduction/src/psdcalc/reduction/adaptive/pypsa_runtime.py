@@ -25,6 +25,7 @@ from psdcalc.reduction.adaptive.controller import (
     RuntimePowerFlowOutcome,
 )
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
+from psdcalc.reduction.config.models import ReductionConfig
 from psdcalc.reduction.fidelity.contracts import (
     PowerFlowMetricPolicy,
     PowerFlowOperatingPointContract,
@@ -50,6 +51,7 @@ from psdcalc.reduction.fidelity.pypsa_executor import (
     PowerFlowExecutionResult,
     PypsaAcPowerFlowExecutor,
 )
+from psdcalc.reduction.protection.engine import ProtectionSet
 
 
 class PypsaAdaptiveRuntime:
@@ -118,6 +120,31 @@ class PypsaAdaptiveRuntime:
             raise CandidateReconstructionError("candidate builder is bound to a different action catalog")
         if builder.reduction_config_digest != self.reduction_config_digest:
             raise CandidateReconstructionError("candidate builder is bound to a different reduction config")
+
+    @property
+    def reduction_config(self) -> ReductionConfig:
+        """Expose the frozen resolved config for durable run evidence."""
+        return self._builder.reduction_config
+
+    @property
+    def protection_set(self) -> ProtectionSet:
+        """Expose the effective source-ID protection contract for replay."""
+        return self._builder.protection_set
+
+    @property
+    def operating_point(self) -> PowerFlowOperatingPointContract:
+        """Return the immutable source/target PF contract used by this runtime."""
+        return self._operating_point
+
+    @property
+    def metric_policy(self) -> PowerFlowMetricPolicy:
+        """Return the immutable PR-022 comparison metric policy."""
+        return self._metric_policy
+
+    @property
+    def threshold_set(self) -> FrozenThresholdSet:
+        """Return the frozen PR-022 threshold artifact and verified raw bytes."""
+        return self._thresholds
 
     def build(self, active_action_ids: tuple[str, ...]) -> AdaptiveCandidateSnapshot:
         """Rebuild through Stage 2 and expose its existing structural/readiness Gates."""
