@@ -294,17 +294,31 @@ def test_protected_related_action_is_excluded_when_eligible_action_exists() -> N
     result = ErrorAttributionEngine().run(_input(
         hard_limits={"vm_max_pu": 0.01}, actions=actions))
     assert result.attributions[0].candidate_action_ids == ("eligible",)
+    assert result.attributions[0].related_action_ids == ("eligible", "protected")
     assert tuple(row.direct_action_ids for row in result.candidates) == (("eligible",),)
     assert all("protected" not in row.deactivated_action_ids for row in result.candidates)
 
 
-def test_all_protected_related_actions_make_hard_violation_unattributable() -> None:
-    """No protected action is silently unprotected to create a candidate."""
+def test_protected_related_action_is_attributable_but_not_a_candidate() -> None:
+    """Protection affects availability without erasing the causal relation."""
     result = ErrorAttributionEngine().run(_input(
         hard_limits={"vm_max_pu": 0.01},
         actions=(_action("protected", protected=True),),
     ))
-    assert result.attributions[0].status is AttributionStatus.UNATTRIBUTABLE
+    assert result.attributions[0].status is AttributionStatus.ATTRIBUTABLE
+    assert result.attributions[0].related_action_ids == ("protected",)
+    assert not result.attributions[0].candidate_action_ids
+    assert not result.candidates
+
+
+def test_inactive_related_action_is_attributable_but_not_a_candidate() -> None:
+    """A catalog action can explain a violation after it was exhausted."""
+    result = ErrorAttributionEngine().run(_input(
+        hard_limits={"vm_max_pu": 0.01},
+        actions=(_action("inactive"),), active_ids=(),
+    ))
+    assert result.attributions[0].status is AttributionStatus.ATTRIBUTABLE
+    assert result.attributions[0].related_action_ids == ("inactive",)
     assert not result.attributions[0].candidate_action_ids
     assert not result.candidates
 
@@ -318,7 +332,9 @@ def test_eligible_action_with_protected_dependency_is_rejected_with_evidence() -
         active_ids=("dependent", "locked"),
     ))
     assert not result.candidates
-    assert result.attributions[0].status is AttributionStatus.UNATTRIBUTABLE
+    assert result.attributions[0].status is AttributionStatus.ATTRIBUTABLE
+    assert result.attributions[0].related_action_ids == ("dependent", "locked")
+    assert not result.attributions[0].candidate_action_ids
     assert len(result.rejected_candidates) == 1
     rejected = result.rejected_candidates[0]
     assert not rejected.eligible

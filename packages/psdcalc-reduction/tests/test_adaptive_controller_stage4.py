@@ -83,6 +83,9 @@ def _assessment(score: float, candidates: tuple[ExpansionCandidate, ...] = (), *
         candidate_action_ids=() if unattributable else tuple(sorted(set(attributable_action_ids) | {
             action_id for candidate in candidates for action_id in candidate.direct_action_ids
         })),
+        related_action_ids=() if unattributable else tuple(sorted(set(attributable_action_ids) | {
+            action_id for candidate in candidates for action_id in candidate.direct_action_ids
+        })),
         reason="synthetic aggregate error" if unattributable else None,
         threshold_digest=_digest({"threshold": "synthetic"}),
     ) for name in names if score > 0.0)
@@ -91,7 +94,7 @@ def _assessment(score: float, candidates: tuple[ExpansionCandidate, ...] = (), *
             metric_name=name, severity="HARD", observed_value=score,
             resolved_threshold=0.0, normalized_violation=score,
             violation_magnitude=score, status=AttributionStatus.UNATTRIBUTABLE,
-            candidate_action_ids=(), reason="no legal local action",
+            candidate_action_ids=(), related_action_ids=(), reason="no legal local action",
             threshold_digest=_digest({"threshold": "synthetic"}),
         ) for name in names)
         unattributable = True

@@ -135,16 +135,19 @@ class ErrorAttributionEngine:
             family = _metric_family(violation.metric_name)
             local = self._localize(evidence, violation, family)
             related = self._related_actions(
-                actions, active_ids,
+                actions, tuple(sorted(actions)),
                 (*local["source_ids"], *local["source_branch_ids"]),
             )
-            regions = self._regions(local, related)
+            supported_related = tuple(
+                action for action in related if action.operation in _STAGE2_OPERATIONS
+            )
+            regions = self._regions(local, supported_related)
             regions_by_fingerprint.update((region.fingerprint, region) for region in regions)
             legal_direct: list[str] = []
             violation_rejections: list[ExpansionCandidate] = []
             candidate_group_keys: list[tuple[str, ...]] = []
-            for action in related:
-                if not self._ordinary_action_eligible(action):
+            for action in supported_related:
+                if action.action_id not in active_ids or not self._ordinary_action_eligible(action):
                     continue
                 closure = _dependency_closure(action.action_id, actions)
                 closure_actions = tuple(actions[item] for item in closure)
@@ -168,7 +171,8 @@ class ErrorAttributionEngine:
             source_ids = tuple(sorted(set(local["source_ids"]), key=StableId.encode))
             target_ids = tuple(sorted(set(local["target_ids"]), key=StableId.encode))
             normalized_ids = tuple(sorted(set(legal_direct)))
-            status = (AttributionStatus.ATTRIBUTABLE if normalized_ids else
+            related_ids = tuple(sorted(action.action_id for action in supported_related))
+            status = (AttributionStatus.ATTRIBUTABLE if related_ids else
                       AttributionStatus.UNATTRIBUTABLE)
             attribution = ErrorAttribution(
                 metric_name=violation.metric_name,
@@ -182,7 +186,8 @@ class ErrorAttributionEngine:
                 target_ids=target_ids,
                 region_fingerprints=region_ids,
                 candidate_action_ids=normalized_ids,
-                reason=None if normalized_ids else self._unattributable_reason(
+                related_action_ids=related_ids,
+                reason=None if related_ids else self._unattributable_reason(
                     family, related, local),
                 violation_magnitude=violation.violation_magnitude,
                 threshold_digest=evaluation.threshold_digest,
@@ -430,12 +435,12 @@ class ErrorAttributionEngine:
 
     @staticmethod
     def _related_actions(
-        actions: Mapping[str, ReductionAction], active_ids: tuple[str, ...],
+        actions: Mapping[str, ReductionAction], action_ids: tuple[str, ...],
         affected_source_ids: tuple[StableId, ...],
     ) -> tuple[ReductionAction, ...]:
-        """Find active actions intersecting identity-supported error objects."""
+        """Find catalog actions intersecting identity-supported error objects."""
         affected = set(affected_source_ids)
-        return tuple(actions[action_id] for action_id in active_ids
+        return tuple(actions[action_id] for action_id in action_ids
                      if affected & set(actions[action_id].source_ids))
 
     @staticmethod
@@ -488,9 +493,7 @@ class ErrorAttributionEngine:
             return "aggregate metric has no justified object-level localization in Stage 3"
         if not local["source_ids"] and not local["source_branch_ids"]:
             return "PR-022 evidence lacks sufficient StableId provenance for localization"
-        if related:
-            return "all related actions are protected, irreversible, unsupported, or have blocked dependencies"
-        return "no active supported reduction action intersects the attributable region"
+        return "no supported reduction action intersects the identity-localized region"
 
     @staticmethod
     def _rejected_candidate(

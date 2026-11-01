@@ -43,7 +43,7 @@ class AdaptiveStoppingReason(StrEnum):
 
 
 class AttributionStatus(StrEnum):
-    """Whether a fidelity violation maps to legal local expansion actions."""
+    """Whether provenance supports a deterministic reduction relationship."""
 
     ATTRIBUTABLE = "ATTRIBUTABLE"
     UNATTRIBUTABLE = "UNATTRIBUTABLE"
@@ -222,6 +222,7 @@ class ErrorAttribution:
     target_ids: tuple[StableId, ...] = ()
     region_fingerprints: tuple[str, ...] = ()
     candidate_action_ids: tuple[str, ...] = ()
+    related_action_ids: tuple[str, ...] = ()
     reason: str | None = None
     violation_magnitude: float = 0.0
     threshold_digest: str | None = None
@@ -238,12 +239,16 @@ class ErrorAttribution:
                 raise AdaptiveContractError(f"{name} must be finite")
         if self.normalized_violation < 0:
             raise AdaptiveContractError("normalized_violation cannot be negative")
-        if self.status is AttributionStatus.ATTRIBUTABLE and not self.candidate_action_ids:
-            raise AdaptiveContractError("attributable violations must identify legal actions")
+        if self.status is AttributionStatus.ATTRIBUTABLE and not self.related_action_ids:
+            raise AdaptiveContractError("attributable violations must identify supported related actions")
         if self.status is AttributionStatus.UNATTRIBUTABLE and not self.reason:
             raise AdaptiveContractError("unattributable violations need a reason")
         if tuple(sorted(set(self.candidate_action_ids))) != self.candidate_action_ids:
             raise AdaptiveContractError("candidate_action_ids must be unique and sorted")
+        if tuple(sorted(set(self.related_action_ids))) != self.related_action_ids:
+            raise AdaptiveContractError("related_action_ids must be unique and sorted")
+        if not set(self.candidate_action_ids) <= set(self.related_action_ids):
+            raise AdaptiveContractError("candidate_action_ids must be a subset of related_action_ids")
         if tuple(sorted(set(self.region_fingerprints))) != self.region_fingerprints:
             raise AdaptiveContractError("region_fingerprints must be unique and sorted")
         if self.threshold_digest is not None:
@@ -251,8 +256,9 @@ class ErrorAttribution:
         for name in ("source_comparison_identity", "target_comparison_identity"):
             if getattr(self, name):
                 _require_digest(getattr(self, name), name)
-        if self.status is AttributionStatus.UNATTRIBUTABLE and self.candidate_action_ids:
-            raise AdaptiveContractError("unattributable violations cannot name candidate actions")
+        if self.status is AttributionStatus.UNATTRIBUTABLE and (
+                self.candidate_action_ids or self.related_action_ids):
+            raise AdaptiveContractError("unattributable violations cannot name supported related actions")
 
     @property
     def fingerprint(self) -> str:
@@ -271,6 +277,7 @@ class ErrorAttribution:
             "target_ids": [item.encode() for item in sorted(self.target_ids, key=StableId.encode)],
             "region_fingerprints": self.region_fingerprints,
             "candidate_action_ids": self.candidate_action_ids,
+            "related_action_ids": self.related_action_ids,
             "reason": self.reason,
             "source_comparison_identity": self.source_comparison_identity,
             "target_comparison_identity": self.target_comparison_identity,
