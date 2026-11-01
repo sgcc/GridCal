@@ -36,7 +36,8 @@ explicitly rather than reinterpreting its candidate fingerprint.
 
 The audit loaded frozen S1, the frozen sidecar/catalog/config, and the
 authoritative source ledger in read-only mode. It called action readiness only.
-No candidate materialization, controller iteration, or power flow was run.
+No candidate materialization, Beijing adaptive controller iteration, or Beijing
+power flow was run. This is not Stage2B acceptance.
 
 | Measure | Count |
 | --- | ---: |
@@ -53,7 +54,11 @@ diagnostic, not a Stage2B result or an accepted reduced candidate.
 
 Projection fidelity: `NOT VALIDATED`. Physical equivalence: `NOT CLAIMED`.
 
-## Offline implementation checks
+## Pre-release implementation checks
+
+The following checks and archive hashes apply to the earlier 0.6.0
+implementation commit only. The 0.7.0 release-preparation Gate is recorded
+separately after its final source tree and archives exist.
 
 | Check | Result |
 | --- | --- |
@@ -65,7 +70,6 @@ Projection fidelity: `NOT VALIDATED`. Physical equivalence: `NOT CLAIMED`.
 | sdist SHA-256 | `71c95da92e2457a7a57e1ab62269b793d17e817429313efcc87f4706a612aca7` |
 | wheel SHA-256 | `a4038f73aa236089863d3790473036a682adc6f6851b46fc7738ab6ae2c80f30` |
 
-The development branch retains package version `0.6.0` and unchanged
-dependency versions. Because v2 evidence makes a public schema boundary
-explicit, the recommended release version is `0.7.0` after review; this
-remediation does not change the version.
+The release-preparation commit changes the package version to `0.7.0` without
+changing third-party dependency versions. This document contains no private
+source identities or model artifacts.
