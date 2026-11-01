@@ -43,6 +43,15 @@ from psdcalc.reduction.adaptive.journal import (
     JournalIntegrityError,
     ReductionActionJournal,
 )
+from psdcalc.reduction.adaptive.controller import (
+    AdaptiveCandidateSnapshot,
+    AdaptiveControllerError,
+    AdaptiveFidelityEvidence,
+    AdaptiveReductionController,
+    AdaptiveRuntime,
+    RuntimePowerFlowOutcome,
+)
+from psdcalc.reduction.adaptive.pypsa_runtime import PypsaAdaptiveRuntime
 
 __all__ = [
     "ADAPTIVE_CLAIM_SCOPE", "ADAPTIVE_STRATEGY", "ActionContractError",
@@ -56,4 +65,7 @@ __all__ = [
     "ExpansionCandidate", "ExpansionDecision", "JournalIntegrityError", "MappingTransition",
     "ReductionAction", "ReductionActionJournal", "PypsaAdaptiveCandidateBuilder",
     "Stage3AttributionInput", "Stage3AttributionResult",
+    "AdaptiveCandidateSnapshot", "AdaptiveControllerError", "AdaptiveFidelityEvidence",
+    "AdaptiveReductionController", "AdaptiveRuntime", "RuntimePowerFlowOutcome",
+    "PypsaAdaptiveRuntime",
 ]

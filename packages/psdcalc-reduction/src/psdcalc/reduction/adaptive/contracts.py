@@ -7,6 +7,7 @@ from enum import StrEnum
 import hashlib
 import json
 import math
+from types import MappingProxyType
 from typing import Mapping
 
 from psdcalc.reduction.core.ids import StableId
@@ -35,6 +36,10 @@ class AdaptiveStoppingReason(StrEnum):
     PF_NOT_CONVERGED = "PF_NOT_CONVERGED"
     MAX_ITERATIONS_REACHED = "MAX_ITERATIONS_REACHED"
     CONFIGURATION_INVALID = "CONFIGURATION_INVALID"
+    PF_EXECUTION_UNSUPPORTED = "PF_EXECUTION_UNSUPPORTED"
+    PF_EXECUTION_FAILED = "PF_EXECUTION_FAILED"
+    PF_MAPPING_INVALID = "PF_MAPPING_INVALID"
+    REPEATED_ACTION_SET = "REPEATED_ACTION_SET"
 
 
 class AttributionStatus(StrEnum):
@@ -93,6 +98,7 @@ class AdaptiveReductionConfig:
     cost_branch_weight: float
     strategy: AdaptiveStrategy = AdaptiveStrategy.HIERARCHICALLY_CONSTRAINED_GREEDY_LOCAL_EXPANSION
     compression_requirement: CompressionRequirement | None = None
+    improvement_tolerance: float = 1e-12
 
     def __post_init__(self) -> None:
         if self.schema_version != SCHEMA_VERSION:
@@ -108,6 +114,11 @@ class AdaptiveReductionConfig:
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(float(value)) or value <= 0:
                 raise AdaptiveContractError(f"{name} must be finite and positive")
+        tolerance = self.improvement_tolerance
+        if (isinstance(tolerance, bool) or not isinstance(tolerance, (float, int))
+                or not math.isfinite(float(tolerance)) or tolerance < 0.0):
+            raise AdaptiveContractError("improvement_tolerance must be finite and non-negative")
+        object.__setattr__(self, "improvement_tolerance", float(tolerance))
         if self.strategy is not AdaptiveStrategy.HIERARCHICALLY_CONSTRAINED_GREEDY_LOCAL_EXPANSION:
             raise AdaptiveContractError("unsupported adaptive strategy")
 
@@ -132,6 +143,7 @@ class AdaptiveReductionConfig:
             "strategy": self.strategy.value,
             "compression_requirement": (self.compression_requirement.to_dict()
                                          if self.compression_requirement else None),
+            "improvement_tolerance": float(self.improvement_tolerance),
         }
 
 
@@ -325,22 +337,65 @@ class CandidateEvaluation:
     readiness_status: str
     pf_status: str
     fidelity_status: str
-    model_digest: str
-    mapping_digest: str
+    model_digest: str | None
+    mapping_digest: str | None
     rejection_reason: str | None = None
     normalized_hard_violation: float | None = None
     score: float | None = None
+    proposed_active_action_set_fingerprint: str | None = None
+    candidate_build_fingerprint: str | None = None
+    structural_checks: Mapping[str, bool] = field(default_factory=dict)
+    readiness_checks: Mapping[str, bool] = field(default_factory=dict)
+    hard_violations: tuple[ErrorAttribution, ...] = ()
+    diagnostic_failures: tuple[str, ...] = ()
+    hard_violation_improvement: float | None = None
+    normalized_improvement: float | None = None
+    expansion_cost: float | None = None
+    added_bus_count: int | None = None
+    added_branch_count: int | None = None
+    metrics_digest: str | None = None
+    threshold_digest: str | None = None
+    attribution_digest: str | None = None
+    attributed_region_fingerprints: tuple[str, ...] = ()
+    remaining_candidate_fingerprints: tuple[str, ...] = ()
+    rejected_candidate_fingerprints: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        for name in ("model_digest", "mapping_digest"):
-            _require_digest(getattr(self, name), name)
+        for name in ("model_digest", "mapping_digest", "proposed_active_action_set_fingerprint",
+                     "candidate_build_fingerprint", "metrics_digest", "threshold_digest",
+                     "attribution_digest"):
+            value = getattr(self, name)
+            if value is not None:
+                _require_digest(value, name)
         for name in ("structural_status", "readiness_status", "pf_status", "fidelity_status"):
             if not getattr(self, name):
                 raise AdaptiveContractError(f"{name} must be explicit, including NOT_RUN")
-        for name in ("normalized_hard_violation", "score"):
+        for name in ("normalized_hard_violation", "score", "expansion_cost"):
             value = getattr(self, name)
             if value is not None and (not math.isfinite(value) or value < 0):
                 raise AdaptiveContractError(f"{name} must be finite and non-negative")
+        for name in ("hard_violation_improvement", "normalized_improvement"):
+            value = getattr(self, name)
+            if value is not None and not math.isfinite(value):
+                raise AdaptiveContractError(f"{name} must be finite")
+        for name in ("added_bus_count", "added_branch_count"):
+            value = getattr(self, name)
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+                raise AdaptiveContractError(f"{name} must be a non-negative integer or None")
+        for name in ("structural_checks", "readiness_checks"):
+            checks = getattr(self, name)
+            if not isinstance(checks, Mapping) or any(not isinstance(value, bool) for value in checks.values()):
+                raise AdaptiveContractError(f"{name} must map check names to bool values")
+            object.__setattr__(self, name, MappingProxyType(dict(sorted(checks.items()))))
+        if tuple(sorted(self.diagnostic_failures)) != self.diagnostic_failures:
+            raise AdaptiveContractError("diagnostic_failures must be unique and sorted")
+        for name in ("attributed_region_fingerprints", "remaining_candidate_fingerprints",
+                     "rejected_candidate_fingerprints"):
+            values = getattr(self, name)
+            if tuple(sorted(set(values))) != values:
+                raise AdaptiveContractError(f"{name} must be unique and sorted")
+            for value in values:
+                _require_digest(value, name)
 
 
 @dataclass(frozen=True)
@@ -352,6 +407,7 @@ class ExpansionDecision:
     selected_candidate_fingerprint: str | None
     tie_break_trace: tuple[str, ...]
     reason: str
+    rejected_candidates: tuple[ExpansionCandidate, ...] = ()
 
     def __post_init__(self) -> None:
         if self.strategy != ADAPTIVE_STRATEGY or not self.reason:
@@ -369,8 +425,8 @@ class AdaptiveReductionIteration:
 
     iteration_index: int
     action_set_fingerprint: str
-    model_digest: str
-    mapping_digest: str
+    model_digest: str | None
+    mapping_digest: str | None
     structural_status: str
     readiness_status: str
     pf_status: str
@@ -379,15 +435,29 @@ class AdaptiveReductionIteration:
     expansion_decision: ExpansionDecision | None = None
     stopping_reason: AdaptiveStoppingReason | None = None
     diagnostics: Mapping[str, str] = field(default_factory=dict)
+    diagnostic_failures: tuple[str, ...] = ()
+    candidate_fingerprint: str | None = None
+    parent_incumbent_fingerprint: str | None = None
+    new_incumbent_fingerprint: str | None = None
+    action_set_delta: tuple[str, ...] = ()
+    candidate_build_fingerprint: str | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.iteration_index, bool) or self.iteration_index < 0:
             raise AdaptiveContractError("iteration_index must be a non-negative integer")
-        for name in ("action_set_fingerprint", "model_digest", "mapping_digest"):
-            _require_digest(getattr(self, name), name)
+        for name in ("action_set_fingerprint", "model_digest", "mapping_digest",
+                     "candidate_fingerprint", "parent_incumbent_fingerprint",
+                     "new_incumbent_fingerprint", "candidate_build_fingerprint"):
+            value = getattr(self, name)
+            if value is not None:
+                _require_digest(value, name)
         for name in ("structural_status", "readiness_status", "pf_status", "fidelity_status"):
             if not getattr(self, name):
                 raise AdaptiveContractError(f"{name} must be explicit, including NOT_RUN")
+        if tuple(sorted(self.diagnostic_failures)) != self.diagnostic_failures:
+            raise AdaptiveContractError("diagnostic_failures must be unique and sorted")
+        if tuple(sorted(set(self.action_set_delta))) != self.action_set_delta:
+            raise AdaptiveContractError("action_set_delta must be unique and sorted")
 
 
 @dataclass(frozen=True)
@@ -405,6 +475,10 @@ class AdaptiveReductionReport:
     iterations: tuple[AdaptiveReductionIteration, ...]
     evidence_reference: str
     claim_scope: str = ADAPTIVE_CLAIM_SCOPE
+    initial_action_set_fingerprint: str | None = None
+    initial_candidate_fingerprint: str | None = None
+    selected_candidate_sequence: tuple[str, ...] = ()
+    final_incumbent_summary: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.schema_version != SCHEMA_VERSION or self.claim_scope != ADAPTIVE_CLAIM_SCOPE:
@@ -414,6 +488,16 @@ class AdaptiveReductionReport:
         for name in ("config_digest", "s1_model_digest", "s1_sidecar_digest",
                      "action_catalog_digest", "journal_digest"):
             _require_digest(getattr(self, name), name)
+        for name in ("initial_action_set_fingerprint", "initial_candidate_fingerprint"):
+            value = getattr(self, name)
+            if value is not None:
+                _require_digest(value, name)
+        if any(not isinstance(item, str) or len(item) != 64 for item in self.selected_candidate_sequence):
+            raise AdaptiveContractError("selected_candidate_sequence must contain SHA-256 fingerprints")
+        if not isinstance(self.final_incumbent_summary, Mapping):
+            raise AdaptiveContractError("final_incumbent_summary must be a mapping")
+        object.__setattr__(self, "final_incumbent_summary", MappingProxyType(
+            {str(key): self.final_incumbent_summary[key] for key in sorted(self.final_incumbent_summary)}))
         if tuple(item.iteration_index for item in self.iterations) != tuple(range(len(self.iterations))):
             raise AdaptiveContractError("iteration indexes must be contiguous and start at zero")
 

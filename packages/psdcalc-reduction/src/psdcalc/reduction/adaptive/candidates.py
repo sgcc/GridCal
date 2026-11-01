@@ -366,6 +366,19 @@ class PypsaAdaptiveCandidateBuilder:
         """Return the frozen S1 sidecar digest."""
         return self._source_sidecar_digest
 
+    @property
+    def reduction_config_digest(self) -> str:
+        """Return the frozen resolved reduction configuration digest."""
+        return self._config_digest
+
+    @property
+    def action_catalog_digest(self) -> str:
+        """Return the canonical digest of the builder's complete action catalog."""
+        return _digest({
+            "schema_version": "1.0",
+            "actions": [action.canonical_payload() for action in self._actions],
+        })
+
     def build(self, active_action_ids: tuple[str, ...]) -> BuiltCandidate:
         """Rebuild a candidate from the frozen S1 and the explicit active action set."""
         if len(active_action_ids) != len(set(active_action_ids)):
