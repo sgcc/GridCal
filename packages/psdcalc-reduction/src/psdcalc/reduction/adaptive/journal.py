@@ -5,13 +5,52 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
-from typing import Mapping
+from typing import Iterable, Mapping
 
 from psdcalc.reduction.adaptive.actions import ReductionAction
 
 
 class JournalIntegrityError(ValueError):
     """Raised when an action catalog or historical action-set snapshot is invalid."""
+
+
+def deactivation_closure(
+    actions: Mapping[str, ReductionAction],
+    active_action_ids: Iterable[str],
+    requested_action_ids: Iterable[str],
+) -> tuple[str, ...]:
+    """Return requested actions and all transitively active dependents to deactivate.
+
+    An action's ``dependencies`` are prerequisites that must remain active while
+    that action is active. Removing a prerequisite therefore also removes every
+    active action that depends on it, directly or transitively.
+
+    Raises:
+        JournalIntegrityError: If requested actions are not active or the active
+            catalog has missing prerequisites.
+    """
+    active = set(active_action_ids)
+    requested = set(requested_action_ids)
+    if not requested or not requested <= active:
+        raise JournalIntegrityError("deactivation must name currently active actions")
+    if not active <= set(actions):
+        raise JournalIntegrityError("active action set references an unknown catalog action")
+    dependents: dict[str, set[str]] = {}
+    for action_id in sorted(active):
+        dependencies = set(actions[action_id].dependencies)
+        if not dependencies <= active:
+            raise JournalIntegrityError("active action dependency closure is incomplete")
+        for dependency in dependencies:
+            dependents.setdefault(dependency, set()).add(action_id)
+    closure = set(requested)
+    pending = sorted(requested)
+    while pending:
+        current = pending.pop()
+        for dependent in sorted(dependents.get(current, ())):
+            if dependent not in closure:
+                closure.add(dependent)
+                pending.append(dependent)
+    return tuple(sorted(closure))
 
 
 @dataclass(frozen=True)
@@ -139,17 +178,10 @@ class ReductionActionJournal:
             raise JournalIntegrityError("deactivation must name currently active actions")
         if any(not by_id[action_id].expansion_eligible for action_id in requested):
             raise JournalIntegrityError("protected or irreversible actions cannot be deactivated")
-        closure = set(requested)
-        changed = True
-        while changed:
-            changed = False
-            for action in self.actions:
-                if action.action_id in current and action.action_id not in closure and set(action.dependencies) & closure:
-                    if not action.expansion_eligible:
-                        raise JournalIntegrityError("dependency closure includes a protected or irreversible action")
-                    closure.add(action.action_id)
-                    changed = True
-        ordered_closure = tuple(sorted(closure))
+        ordered_closure = deactivation_closure(by_id, current, requested)
+        closure = set(ordered_closure)
+        if any(not by_id[action_id].expansion_eligible for action_id in closure):
+            raise JournalIntegrityError("dependency closure includes a protected or irreversible action")
         active = tuple(sorted(current - closure))
         delta = tuple(
             transition.canonical()
@@ -192,14 +224,7 @@ class ReductionActionJournal:
                 requested = set(snapshot.deactivated_action_ids)
                 if not requested or not requested <= active:
                     raise JournalIntegrityError("invalid snapshot action deactivation")
-                closure = set(requested)
-                changed = True
-                while changed:
-                    changed = False
-                    for action in self.actions:
-                        if action.action_id in active and action.action_id not in closure and set(action.dependencies) & closure:
-                            closure.add(action.action_id)
-                            changed = True
+                closure = set(deactivation_closure(by_id, active, requested))
                 if set(snapshot.dependency_closure) != closure - requested:
                     raise JournalIntegrityError("snapshot dependency closure mismatch")
                 deactivated = closure

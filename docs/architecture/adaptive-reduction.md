@@ -85,7 +85,7 @@ Protected objects remain protected. An action touching a protected object is eit
 
 ## Immutable ReductionActionJournal
 
-The journal contains an immutable action catalog and an ordered series of immutable active-action-set snapshots. “Active” means the reduction action is applied when rebuilding a candidate. Expansion deactivates one action together with all required dependent actions; it does not mutate or delete journal history.
+The journal contains an immutable action catalog and an ordered series of immutable active-action-set snapshots. “Active” means the reduction action is applied when rebuilding a candidate. An action's `dependencies` are prerequisites that must remain active while that action is active. Expansion deactivates the requested action together with all transitively active actions that depend on it; it does not deactivate prerequisites merely because their dependent was removed, or mutate or delete journal history. Stage-3 candidates and journal transitions use the same deactivation closure.
 
 For each iteration, the journal records:
 

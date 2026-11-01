@@ -402,15 +402,52 @@ def test_tie_breaking_is_independent_of_input_order() -> None:
     assert decision is not None
     assert decision.tie_break_trace == (
         "zero_cost_positive_improvement_first",
-        "greatest_hard_violation_improvement",
-        "highest_score",
-        "lowest_expansion_cost",
+        "highest_score_for_positive_cost",
+        "greatest_hard_violation_improvement_for_zero_cost",
         "lowest_added_bus_count",
         "lowest_added_branch_count",
         "lowest_error_region_fingerprint",
-        "lowest_expansion_candidate_fingerprint",
+        "canonical_action_id_order",
         "canonical_stable_id_order",
+        "lowest_expansion_candidate_fingerprint",
     )
+
+
+def test_controller_prefers_score_over_larger_absolute_improvement() -> None:
+    """A smaller expansion with better improvement per cost wins in either input order."""
+    anchor = StableId("stage4", "Bus", "anchor")
+    wide_buses = tuple(StableId("stage4", "Bus", f"wide-bus-{i}") for i in range(5))
+    wide_lines = tuple(StableId("stage4", "Line", f"wide-line-{i}") for i in range(5))
+    wide = ReductionAction.create(
+        action_id="wide", operation=ActionOperation.RADIAL_ABSORPTION,
+        source_ids=wide_buses + wide_lines, target_ids=(anchor,),
+        mapping_delta=tuple(MappingTransition(bus, anchor, "clustered") for bus in wide_buses)
+        + tuple(MappingTransition(line, None, "absorbed_internal") for line in wide_lines),
+        voltage_layer="110", component_id="wide", region_fingerprint="wide",
+        audit_reason="larger absolute improvement at higher cost",
+    )
+    narrow = _action("narrow")
+    initial = ("narrow", "wide")
+    candidates = (_candidate("wide", initial), _candidate("narrow", initial))
+    winners = []
+    for actions, rows in (
+        ((wide, narrow), candidates),
+        ((narrow, wide), tuple(reversed(candidates))),
+    ):
+        runtime, report = _run(actions, {
+            initial: _assessment(20.0, rows),
+            ("narrow",): _assessment(10.0, unattributable=True),
+            ("wide",): _assessment(14.0, unattributable=True),
+        })
+        decision = report.iterations[0].expansion_decision
+        assert decision is not None
+        winners.append(decision.selected_candidate_fingerprint)
+        evaluations = {row.candidate.direct_action_ids[0]: row
+                       for row in decision.candidate_evaluations}
+        assert evaluations["wide"].hard_violation_improvement == 10.0
+        assert evaluations["narrow"].hard_violation_improvement == 6.0
+        assert evaluations["wide"].score < evaluations["narrow"].score
+    assert winners == [_candidate("narrow", initial).candidate_fingerprint] * 2
 
 
 def test_zero_cost_positive_improvement_ranks_before_costly_candidate() -> None:

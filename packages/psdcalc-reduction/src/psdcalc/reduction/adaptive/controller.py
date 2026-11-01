@@ -647,14 +647,14 @@ class AdaptiveReductionController:
         ))
         return (
             0 if zero_cost_improving else 1,
-            -improvement,
-            -(evaluation.score if evaluation.score is not None else 0.0),
-            evaluation.expansion_cost if evaluation.expansion_cost is not None else math.inf,
+            (-improvement if zero_cost_improving else
+             -(evaluation.score if evaluation.score is not None else 0.0)),
             evaluation.added_bus_count if evaluation.added_bus_count is not None else math.inf,
             evaluation.added_branch_count if evaluation.added_branch_count is not None else math.inf,
             evaluation.candidate.region_fingerprint,
-            evaluation.candidate.candidate_fingerprint,
+            evaluation.candidate.deactivated_action_ids,
             source_ids,
+            evaluation.candidate.candidate_fingerprint,
         )
 
     def _compression_terminal(self, candidate: AdaptiveCandidateSnapshot,
@@ -736,14 +736,14 @@ class AdaptiveReductionController:
             selected_candidate_fingerprint=selected,
             tie_break_trace=(
                 "zero_cost_positive_improvement_first",
-                "greatest_hard_violation_improvement",
-                "highest_score",
-                "lowest_expansion_cost",
+                "highest_score_for_positive_cost",
+                "greatest_hard_violation_improvement_for_zero_cost",
                 "lowest_added_bus_count",
                 "lowest_added_branch_count",
                 "lowest_error_region_fingerprint",
-                "lowest_expansion_candidate_fingerprint",
+                "canonical_action_id_order",
                 "canonical_stable_id_order",
+                "lowest_expansion_candidate_fingerprint",
             ),
             reason=reason,
             rejected_candidates=tuple(sorted(rejected, key=lambda row: row.candidate_fingerprint)),

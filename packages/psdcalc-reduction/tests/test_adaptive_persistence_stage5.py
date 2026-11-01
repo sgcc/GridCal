@@ -35,6 +35,7 @@ from psdcalc.reduction.adaptive.evidence import (
     _digest as _evidence_digest,
     _validate_candidate_evaluation_rows,
 )
+from psdcalc.reduction.adaptive.journal import ReductionActionJournal
 from psdcalc.reduction.adaptive.pypsa_runtime import PypsaAdaptiveRuntime
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.loader import load_config
@@ -186,6 +187,72 @@ def test_persisted_adaptive_run_replays_in_fresh_process(tmp_path: Path) -> None
                             capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("True ")
+
+
+def test_dependency_chain_candidate_journal_and_clean_replay_agree(tmp_path: Path) -> None:
+    """Persisted expansion uses the same dependent closure as Stage 3 and replay."""
+    original = _case(tmp_path)
+    network, sidecar, reduction, protection, original_actions = original[:5]
+    prerequisite = original_actions[0]
+    dependent = ReductionAction.create(
+        action_id="dependent-radial-action",
+        operation=prerequisite.operation,
+        source_ids=prerequisite.source_ids,
+        target_ids=prerequisite.target_ids,
+        mapping_delta=prerequisite.mapping_delta,
+        voltage_layer=prerequisite.voltage_layer,
+        component_id=prerequisite.component_id,
+        region_fingerprint=prerequisite.region_fingerprint,
+        dependencies=(prerequisite.action_id,),
+        audit_reason="synthetic dependency-chain replay",
+    )
+    actions = (dependent, prerequisite)
+    initial = tuple(sorted(action.action_id for action in actions))
+    builder = PypsaAdaptiveCandidateBuilder(
+        source_network=network, source_sidecar=sidecar, actions=actions,
+        reduction_config=reduction, protection=protection,
+    )
+    assert builder.build(initial).structural_result.checks
+    runtime = PypsaAdaptiveRuntime(
+        source_network=network, source_sidecar=sidecar, builder=builder, actions=actions,
+        reduction_config_digest=builder.reduction_config_digest,
+        operating_point=original[5].operating_point,
+        metric_policy=original[5].metric_policy,
+        threshold_set=original[5].threshold_set,
+    )
+    config = original[6]
+    report = AdaptiveReductionController().run(
+        runtime=runtime, actions=actions,
+        initial_active_action_ids=initial, config=config,
+    )
+    decision = report.iterations[0].expansion_decision
+    assert decision is not None
+    candidate = next(row.candidate for row in decision.candidate_evaluations
+                     if row.candidate.direct_action_ids == (prerequisite.action_id,))
+    journal = ReductionActionJournal.start(actions).deactivate(
+        candidate.direct_action_ids, reason="test replay closure")
+    closure = tuple(sorted(set(initial) - set(journal.active_action_ids)))
+    assert candidate.deactivated_action_ids == closure == initial
+    assert candidate.resulting_active_action_ids == journal.active_action_ids == ()
+    assert report.iterations[0].action_set_delta == closure
+
+    run_dir, _ = _persist_case(
+        tmp_path, run_id="adaptive-dependency-chain",
+        case=(network, sidecar, reduction, protection, actions, runtime, config, report, initial),
+    )
+    code = (
+        "import json, sys; "
+        "from psdcalc.reduction.adaptive.evidence import AdaptiveReductionEvidenceStore; "
+        "r = AdaptiveReductionEvidenceStore.replay(sys.argv[1]); "
+        "print(json.dumps({'verified': r.verified, "
+        "'delta': r.report.iterations[0].action_set_delta}))"
+    )
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(Path(__file__).parents[1] / "src") + os.pathsep + env.get("PYTHONPATH", "")
+    process = subprocess.run([sys.executable, "-c", code, str(run_dir)], env=env,
+                             capture_output=True, text=True, check=False)
+    assert process.returncode == 0, process.stderr
+    assert json.loads(process.stdout) == {"verified": True, "delta": list(closure)}
 
 
 @pytest.mark.parametrize("relative", [

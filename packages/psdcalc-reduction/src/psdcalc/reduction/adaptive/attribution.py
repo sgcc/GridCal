@@ -21,6 +21,7 @@ from psdcalc.reduction.adaptive.contracts import (
     ErrorRegion,
     ExpansionCandidate,
 )
+from psdcalc.reduction.adaptive.journal import deactivation_closure
 from psdcalc.reduction.core.ids import StableId
 from psdcalc.reduction.fidelity.contracts import PfFidelityStatus
 from psdcalc.reduction.fidelity.mapping import PfComparisonMapping
@@ -149,7 +150,7 @@ class ErrorAttributionEngine:
             for action in supported_related:
                 if action.action_id not in active_ids or not self._ordinary_action_eligible(action):
                     continue
-                closure = _dependency_closure(action.action_id, actions)
+                closure = deactivation_closure(actions, active_ids, (action.action_id,))
                 closure_actions = tuple(actions[item] for item in closure)
                 reason = self._closure_rejection(closure_actions)
                 if reason is not None:
@@ -594,21 +595,6 @@ def _local_result(
 def _empty_local() -> dict[str, tuple[StableId, ...]]:
     """Return an empty, canonical localization result."""
     return _local_result((), (), (), ())
-
-
-def _dependency_closure(
-    action_id: str, actions: Mapping[str, ReductionAction],
-) -> tuple[str, ...]:
-    """Return one action and all active prerequisite actions in canonical order."""
-    output: set[str] = set()
-    pending = [action_id]
-    while pending:
-        current = pending.pop()
-        if current in output:
-            continue
-        output.add(current)
-        pending.extend(actions[current].dependencies)
-    return tuple(sorted(output))
 
 
 def _check_dependency_cycles(actions: Mapping[str, ReductionAction]) -> None:

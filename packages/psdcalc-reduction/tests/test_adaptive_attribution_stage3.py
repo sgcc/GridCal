@@ -16,6 +16,7 @@ from psdcalc.reduction.adaptive.attribution import (
     Stage3AttributionInput,
 )
 from psdcalc.reduction.adaptive.contracts import AttributionStatus
+from psdcalc.reduction.adaptive.journal import ReductionActionJournal
 from psdcalc.reduction.core.ids import StableId
 from psdcalc.reduction.fidelity.contracts import (
     PowerFlowCoverage,
@@ -323,38 +324,64 @@ def test_inactive_related_action_is_attributable_but_not_a_candidate() -> None:
     assert not result.candidates
 
 
-def test_eligible_action_with_protected_dependency_is_rejected_with_evidence() -> None:
-    """A legal direct action cannot include a protected prerequisite in its closure."""
-    prerequisite = _action("locked", protected=True)
-    dependent = _action("dependent", dependencies=("locked",))
+def test_eligible_action_with_protected_dependent_is_rejected_with_evidence() -> None:
+    """Removing a prerequisite cannot leave its protected dependent active."""
+    prerequisite = _action("prerequisite")
+    dependent = _action("locked-dependent", dependencies=("prerequisite",), protected=True)
     result = ErrorAttributionEngine().run(_input(
         hard_limits={"vm_max_pu": 0.01}, actions=(dependent, prerequisite),
-        active_ids=("dependent", "locked"),
+        active_ids=("locked-dependent", "prerequisite"),
     ))
     assert not result.candidates
     assert result.attributions[0].status is AttributionStatus.ATTRIBUTABLE
-    assert result.attributions[0].related_action_ids == ("dependent", "locked")
+    assert result.attributions[0].related_action_ids == ("locked-dependent", "prerequisite")
     assert not result.attributions[0].candidate_action_ids
     assert len(result.rejected_candidates) == 1
     rejected = result.rejected_candidates[0]
+    assert rejected.deactivated_action_ids == ("locked-dependent", "prerequisite")
     assert not rejected.eligible
     assert "protected" in (rejected.rejection_reason or "")
     assert rejected.triggering_attribution_ids == (result.attributions[0].fingerprint,)
+    with pytest.raises(ValueError, match="protected"):
+        ReductionActionJournal.start((prerequisite, dependent)).deactivate(
+            ("prerequisite",), reason="protected dependent")
 
 
-def test_dependency_closure_is_canonical_and_deduplicated() -> None:
-    """Deactivating a dependent action closes over its active prerequisites."""
-    prerequisite = _action("action-a")
-    dependent = _action("action-b", dependencies=("action-a",))
-    result = ErrorAttributionEngine().run(_input(
-        hard_limits={"vm_max_pu": 0.01}, actions=(dependent, prerequisite),
-        active_ids=("action-a", "action-b")))
-    dependent_candidate = next(row for row in result.candidates
-                               if row.direct_action_ids == ("action-b",))
-    assert dependent_candidate.dependency_closure_action_ids == ("action-a", "action-b")
-    assert dependent_candidate.deactivated_action_ids == ("action-a", "action-b")
-    assert dependent_candidate.added_bus_count == 1
-    assert dependent_candidate.added_branch_count == 1
+@pytest.mark.parametrize(("direct", "expected"), [
+    ("action-a", ("action-a", "action-b", "action-c")),
+    ("action-b", ("action-b", "action-c")),
+    ("action-c", ("action-c",)),
+    ("independent-d", ("independent-d",)),
+])
+def test_stage3_candidate_closure_equals_journal_and_keeps_active_dependencies(
+    direct: str, expected: tuple[str, ...],
+) -> None:
+    """A candidate removes active dependents, exactly as the journal will."""
+    actions = (
+        _action("action-a"),
+        _action("action-b", dependencies=("action-a",)),
+        _action("action-c", dependencies=("action-b",)),
+        _action("independent-d"),
+    )
+    active = tuple(action.action_id for action in actions)
+    baselines = []
+    for ordered in (actions, tuple(reversed(actions))):
+        result = ErrorAttributionEngine().run(_input(
+            hard_limits={"vm_max_pu": 0.01}, actions=ordered,
+            active_ids=tuple(reversed(active)),
+        ))
+        candidate = next(row for row in result.candidates
+                         if row.direct_action_ids == (direct,))
+        journal = ReductionActionJournal.start(ordered).deactivate(
+            candidate.direct_action_ids, reason="stage3 candidate")
+        applied = tuple(sorted(set(active) - set(journal.active_action_ids)))
+        assert candidate.deactivated_action_ids == expected == applied
+        assert candidate.dependency_closure_action_ids == expected
+        assert candidate.resulting_active_action_ids == journal.active_action_ids
+        assert all(set(action.dependencies) <= set(journal.active_action_ids)
+                   for action in actions if action.action_id in journal.active_action_ids)
+        baselines.append((candidate.candidate_fingerprint, result.candidate_set_digest))
+    assert baselines[0] == baselines[1]
 
 
 def test_invalid_dependency_graph_fails_closed() -> None:
