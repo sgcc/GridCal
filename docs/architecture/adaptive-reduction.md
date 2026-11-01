@@ -167,18 +167,31 @@ Exactly one terminal reason is recorded:
 |---|---|---|
 | `FIDELITY_SATISFIED` | All HARD preregistered fidelity constraints pass and no configured compression objective remains unmet. | Success |
 | `FIDELITY_SATISFIED_BUT_COMPRESSION_BUDGET_NOT_MET` | Fidelity passes, but a configured compression objective/budget does not. | Not accepted |
-| `NO_EXPANSION_CANDIDATE` | HARD violation remains and the legal candidate set is empty. | Not accepted |
+| `NO_EXPANSION_CANDIDATE` | A HARD violation remains, and candidate generation produces zero legal expansion candidates before candidate evaluation begins. This reason means exactly that the legal candidate set is empty. | Not accepted |
+| `NO_VIABLE_EXPANSION_CANDIDATE` | A non-empty legal expansion candidate set was generated, but every evaluated candidate was rejected by a candidate-level prerequisite Gate before becoming a viable scored expansion. Rejections may be from structural validity, AC model readiness, or PF execution; each reason is retained per candidate. | Not accepted |
 | `UNATTRIBUTABLE_HARD_VIOLATION` | At least one HARD violation cannot be mapped to a legal expansion candidate. | Not accepted |
-| `STRUCTURAL_INVALID` | The current required candidate fails the structural Gate. | Not accepted |
-| `AC_MODEL_NOT_READY` | Candidate fails AC model readiness. | Not accepted |
-| `PF_NOT_CONVERGED` | The required candidate PF does not converge under the frozen executor contract. | Not accepted |
-| `MAX_ITERATIONS_REACHED` | The configured iteration limit is reached before acceptance. | Not accepted |
-| `NO_FURTHER_COMPRESSION_BENEFIT` | A HARD violation remains, a non-empty legal expansion set was evaluated, and no surviving candidate reduced the violation enough to restore feasibility within the configured bounded search. This is a search result, not a global optimality claim. | Not accepted |
+| `STRUCTURAL_INVALID` | The required current candidate fails the structural Gate before expansion-candidate generation. | Not accepted |
+| `AC_MODEL_NOT_READY` | The required current candidate fails AC model readiness before expansion-candidate generation. | Not accepted |
+| `PF_NOT_CONVERGED` | The required current candidate PF does not converge under the frozen executor contract before expansion-candidate generation. | Not accepted |
+| `MAX_ITERATIONS_REACHED` | The current iteration has completed without acceptance and the configured iteration limit prevents another iteration from starting. | Not accepted |
+| `NO_FURTHER_COMPRESSION_BENEFIT` | A non-empty legal candidate set was generated and at least one candidate passed structural validity, AC model readiness, and PF execution and reached fidelity evaluation/scoring. The configured bounded search is exhausted, but no viable candidate provided sufficient HARD-violation reduction. This heuristic result is not proof of infeasibility, global optimality, or absence of a better reduction. | Not accepted |
 | `CONFIGURATION_INVALID` | Configuration, referenced evidence, threshold binding, or required contracts are invalid. | Not accepted |
 
 A result is accepted only if every HARD preregistered threshold passes and any configured compression requirement is met. Diagnostic metrics remain diagnostic. Structural validity, AC readiness, PF execution and reduction fidelity remain independent fields in every report.
 
-Terminal reasons are selected once per run using this decision order: invalid configuration/evidence; failure of the required current candidate at structural, readiness, or PF stage; unattributable HARD violation; fidelity pass with unmet compression budget; fidelity pass with all configured objectives met; empty legal candidate set; evaluated candidates exist but none improves the remaining HARD violation enough to reach feasibility within the configured bounded search; iteration limit. The last case is `NO_FURTHER_COMPRESSION_BENEFIT`; it differs from `NO_EXPANSION_CANDIDATE`, which means the legal set is empty before candidate evaluation. Candidate-level structural/readiness/PF failures remain in iteration evidence and do not override a viable candidate. Where every evaluated candidate fails at the same gate, the terminal reason names that gate; mixed candidate failures with no viable candidate use `NO_EXPANSION_CANDIDATE`, with each failure retained per candidate. `NO_FURTHER_COMPRESSION_BENEFIT` is used only when a non-empty eligible set was evaluated and its surviving candidates did not produce sufficient HARD-violation reduction. A fidelity-passing incumbent that misses a configured compression requirement always uses `FIDELITY_SATISFIED_BUT_COMPRESSION_BUDGET_NOT_MET`.
+Terminal reasons are mutually exclusive run-level outcomes. Apply this decision order at the end of each completed iteration:
+
+1. If configuration or bound evidence is invalid, return `CONFIGURATION_INVALID`.
+2. If the required current candidate failed its structural, readiness, or PF Gate before expansion generation, return `STRUCTURAL_INVALID`, `AC_MODEL_NOT_READY`, or `PF_NOT_CONVERGED`, respectively.
+3. If a HARD violation is unattributable to any legal expansion, return `UNATTRIBUTABLE_HARD_VIOLATION`.
+4. If fidelity passes but the configured compression requirement remains unmet, return `FIDELITY_SATISFIED_BUT_COMPRESSION_BUDGET_NOT_MET`.
+5. If fidelity and all configured objectives pass, return `FIDELITY_SATISFIED`.
+6. If the legal candidate set is empty before evaluation, return `NO_EXPANSION_CANDIDATE`.
+7. If the legal candidate set is non-empty but no candidate passes the prerequisite structural, readiness, and PF Gates, return `NO_VIABLE_EXPANSION_CANDIDATE`. This applies both when candidates fail the same Gate and when they fail different Gates; do not promote a candidate-level failure to the run-level reason.
+8. If at least one candidate reaches fidelity evaluation/scoring, all remaining candidate paths within the configured bound have been evaluated, and none provides sufficient HARD-violation improvement, return `NO_FURTHER_COMPRESSION_BENEFIT`. If a scored candidate provides improvement and another iteration remains, continue with that selected expansion instead of terminating here.
+9. Otherwise, if the completed iteration count has reached `max_iterations` and another iteration would be required, return `MAX_ITERATIONS_REACHED`. The limit is checked after evaluating the completed iteration and before starting a new one; success or another terminal condition established by that completed iteration takes precedence.
+
+Every generated candidate has its own evaluation record containing candidate fingerprint, structural Gate result, AC readiness result, PF execution result, fidelity result when reached, rejection reason, and score when reached. A stage skipped because an earlier prerequisite failed is recorded as `NOT_RUN` with its dependency reason. Thus `NO_VIABLE_EXPANSION_CANDIDATE` never hides which prerequisite Gate rejected each candidate. A candidate-level structural/readiness/PF failure does not terminate the run while another candidate remains viable. A fidelity-passing incumbent that misses a configured compression requirement always uses `FIDELITY_SATISFIED_BUT_COMPRESSION_BUDGET_NOT_MET`.
 
 ## Evidence and replay
 
@@ -208,18 +221,22 @@ No tests are implemented by this design PR. PR-024A must use offline programmati
 
 | Fixture | Required assertion |
 |---|---|
-| A. Local voltage error | Restoring one legal region action fixes the HARD voltage violation; selected sequence is reproducible. |
-| B. Branch/cutset error | Restoring a corridor action improves the mapped branch or cutset violation and is attributed to that corridor. |
-| C. Deterministic tie | Two equal-scoring candidates resolve by declared cost, region fingerprint and StableId ordering. |
-| D. Protected object | Protected action cannot enter the eligible expansion candidate set. |
-| E. Unattributable HARD violation | Run stops with `UNATTRIBUTABLE_HARD_VIOLATION`; no silent downgrade. |
-| F. Structural-invalid expansion | Candidate Gate failure is recorded and excluded from scoring; terminal semantics are explicit if no candidate remains. |
-| G. AC-not-ready expansion | Readiness failure is persisted and the candidate is never sent to PF. |
-| H. PF non-convergence | Non-convergence is distinct from fidelity failure and stops according to the frozen policy. |
-| I. Iteration bound | Thresholds not reached before the limit produce `MAX_ITERATIONS_REACHED`. |
-| J. Journal replay | Replay reconstructs the exact candidate/action-set sequence and mapping digests. |
-| K. Tampered journal | Changed action payload, dependency or mapping delta fails closed. |
-| L. Equivalent starting config | Same S1, config, thresholds and seed-independent deterministic inputs yield the same chosen sequence. |
+| Terminal A. Empty candidate set | Candidate generation returns no legal expansion; run stops with `NO_EXPANSION_CANDIDATE` before candidate evaluation. |
+| Terminal B. No viable candidate | A non-empty set is generated and every candidate fails a prerequisite structural, readiness, or PF Gate; run stops with `NO_VIABLE_EXPANSION_CANDIDATE`. |
+| Terminal C. No sufficient improvement | At least one candidate passes prerequisite Gates and reaches fidelity scoring; the bounded alternatives are exhausted, but none sufficiently reduces the remaining HARD violation; run stops with `NO_FURTHER_COMPRESSION_BENEFIT`. |
+| Terminal D. Mixed prerequisite failures | Three candidates fail respectively structural validity, AC readiness, and PF execution; run stops with `NO_VIABLE_EXPANSION_CANDIDATE` and preserves all three candidate-level reasons. |
+| Local voltage correction | Restoring one legal region action fixes the HARD voltage violation; selected sequence is reproducible. |
+| Branch/cutset corridor restoration | Restoring a corridor action improves the mapped branch or cutset violation and is attributed to that corridor. |
+| Deterministic tie-break | Two equal-scoring candidates resolve by declared cost, region fingerprint and StableId ordering. |
+| Protected-object exclusion | Protected action cannot enter the eligible expansion candidate set. |
+| Unattributable HARD violation | Run stops with `UNATTRIBUTABLE_HARD_VIOLATION`; no silent downgrade. |
+| Structural-invalid expansion | Candidate Gate failure is recorded and excluded from scoring; if all non-empty candidates fail prerequisite Gates, use `NO_VIABLE_EXPANSION_CANDIDATE`. |
+| AC-not-ready expansion | Readiness failure is persisted and the candidate is never sent to PF; if all candidates fail prerequisite Gates, use `NO_VIABLE_EXPANSION_CANDIDATE`. |
+| PF non-convergence | Non-convergence is preserved per candidate; if all candidates fail prerequisite Gates, use `NO_VIABLE_EXPANSION_CANDIDATE`. |
+| Iteration bound | Thresholds not reached before another iteration may start produce `MAX_ITERATIONS_REACHED`; the just-completed iteration is evaluated first. |
+| Journal replay | Replay reconstructs the exact candidate/action-set sequence and mapping digests. |
+| Tampered journal | Changed action payload, dependency or mapping delta fails closed. |
+| Equivalent starting config | Same S1, config, thresholds and seed-independent deterministic inputs yield the same chosen sequence. |
 
 The test plan also covers a mixed connected-component/multi-voltage fixture, aggregation cost accounting, dependency-closed reversal, diagnostic-only metrics, threshold provenance immutability, and original S1 semantic immutability.
 
