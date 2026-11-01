@@ -298,7 +298,7 @@ def test_frozen_config_protection_is_enforced_during_action_replay(
                                  frozenset(), frozenset()),
     )
 
-    with pytest.raises(CandidateReconstructionError, match="protection|singleton"):
+    with pytest.raises(CandidateReconstructionError, match="STRICT_SINGLETON_CONFLICT"):
         builder.build(("absorb-ab",))
 
 
@@ -378,7 +378,7 @@ def test_missing_ids_invalid_dependencies_and_unsupported_actions_fail_closed(
         source_network=source, source_sidecar=sidecar,
         actions=(bad_action,), reduction_config=config, protection=protection,
     )
-    with pytest.raises(CandidateReconstructionError, match="StableId"):
+    with pytest.raises(CandidateReconstructionError, match="ACTION_SOURCE_MISSING"):
         builder.build((bad_action.action_id,))
 
     dependent = ReductionAction.create(
@@ -416,7 +416,7 @@ def test_missing_ids_invalid_dependencies_and_unsupported_actions_fail_closed(
         actions=(base_action, dependent_action), reduction_config=config,
         protection=protection,
     )
-    with pytest.raises(CandidateReconstructionError, match="dependency closure"):
+    with pytest.raises(CandidateReconstructionError, match="INVALID_DEPENDENCY_CLOSURE"):
         closure_builder.build(("dependent-valid",))
 
     unsupported = ReductionAction.create(
@@ -430,7 +430,7 @@ def test_missing_ids_invalid_dependencies_and_unsupported_actions_fail_closed(
         voltage_layer="110", component_id="component-a",
         region_fingerprint="region-a", audit_reason="not Stage-2 supported",
     )
-    with pytest.raises(CandidateReconstructionError, match="ACTION_TYPE_NOT_STAGE2_READY"):
+    with pytest.raises(CandidateReconstructionError, match="UNSUPPORTED_ACTION_TYPE"):
         PypsaAdaptiveCandidateBuilder(
             source_network=source, source_sidecar=sidecar,
             actions=(unsupported,), reduction_config=config, protection=protection,
@@ -463,7 +463,7 @@ def test_action_mapping_mismatch_and_ineffective_action_fail_closed(tmp_path: Pa
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
     )
-    with pytest.raises(CandidateReconstructionError, match="mapping"):
+    with pytest.raises(CandidateReconstructionError, match="ACTION_MAPPING_INCONSISTENT"):
         builder.build((invalid.action_id,))
 
     ineffective = ReductionAction.create(
@@ -477,7 +477,7 @@ def test_action_mapping_mismatch_and_ineffective_action_fail_closed(tmp_path: Pa
         voltage_layer="110", component_id="component-a",
         region_fingerprint="region-a", audit_reason="identity-only action",
     )
-    with pytest.raises(CandidateReconstructionError, match="ineffective"):
+    with pytest.raises(CandidateReconstructionError, match="ACTION_MAPPING_INCONSISTENT"):
         PypsaAdaptiveCandidateBuilder(
             source_network=source, source_sidecar=sidecar, actions=(ineffective,),
             reduction_config=_config(tmp_path),
@@ -510,5 +510,5 @@ def test_protected_action_cannot_be_omitted(tmp_path: Path) -> None:
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
     )
-    with pytest.raises(CandidateReconstructionError, match="protected"):
+    with pytest.raises(CandidateReconstructionError, match="REQUIRED_ACTION_OMITTED"):
         builder.build(())

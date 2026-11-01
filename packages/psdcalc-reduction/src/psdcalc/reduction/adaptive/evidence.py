@@ -40,9 +40,12 @@ from psdcalc.reduction.fidelity.persistence import (
     canonical_model_digest,
 )
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.parallel_provenance import ParallelSourceLedger
+from psdcalc.reduction.protection.effective import source_ledger_digest
 
 
-EVIDENCE_SCHEMA = "adaptive-reduction-evidence/v1"
+EVIDENCE_SCHEMA = "adaptive-reduction-evidence/v2"
+LEGACY_EVIDENCE_SCHEMA = "adaptive-reduction-evidence/v1"
 _ADAPTIVE_DIR = "adaptive"
 _ACTION_JOURNAL_REASON = "Stage-4 local expansion candidate"
 
@@ -132,11 +135,14 @@ class AdaptiveReductionEvidenceStore:
             _write_json(input_dir / "operating_point.json", _canonical(asdict(runtime.operating_point)))
             _write_json(input_dir / "metric_policy.json", asdict(runtime.metric_policy))
             _write_json(input_dir / "protection.json", protection_payload)
+            ledger_dir = input_dir / "source_ledger"
+            ledger_dir.mkdir()
+            runtime._builder.source_ledger.save_parquet(ledger_dir)
             _write_json(input_dir / "action_catalog.json", action_payloads)
             _write_json(input_dir / "initial_action_set.json", list(sorted(initial_active_action_ids)))
-            initial_journal = ReductionActionJournal.start(tuple(
-                action for action in actions if action.action_id in set(initial_active_action_ids)
-            ))
+            initial_journal = ReductionActionJournal.start(
+                actions, initial_active_action_ids=initial_active_action_ids,
+            )
             if initial_journal.action_set_fingerprint != report.initial_action_set_fingerprint:
                 raise ValueError("initial action set does not match report")
             durable_report = replace(report, evidence_reference="adaptive/evidence.json")
@@ -161,6 +167,8 @@ class AdaptiveReductionEvidenceStore:
                 "solver_contract_digest": runtime.solver_contract_digest,
                 "metric_policy_digest": runtime.metric_policy_digest,
                 "protection_digest": _digest(_protection_payload(protection)),
+                "source_ledger_digest": runtime._builder.source_ledger_digest,
+                "effective_protection_digest": runtime._builder.effective_protection_digest,
                 "threshold_set_id": runtime.threshold_set_id,
                 "threshold_set_version": str(threshold_set.payload.get("threshold_version")),
                 "threshold_set_digest": threshold_set.sha256,
@@ -182,6 +190,8 @@ class AdaptiveReductionEvidenceStore:
                 "reduction": digests["reduction_config_digest"],
                 "adaptive": digests["adaptive_config_digest"],
                 "catalog": digests["action_catalog_digest"],
+                "ledger": digests["source_ledger_digest"],
+                "effective_protection": digests["effective_protection_digest"],
             })
             _write_json(input_dir / "journal.json", {
                 "schema": "adaptive-action-journal-binding/v1",
@@ -201,6 +211,9 @@ class AdaptiveReductionEvidenceStore:
                     "operating_point": "adaptive/operating_point.json",
                     "metric_policy": "adaptive/metric_policy.json",
                     "protection": "adaptive/protection.json",
+                    "source_ledger_profile": "adaptive/source_ledger/source_profile.json",
+                    "source_ledger_lines": "adaptive/source_ledger/line_provenance.parquet",
+                    "source_ledger_l_plus": "adaptive/source_ledger/l_plus_associations.parquet",
                     "threshold_set": "adaptive/threshold_set.json",
                     "action_catalog": "adaptive/action_catalog.json",
                     "initial_action_set": "adaptive/initial_action_set.json",
@@ -242,6 +255,11 @@ class AdaptiveReductionEvidenceStore:
         adaptive_dir = directory / _ADAPTIVE_DIR
         try:
             evidence = _read_json(adaptive_dir / "evidence.json")
+            if evidence.get("schema") == LEGACY_EVIDENCE_SCHEMA:
+                raise AdaptiveEvidenceError(
+                    AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
+                    "historical v1 evidence is immutable and cannot be reinterpreted as v2",
+                )
             if evidence.get("schema") != EVIDENCE_SCHEMA:
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
                                             "unsupported adaptive evidence schema")
@@ -249,6 +267,7 @@ class AdaptiveReductionEvidenceStore:
             if not isinstance(artifacts, dict) or set(artifacts) != {
                 "frozen_s1", "source_sidecar", "reduction_config", "adaptive_config",
                 "operating_point", "metric_policy", "protection", "threshold_set",
+                "source_ledger_profile", "source_ledger_lines", "source_ledger_l_plus",
                 "action_catalog", "initial_action_set", "journal", "iterations", "iteration_bindings",
                 "candidate_evaluations", "report",
             }:
@@ -288,6 +307,15 @@ class AdaptiveReductionEvidenceStore:
             if _digest(_protection_payload(protection)) != evidence["digests"].get("protection_digest"):
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
                                             "resolved protection digest differs")
+            ledger_dir = paths["source_ledger_profile"].parent
+            if (paths["source_ledger_lines"].parent != ledger_dir or
+                    paths["source_ledger_l_plus"].parent != ledger_dir):
+                raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.INPUT_MISMATCH,
+                                            "source ledger artifacts are not co-located")
+            source_ledger = ParallelSourceLedger.load_parquet(ledger_dir)
+            if source_ledger_digest(source_ledger) != evidence["digests"].get("source_ledger_digest"):
+                raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                            "source ledger semantic digest differs")
             threshold_set = FrozenThresholdSet.load(paths["threshold_set"])
             if threshold_set.sha256 != evidence["digests"]["threshold_set_digest"]:
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
@@ -301,7 +329,11 @@ class AdaptiveReductionEvidenceStore:
                 source_network=source, source_sidecar=sidecar, actions=actions,
                 reduction_config=reduction_config, protection=protection,
                 protection_base_dir=adaptive_dir, protection_is_resolved=True,
+                source_ledger=source_ledger,
             )
+            if builder.effective_protection_digest != evidence["digests"].get("effective_protection_digest"):
+                raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                            "effective protection semantic digest differs")
             runtime = PypsaAdaptiveRuntime(
                 source_network=source, source_sidecar=sidecar, builder=builder,
                 actions=actions, reduction_config_digest=builder.reduction_config_digest,
@@ -310,9 +342,9 @@ class AdaptiveReductionEvidenceStore:
             )
             _verify_runtime_bindings(runtime, evidence["digests"])
             initial = tuple(_read_json(paths["initial_action_set"]))
-            initial_journal = ReductionActionJournal.start(tuple(
-                action for action in actions if action.action_id in set(initial)
-            ))
+            initial_journal = ReductionActionJournal.start(
+                actions, initial_active_action_ids=initial,
+            )
             if initial_journal.active_action_ids != tuple(sorted(initial)):
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.INPUT_MISMATCH,
                                             "initial action set contains unknown or duplicate IDs")
@@ -373,6 +405,8 @@ class AdaptiveReductionEvidenceStore:
                 "reduction": evidence["digests"]["reduction_config_digest"],
                 "adaptive": evidence["digests"]["adaptive_config_digest"],
                 "catalog": evidence["digests"]["action_catalog_digest"],
+                "ledger": evidence["digests"]["source_ledger_digest"],
+                "effective_protection": evidence["digests"]["effective_protection_digest"],
             })
             if expected_identity != evidence.get("run_identity"):
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
@@ -528,6 +562,11 @@ def _iteration_bindings(iterations: object) -> list[dict[str, object]]:
         evaluations = decision.get("candidate_evaluations", [])
         result.append({
             "iteration_index": iteration["iteration_index"],
+            "build_attempt_fingerprint": iteration.get("build_attempt_fingerprint"),
+            "materialized_candidate_fingerprint": iteration.get("materialized_candidate_fingerprint"),
+            "failure_stage": iteration.get("failure_stage"),
+            "failure_code": iteration.get("failure_code"),
+            "offending_identity_fingerprints": iteration.get("offending_identity_fingerprints", []),
             "incumbent_action_set_fingerprint": iteration["action_set_fingerprint"],
             "incumbent_model_digest": iteration.get("model_digest"),
             "incumbent_mapping_bundle_digest": iteration.get("mapping_digest"),
@@ -599,7 +638,9 @@ def _journal_from_report(
 ) -> ReductionActionJournal:
     """Rebuild the selected transition chain from exact action-set deltas."""
     action_by_id = {action.action_id: action for action in actions}
-    journal = ReductionActionJournal.start(tuple(action_by_id[item] for item in sorted(initial_ids)))
+    journal = ReductionActionJournal.start(
+        actions, initial_active_action_ids=initial_ids,
+    )
     for iteration in report.iterations:
         if not iteration.action_set_delta:
             continue
@@ -635,6 +676,8 @@ def _verify_runtime_bindings(runtime: PypsaAdaptiveRuntime, expected: Mapping[st
         "metric_policy_digest": runtime.metric_policy_digest,
         "threshold_set_id": runtime.threshold_set_id,
         "action_catalog_digest": runtime.action_catalog_digest,
+        "source_ledger_digest": runtime._builder.source_ledger_digest,
+        "effective_protection_digest": runtime._builder.effective_protection_digest,
     }
     for key, actual in values.items():
         if expected.get(key) != actual:

@@ -57,7 +57,7 @@ class RuntimePowerFlowOutcome:
 class AdaptiveCandidateSnapshot:
     """One freshly rebuilt candidate and the existing Gate outcomes for it."""
 
-    candidate_fingerprint: str
+    candidate_fingerprint: str | None
     active_action_ids: tuple[str, ...]
     action_set_fingerprint: str
     model_digest: str | None
@@ -70,9 +70,36 @@ class AdaptiveCandidateSnapshot:
     branch_count: int | None
     artifact: object | None = None
     failure_reason: str | None = None
+    build_attempt_fingerprint: str | None = None
+    materialized_candidate_fingerprint: str | None = None
+    failure_stage: str | None = None
+    failure_code: str | None = None
+    offending_identity_fingerprints: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        _require_digest(self.candidate_fingerprint, "candidate_fingerprint")
+        if self.candidate_fingerprint is not None:
+            _require_digest(self.candidate_fingerprint, "candidate_fingerprint")
+        if self.materialized_candidate_fingerprint is None and self.candidate_fingerprint is not None:
+            object.__setattr__(self, "materialized_candidate_fingerprint",
+                               self.candidate_fingerprint)
+        if self.materialized_candidate_fingerprint != self.candidate_fingerprint:
+            raise AdaptiveControllerError("materialized candidate identity differs from candidate_fingerprint")
+        if self.build_attempt_fingerprint is None and self.candidate_fingerprint is not None:
+            object.__setattr__(self, "build_attempt_fingerprint", self.candidate_fingerprint)
+        if self.build_attempt_fingerprint is not None:
+            _require_digest(self.build_attempt_fingerprint, "build_attempt_fingerprint")
+        if self.candidate_fingerprint is None:
+            if not self.build_attempt_fingerprint or not self.failure_stage or not self.failure_code:
+                raise AdaptiveControllerError("failed build requires attempt, stage, and code")
+            if (self.model_digest is not None or self.mapping_digest is not None or
+                    self.bus_count is not None or self.branch_count is not None or
+                    self.artifact is not None):
+                raise AdaptiveControllerError(
+                    "failed build cannot carry materialized candidate state")
+        if tuple(sorted(set(self.offending_identity_fingerprints))) != self.offending_identity_fingerprints:
+            raise AdaptiveControllerError("offending identity fingerprints must be sorted and unique")
+        for fingerprint in self.offending_identity_fingerprints:
+            _require_digest(fingerprint, "offending_identity_fingerprints")
         _require_digest(self.action_set_fingerprint, "action_set_fingerprint")
         for name in ("model_digest", "mapping_digest"):
             value = getattr(self, name)
@@ -181,7 +208,9 @@ class AdaptiveReductionController:
             raise AdaptiveControllerError("initial action set is duplicated or references unknown actions")
         if any(action_by_id[item].protected or not action_by_id[item].reversible for item in set(action_by_id) - set(active)):
             raise AdaptiveControllerError("initial action set omits a protected or irreversible action")
-        journal = ReductionActionJournal.start(tuple(action_by_id[item] for item in active))
+        journal = ReductionActionJournal.start(
+            actions, initial_active_action_ids=active,
+        )
         if tuple(sorted(active)) != journal.active_action_ids:
             raise AdaptiveControllerError("initial action set could not be represented by the journal")
 
@@ -612,7 +641,7 @@ class AdaptiveReductionController:
             normalized_hard_violation=after,
             score=score,
             proposed_active_action_set_fingerprint=proposed_fp,
-            candidate_build_fingerprint=candidate.candidate_fingerprint,
+            candidate_build_fingerprint=candidate.build_attempt_fingerprint,
             structural_checks=candidate.structural_checks,
             readiness_checks=candidate.readiness_checks,
             hard_violations=assessment.attribution.attributions,
@@ -707,10 +736,15 @@ class AdaptiveReductionController:
             stopping_reason=stopping_reason,
             diagnostics=dict(diagnostics or _failure_details(candidate)),
             candidate_fingerprint=candidate.candidate_fingerprint,
+            build_attempt_fingerprint=candidate.build_attempt_fingerprint,
+            materialized_candidate_fingerprint=candidate.materialized_candidate_fingerprint,
+            failure_stage=candidate.failure_stage,
+            failure_code=candidate.failure_code,
+            offending_identity_fingerprints=candidate.offending_identity_fingerprints,
             parent_incumbent_fingerprint=parent_fingerprint,
             new_incumbent_fingerprint=new_fingerprint,
             action_set_delta=tuple(sorted(action_delta)),
-            candidate_build_fingerprint=candidate.candidate_fingerprint,
+            candidate_build_fingerprint=candidate.build_attempt_fingerprint,
             metrics_digest=assessment.metrics_digest if assessment else None,
             threshold_digest=assessment.threshold_digest if assessment else None,
             attribution_digest=(_canonical_attribution_digest(assessment.attribution)
@@ -776,7 +810,7 @@ def _failed_evaluation(
         mapping_digest=candidate.mapping_digest if candidate else None,
         rejection_reason=reason + (f": {detail}" if detail else ""),
         proposed_active_action_set_fingerprint=proposed_fingerprint,
-        candidate_build_fingerprint=candidate.candidate_fingerprint if candidate else None,
+        candidate_build_fingerprint=candidate.build_attempt_fingerprint if candidate else None,
         structural_checks=candidate.structural_checks if candidate else {},
         readiness_checks=candidate.readiness_checks if candidate else {},
         added_bus_count=expansion.added_bus_count,
@@ -854,6 +888,11 @@ def _incumbent_summary(candidate: AdaptiveCandidateSnapshot,
     """Return the final in-memory candidate summary without carrying a network object."""
     return {
         "candidate_fingerprint": candidate.candidate_fingerprint,
+        "build_attempt_fingerprint": candidate.build_attempt_fingerprint,
+        "materialized_candidate_fingerprint": candidate.materialized_candidate_fingerprint,
+        "failure_stage": candidate.failure_stage,
+        "failure_code": candidate.failure_code,
+        "offending_identity_fingerprints": candidate.offending_identity_fingerprints,
         "action_set_fingerprint": candidate.action_set_fingerprint,
         "active_action_ids": candidate.active_action_ids,
         "model_digest": candidate.model_digest,

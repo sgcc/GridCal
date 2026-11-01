@@ -452,7 +452,14 @@ class MultiVoltageStructuralValidator:
         checks["protected_singletons"] = all(
             source in busmap and busmap[source] is not None and
             sum(row.target_id == busmap[source] for row in mappings.bus_map) == 1
-            for source in singleton
+            for source in sorted(singleton)
+        )
+        anchors = MultiVoltageBusmapValidator.identity_anchors(
+            parent_network, parent_sidecar, protection,
+        )
+        checks["identity_anchors"] = all(
+            source in busmap and busmap[source] == source
+            for source in sorted(anchors)
         )
         for name, passed in checks.items():
             if not passed:

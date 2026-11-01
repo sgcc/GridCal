@@ -67,6 +67,8 @@ def _case(
     line_x: float = 5.0,
     load_q: float = 50.0,
     max_iterations: int = 3,
+    strict_middle: bool = False,
+    failure_mode: str | None = None,
 ):
     network = pypsa.Network()
     network.add("Bus", "slack", v_nom=110.0)
@@ -76,6 +78,9 @@ def _case(
     network.add("Line", "line", bus0="middle", bus1="load", r=line_r, x=line_x)
     network.add("Generator", "source", bus="slack", control="Slack", p_nom=100.0)
     network.add("Load", "demand", bus="load", p_set=0.0, q_set=load_q)
+    if failure_mode == "anchor_away":
+        network.add("Bus", "low", v_nom=10.0)
+        network.add("Transformer", "terminal", bus0="middle", bus1="low", x=0.1)
     network.set_snapshots(["snapshot-0"])
     network.loads_t.p_set["demand"] = [3.0]
     network.loads_t.q_set["demand"] = [load_q]
@@ -118,6 +123,61 @@ def _case(
         audit_reason="synthetic Stage-5 radial contraction",
     )
     actions: tuple[ReductionAction, ...] = (action,)
+    if strict_middle:
+        empty_protection = ProtectionSet(
+            empty_protection.traced, empty_protection.preserved_components,
+            empty_protection.terminal_buses, frozenset({bus_middle}),
+            empty_protection.cannot_link,
+        )
+    if failure_mode == "cannot_link":
+        empty_protection = ProtectionSet(
+            empty_protection.traced, empty_protection.preserved_components,
+            empty_protection.terminal_buses, empty_protection.singleton_buses,
+            frozenset({frozenset({bus_middle, bus_load})}),
+        )
+    if failure_mode == "anchor_away":
+        action = ReductionAction.create(
+            action_id="merge-radial-bus", operation=ActionOperation.RADIAL_ABSORPTION,
+            source_ids=(bus_middle, bus_load, line), target_ids=(bus_load,),
+            mapping_delta=(
+                MappingTransition(bus_middle, bus_load, "clustered"),
+                MappingTransition(bus_load, bus_load, "preserved"),
+                MappingTransition(line, None, "absorbed_internal"),
+            ), voltage_layer="110", component_id="synthetic-component",
+            region_fingerprint=_digest("synthetic-region"),
+            audit_reason="mapped-away Transformer terminal anchor",
+        )
+        actions = (action,)
+    if failure_mode == "unsupported_action":
+        action = ReductionAction.create(
+            action_id="merge-radial-bus",
+            operation=ActionOperation.PARALLEL_CORRIDOR_AGGREGATION,
+            source_ids=action.source_ids, target_ids=action.target_ids,
+            mapping_delta=action.mapping_delta, voltage_layer=action.voltage_layer,
+            component_id=action.component_id,
+            region_fingerprint=action.region_fingerprint,
+            audit_reason="unsupported action in initial catalog",
+        )
+        actions = (action,)
+    if failure_mode == "dependency_closure":
+        prerequisite = ReductionAction.create(
+            action_id="inactive-prerequisite", operation=ActionOperation.BUS_CLUSTER,
+            source_ids=action.source_ids, target_ids=action.target_ids,
+            mapping_delta=action.mapping_delta, voltage_layer=action.voltage_layer,
+            component_id=action.component_id,
+            region_fingerprint=action.region_fingerprint,
+            audit_reason="known but inactive prerequisite",
+        )
+        action = ReductionAction.create(
+            action_id="merge-radial-bus", operation=action.operation,
+            source_ids=action.source_ids, target_ids=action.target_ids,
+            mapping_delta=action.mapping_delta, voltage_layer=action.voltage_layer,
+            component_id=action.component_id,
+            region_fingerprint=action.region_fingerprint,
+            dependencies=(prerequisite.action_id,),
+            audit_reason="initial action lacks active prerequisite",
+        )
+        actions = (prerequisite, action)
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=network, source_sidecar=sidecar, actions=actions,
         reduction_config=reduction, protection=empty_protection,
@@ -187,6 +247,55 @@ def test_persisted_adaptive_run_replays_in_fresh_process(tmp_path: Path) -> None
                             capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("True ")
+
+
+@pytest.mark.parametrize("kwargs, failure_code", [
+    ({"strict_middle": True}, "STRICT_SINGLETON_CONFLICT"),
+    ({"failure_mode": "anchor_away"}, "ANCHOR_MAPPED_AWAY"),
+    ({"failure_mode": "cannot_link"}, "CANNOT_LINK_CONFLICT"),
+    ({"failure_mode": "unsupported_action"}, "UNSUPPORTED_ACTION_TYPE"),
+    ({"failure_mode": "dependency_closure"}, "INVALID_DEPENDENCY_CLOSURE"),
+])
+def test_failed_initial_build_has_v2_identity_and_fresh_process_replay(
+    tmp_path: Path, kwargs: dict[str, object], failure_code: str,
+) -> None:
+    """Five failed initial builds replay with stable attempts and null candidates."""
+    run_dir, case_data = _persist(tmp_path, **kwargs)
+    report = case_data[7]
+    assert report.terminal_reason == AdaptiveStoppingReason.STRUCTURAL_INVALID
+    summary = report.final_incumbent_summary
+    assert summary["build_attempt_fingerprint"] is not None
+    assert summary["materialized_candidate_fingerprint"] is None
+    assert summary["failure_stage"] == "ACTION_CATALOG_READINESS"
+    assert summary["failure_code"] == failure_code
+    assert tuple(summary["offending_identity_fingerprints"]) == tuple(sorted(
+        summary["offending_identity_fingerprints"]))
+    evidence = json.loads((run_dir / "adaptive/evidence.json").read_text())
+    assert evidence["schema"] == "adaptive-reduction-evidence/v2"
+    assert evidence["digests"]["source_ledger_digest"]
+    assert evidence["digests"]["effective_protection_digest"]
+    code = (
+        "from pathlib import Path; "
+        "from psdcalc.reduction.adaptive.evidence import AdaptiveReductionEvidenceStore; "
+        "r=AdaptiveReductionEvidenceStore.replay(Path(__import__('sys').argv[1])); "
+        "s=r.report.final_incumbent_summary; "
+        "print(s['build_attempt_fingerprint'], s['failure_code'], "
+        "s['materialized_candidate_fingerprint'], "
+        "','.join(s['offending_identity_fingerprints']), "
+        "r.report.terminal_reason.value)"
+    )
+    for seed in ("1", "29"):
+        env = dict(os.environ)
+        env["PYTHONHASHSEED"] = seed
+        env["PYTHONPATH"] = str(Path(__file__).parents[1] / "src")
+        result = subprocess.run([sys.executable, "-c", code, str(run_dir)],
+                                env=env, capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == (
+            f"{summary['build_attempt_fingerprint']} {failure_code} None "
+            f"{','.join(summary['offending_identity_fingerprints'])} "
+            "STRUCTURAL_INVALID"
+        )
 
 
 def test_dependency_chain_candidate_journal_and_clean_replay_agree(tmp_path: Path) -> None:
@@ -287,6 +396,38 @@ def test_tampered_adaptive_evidence_fails_closed(tmp_path: Path, relative: str) 
             value.append({"tampered": True})
         path.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
     with pytest.raises(AdaptiveEvidenceError):
+        AdaptiveReductionEvidenceStore.replay(run_dir)
+
+
+@pytest.mark.parametrize("relative", [
+    "adaptive/source_ledger/source_profile.json",
+    "adaptive/source_ledger/line_provenance.parquet",
+    "adaptive/source_ledger/l_plus_associations.parquet",
+])
+def test_source_ledger_artifact_tampering_fails_closed(
+    tmp_path: Path, relative: str,
+) -> None:
+    """Replay binds all three frozen source-ledger artifacts."""
+    run_dir, _ = _persist(tmp_path)
+    artifact = run_dir / relative
+    if artifact.suffix == ".json":
+        payload = json.loads(artifact.read_text(encoding="utf-8"))
+        payload["tampered"] = True
+        artifact.write_text(json.dumps(payload), encoding="utf-8")
+    else:
+        artifact.write_bytes(artifact.read_bytes() + b"tampered")
+    with pytest.raises(AdaptiveEvidenceError):
+        AdaptiveReductionEvidenceStore.replay(run_dir)
+
+
+def test_historical_v1_evidence_is_explicitly_rejected(tmp_path: Path) -> None:
+    """The v2 replay path cannot reinterpret an old candidate fingerprint."""
+    run_dir, _ = _persist(tmp_path)
+    evidence_path = run_dir / "adaptive/evidence.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["schema"] = "adaptive-reduction-evidence/v1"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    with pytest.raises(AdaptiveEvidenceError, match="v1|legacy|unsupported"):
         AdaptiveReductionEvidenceStore.replay(run_dir)
 
 

@@ -141,13 +141,19 @@ class ReductionActionJournal:
     digest: str
 
     @classmethod
-    def start(cls, actions: tuple[ReductionAction, ...]) -> "ReductionActionJournal":
-        """Create an initial active-action snapshot after catalog validation."""
+    def start(
+        cls, actions: tuple[ReductionAction, ...],
+        *, initial_active_action_ids: tuple[str, ...] | None = None,
+    ) -> "ReductionActionJournal":
+        """Create an initial snapshot over the full catalog and selected active set."""
         ordered = tuple(sorted(actions, key=lambda item: item.action_id))
         by_id = _validate_catalog(ordered)
         catalog_digest = _digest([action.canonical_payload() for action in ordered])
-        initial_ids = tuple(sorted(by_id))
-        mapping_fingerprint = _mapping_fingerprint(ordered)
+        initial_ids = (tuple(sorted(by_id)) if initial_active_action_ids is None
+                       else tuple(sorted(initial_active_action_ids)))
+        if len(initial_ids) != len(set(initial_ids)) or not set(initial_ids) <= set(by_id):
+            raise JournalIntegrityError("initial active action IDs are invalid")
+        mapping_fingerprint = _mapping_fingerprint(tuple(by_id[item] for item in initial_ids))
         snapshot = ActionSetSnapshot.create(
             iteration_index=0, parent_action_set_fingerprint=None,
             deactivated_action_ids=(), active_action_ids=initial_ids,
@@ -208,7 +214,9 @@ class ReductionActionJournal:
             raise JournalIntegrityError("action catalog digest mismatch")
         if not self.snapshots:
             raise JournalIntegrityError("journal must contain its initial snapshot")
-        active = set(by_id)
+        active = set(self.snapshots[0].active_action_ids)
+        if not active <= set(by_id):
+            raise JournalIntegrityError("initial action set references unknown catalog actions")
         previous_fingerprint: str | None = None
         for index, snapshot in enumerate(self.snapshots):
             if snapshot.iteration_index != index:

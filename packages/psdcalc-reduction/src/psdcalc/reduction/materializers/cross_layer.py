@@ -30,7 +30,7 @@ class CrossLayerHandler(Protocol):
 
 
 class TransformerHandler:
-    """Copy every Transformer and translate its ordered singleton terminals."""
+    """Copy every Transformer and translate its ordered identity anchors."""
 
     def reconnect(self, source: pypsa.Network, target: pypsa.Network,
                   parent_sidecar: IdentitySidecar,
@@ -43,7 +43,7 @@ class TransformerHandler:
                 source_id = parent_sidecar.source_id("Bus", bus_name)
                 if source_id not in busmaps.transformer_terminals:
                     raise MaterializationError(
-                        f"Transformer terminal was not marked singleton: {name}/{terminal}"
+                        f"Transformer terminal was not marked an identity anchor: {name}/{terminal}"
                     )
                 projected = [backend[source_id_name]
                              for backend in busmaps.backend_by_layer.values()

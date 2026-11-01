@@ -23,6 +23,15 @@ from psdcalc.reduction.mapping.rows import MapEntry
 from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.planners.base import PartitionPlan
 from psdcalc.reduction.protection.engine import ProtectionEngine, ProtectionSet
+from psdcalc.reduction.protection.effective import (
+    EffectiveProtectionResolver, ResolvedEffectiveProtection,
+)
+from psdcalc.reduction.topology.parallel_provenance import (
+    ParallelSourceLedger, SourceProfileContract,
+)
+from psdcalc.reduction.adaptive.readiness import (
+    ActionCatalogReadinessResult, ActionCatalogReadinessValidator,
+)
 from psdcalc.reduction.readiness.ac_model import AcModelReadinessResult
 from psdcalc.reduction.validation.multi_voltage import (
     AggregationInvariantSpec,
@@ -38,6 +47,15 @@ if TYPE_CHECKING:
 
 class CandidateReconstructionError(RuntimeError):
     """Raised when an active action set cannot be faithfully rebuilt from S1."""
+
+
+class ActionCatalogNotReady(CandidateReconstructionError):
+    """Raised before materialization when active actions violate the frozen contract."""
+
+    def __init__(self, result: ActionCatalogReadinessResult) -> None:
+        self.result = result
+        codes = ", ".join(sorted({row.failure_code for row in result.rejections}))
+        super().__init__(f"ACTION_CATALOG_READINESS failed: {codes}")
 
 
 @dataclass(frozen=True)
@@ -56,6 +74,8 @@ class CandidateBuildIdentity:
     source_model_digest: str
     source_sidecar_digest: str
     reduction_config_digest: str
+    effective_protection_digest: str
+    source_ledger_digest: str
 
 
 @dataclass(frozen=True)
@@ -79,8 +99,12 @@ class _PypsaActionReplay:
         ActionOperation.RADIAL_ABSORPTION,
     })
 
-    def __init__(self, protection: ProtectionSet) -> None:
+    def __init__(self, protection: ProtectionSet,
+                 source_ledger: ParallelSourceLedger,
+                 effective: ResolvedEffectiveProtection) -> None:
         self._protection = protection
+        self._source_ledger = source_ledger
+        self._effective = effective
 
     def plan(
         self,
@@ -215,6 +239,8 @@ class _PypsaActionReplay:
                 protection=self._protection,
                 voltage_aliases=aliases,
                 invariants=invariants,
+                source_ledger=self._source_ledger,
+                resolved_parallel_plan=self._effective.parallel_plan,
             )
         except Exception as exc:
             if isinstance(exc, CandidateReconstructionError):
@@ -318,6 +344,7 @@ class PypsaAdaptiveCandidateBuilder:
         protection: ProtectionSet | None = None,
         protection_base_dir: Path | None = None,
         protection_is_resolved: bool = False,
+        source_ledger: ParallelSourceLedger | None = None,
     ) -> None:
         self._source = source_network
         self._sidecar = source_sidecar
@@ -334,7 +361,7 @@ class PypsaAdaptiveCandidateBuilder:
                 raise CandidateReconstructionError(
                     "resolved protection replay requires an explicit ProtectionSet"
                 )
-            self._protection = protection
+            compiled = protection
         else:
             compiled_protection = ProtectionEngine().compile(
                 self._adapter.inventory(source_network, source_sidecar),
@@ -342,8 +369,22 @@ class PypsaAdaptiveCandidateBuilder:
                 profile=reduction_config.task.profile,
                 base_dir=(protection_base_dir or Path(reduction_config.input.path).resolve().parent),
             )
-            self._protection = (compiled_protection.union(protection)
-                                if protection is not None else compiled_protection)
+            compiled = (compiled_protection.union(protection)
+                        if protection is not None else compiled_protection)
+        if source_ledger is None:
+            if reduction_config.aggregation.parallel_corridors.policy in {
+                    "preserve_protected_members", "preserve_all_members"}:
+                raise CandidateReconstructionError(
+                    "source ledger must be explicit for protected parallel replay")
+            source_ledger = ParallelSourceLedger(
+                SourceProfileContract("programmatic_pypsa", "unavailable"))
+        self._source_ledger = source_ledger
+        self._effective = EffectiveProtectionResolver().resolve(
+            network=source_network, sidecar=source_sidecar,
+            config=reduction_config, protection=compiled,
+            source_ledger=source_ledger,
+        )
+        self._protection = self._effective.protection
         self._execution_order = _catalog_topological_order(self._actions)
         for action in self._actions:
             if not action.verify_fingerprint():
@@ -397,8 +438,56 @@ class PypsaAdaptiveCandidateBuilder:
         """Return the fully compiled protection overlay used by candidate replay."""
         return self._protection
 
+    @property
+    def effective_protection_digest(self) -> str:
+        """Return the complete pre-materialization protection semantic digest."""
+        return self._effective.digest
+
+    @property
+    def source_ledger_digest(self) -> str:
+        """Return the bound source-card and L+ ledger semantic digest."""
+        return self._effective.source_ledger_digest
+
+    @property
+    def source_ledger(self) -> ParallelSourceLedger:
+        """Return the explicit or aggregate-policy programmatic source ledger."""
+        return self._source_ledger
+
+    def build_attempt_fingerprint(self, active_action_ids: tuple[str, ...]) -> str:
+        """Identify an attempted build using frozen semantics, never diagnostics."""
+        active = tuple(sorted(active_action_ids))
+        return _digest({
+            "schema_version": "2.0",
+            "source_model_digest": self._source_digest,
+            "source_sidecar_digest": self._source_sidecar_digest,
+            "reduction_config_digest": self._config_digest,
+            "effective_protection_digest": self._effective.digest,
+            "source_ledger_digest": self.source_ledger_digest,
+            "action_catalog_digest": self.action_catalog_digest,
+            "active_action_set_fingerprint": _digest({
+                "schema_version": "1.0", "active_action_ids": active,
+            }),
+        })
+
+    def action_catalog_readiness(
+        self, active_action_ids: tuple[str, ...],
+    ) -> ActionCatalogReadinessResult:
+        """Check all active actions before candidate materialization."""
+        partition = self._config.partition
+        return ActionCatalogReadinessValidator().validate(
+            network=self._source, sidecar=self._sidecar,
+            actions=self._actions, active_action_ids=active_action_ids,
+            effective=self._effective,
+            voltage_aliases=self._config.voltage_layers.aliases,
+            connectivity_policy=(partition.connectivity_policy
+                                 if partition is not None else "reject"),
+        )
+
     def build(self, active_action_ids: tuple[str, ...]) -> BuiltCandidate:
         """Rebuild a candidate from the frozen S1 and the explicit active action set."""
+        readiness = self.action_catalog_readiness(active_action_ids)
+        if not readiness.ready:
+            raise ActionCatalogNotReady(readiness)
         if len(active_action_ids) != len(set(active_action_ids)):
             raise CandidateReconstructionError("active action IDs must be unique")
         unknown = set(active_action_ids) - set(self._by_id)
@@ -432,7 +521,8 @@ class PypsaAdaptiveCandidateBuilder:
         before_sidecar_digest = _sidecar_digest(self._sidecar)
         before_output_digest = _pf_output_digest(self._source)
         detached_source = self._adapter.clone(self._source)
-        replay = _PypsaActionReplay(self._protection)
+        replay = _PypsaActionReplay(self._protection, self._source_ledger,
+                                    self._effective)
         execution_order = _active_topological_order(active_ids, self._by_id, self._execution_order)
         active_actions = tuple(self._by_id[action_id] for action_id in execution_order)
         partition, active_transitions = replay.plan(
@@ -483,6 +573,8 @@ class PypsaAdaptiveCandidateBuilder:
             "s1_model_digest": self._source_digest,
             "s1_sidecar_digest": self._source_sidecar_digest,
             "reduction_config_digest": self._config_digest,
+            "effective_protection_digest": self._effective.digest,
+            "source_ledger_digest": self.source_ledger_digest,
             "action_set_fingerprint": action_set_fingerprint,
             "partition_digest": partition_digest,
             "model_digest": model_digest,
@@ -503,6 +595,8 @@ class PypsaAdaptiveCandidateBuilder:
             source_model_digest=self._source_digest,
             source_sidecar_digest=self._source_sidecar_digest,
             reduction_config_digest=self._config_digest,
+            effective_protection_digest=self._effective.digest,
+            source_ledger_digest=self.source_ledger_digest,
         )
         self._assert_source_unchanged(before_digest, before_sidecar_digest, before_output_digest)
         return BuiltCandidate(

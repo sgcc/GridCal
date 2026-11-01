@@ -40,14 +40,34 @@ class MultiVoltageBusmapValidator:
         return StableId(target.namespace, "Bus", target.source_key)
 
     @staticmethod
+    def identity_anchors(network: pypsa.Network,
+                         sidecar: IdentitySidecar,
+                         protection: ProtectionSet) -> frozenset[StableId]:
+        """Return Buses that must retain identity but may accept free members.
+
+        Transformer and Link interfaces are anchors even when inactive, since
+        their static terminal references still require the original Bus row.
+        ``preserve_terminal_bus`` and preserved Bus identity have the same
+        anchor semantics; ``preserve_bus_as_singleton`` remains stricter.
+        """
+        buses = set(protection.terminal_buses)
+        buses.update(item for item in protection.preserved_components
+                     if item.component == "Bus")
+        for component in ("Transformer", "Link"):
+            for _, row in network.components[component].static.iterrows():
+                for column, value in row.items():
+                    if (str(column).startswith("bus") and
+                            str(column)[3:].isdigit() and
+                            pd.notna(value) and str(value)):
+                        buses.add(sidecar.source_id("Bus", str(value)))
+        return frozenset(buses)
+
+    @staticmethod
     def mandatory_singletons(network: pypsa.Network,
                              sidecar: IdentitySidecar,
                              protection: ProtectionSet) -> frozenset[StableId]:
-        """Collect interfaces and devices whose Bus must remain a singleton."""
-        buses = set(protection.singleton_buses | protection.terminal_buses)
-        for _, row in network.transformers.iterrows():
-            buses.add(sidecar.source_id("Bus", str(row.bus0)))
-            buses.add(sidecar.source_id("Bus", str(row.bus1)))
+        """Collect Buses whose cluster membership must be exactly themselves."""
+        buses = set(protection.singleton_buses)
         for _, row in network.generators.iterrows():
             if str(row.get("control", "")) in {"PV", "Slack"}:
                 buses.add(sidecar.source_id("Bus", str(row.bus)))
@@ -105,18 +125,22 @@ class MultiVoltageBusmapValidator:
         layers: tuple[VoltageLayer, ...], protection: ProtectionSet,
     ) -> dict[str, int]:
         """Return the shared active-topology structural floor for each layer."""
-        fixed = set(self.mandatory_singletons(network, sidecar, protection))
-        fixed.update(bus for bus in protection.preserved_components
-                     if bus.component == "Bus")
+        strict = set(self.mandatory_singletons(network, sidecar, protection))
+        anchors = set(self.identity_anchors(network, sidecar, protection)) - strict
+        fixed = strict | anchors
         floors: dict[str, int] = {}
         for layer in layers:
             graph = self._graph(network, sidecar, layer.bus_ids)
             layer_fixed = fixed.intersection(layer.bus_ids)
             free = graph.subgraph(set(layer.bus_ids) - layer_fixed)
             free_components = list(nx.connected_components(free))
+            layer_anchors = anchors.intersection(layer.bus_ids)
             floors[layer.key] = len(layer_fixed) + sum(
-                2 if any(pair <= component for pair in protection.cannot_link)
-                else 1
+                max(1 if not any(graph.has_edge(node, anchor)
+                                 for node in component
+                                 for anchor in layer_anchors) else 0,
+                    2 if any(pair <= component for pair in protection.cannot_link)
+                    else 0)
                 for component in free_components
             )
         return dict(sorted(floors.items()))
@@ -232,11 +256,18 @@ class MultiVoltageBusmapValidator:
                        for source in sources}
             if len(domains) != 1:
                 raise PartitionError("A cluster cannot cross subnetwork or region")
+        anchors = self.identity_anchors(network, sidecar, protection)
+        for source in sorted(anchors):
+            if self._bus_target(partition.stable_busmap[source]) != source:
+                raise PartitionError(f"Identity anchor Bus was mapped away: {source.encode()}")
         mandatory = self.mandatory_singletons(network, sidecar, protection)
-        for source in mandatory:
+        for source in sorted(mandatory):
+            if self._bus_target(partition.stable_busmap[source]) != source:
+                raise PartitionError(f"Protected singleton Bus was mapped away: {source.encode()}")
             if len(members[self._bus_target(partition.stable_busmap[source])]) != 1:
                 raise PartitionError(f"Protected singleton Bus was merged: {source.encode()}")
-        for pair in protection.cannot_link:
+        for pair in sorted(protection.cannot_link,
+                           key=lambda group: tuple(sorted(group))):
             present = [source for source in pair if source in expected]
             if len(present) > 1 and len({self._bus_target(partition.stable_busmap[source])
                                          for source in present}) != len(present):
@@ -278,8 +309,13 @@ class MultiVoltageBusmapValidator:
         counts = {layer.key: (before_counts[layer.key],
                               len({repaired[source] for source in layer.bus_ids}))
                   for layer in layers}
+        transformer_terminals = frozenset(
+            sidecar.source_id("Bus", str(bus))
+            for _, row in network.transformers.iterrows()
+            for bus in (row.bus0, row.bus1)
+        )
         return ValidatedLayerBusmaps(
-            repaired, projections, mandatory,
+            repaired, projections, transformer_terminals,
             partition.requested_cluster_count,
             planned_count,
             len(set(repaired.values())), dict(sorted(counts.items())),

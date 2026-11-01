@@ -4,8 +4,10 @@ import pypsa
 import pytest
 
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
+from psdcalc.reduction.config.models import AggregationConfig
 from psdcalc.reduction.core.ids import StableId
 from psdcalc.reduction.exceptions import PartitionError
+from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.planners.base import PartitionPlan
 from psdcalc.reduction.planners.multi_voltage_busmap import MultiVoltageBusmapValidator
 from psdcalc.reduction.protection.engine import ProtectionEngine
@@ -46,15 +48,66 @@ def plan_for(sidecar: object, assignments: dict[str, str],
     return PartitionPlan(stable, backend, requested or count, count, policy)
 
 
-def test_transformer_terminal_must_be_singleton() -> None:
-    """A Transformer endpoint cannot be grouped with a free same-layer bus."""
+def test_transformer_terminal_anchor_accepts_ordinary_radial_bus() -> None:
+    """A terminal keeps its identity while a legal radial Bus joins its cluster."""
     network = fixture_network()
     sidecar, layers, protection, validator = context(network)
-    partition = plan_for(sidecar, {"a": "hv", "b": "hv", "c": "c",
-                                   "x": "x", "y": "y"})
+    stable = {sidecar.source_id("Bus", name): sidecar.source_id("Bus", name)
+              for name in network.buses.index}
+    stable[sidecar.source_id("Bus", "b")] = sidecar.source_id("Bus", "a")
+    backend = {name: sidecar.backend_name(target)
+               for name in network.buses.index
+               for target in (stable[sidecar.source_id("Bus", name)],)}
+    partition = PartitionPlan(stable, backend, 4, 4, "reject")
+
+    validated = validator.validate(network, sidecar, partition, layers, protection)
+
+    assert validated.global_busmap[sidecar.source_id("Bus", "a")] == sidecar.source_id("Bus", "a")
+    assert validated.global_busmap[sidecar.source_id("Bus", "b")] == sidecar.source_id("Bus", "a")
+
+    built = MultiVoltageQuotientBuilder().build(
+        network, sidecar, partition, AggregationConfig(), protection,
+    )
+    assert all(built.preliminary.checks.values())
+    assert built.network.transformers.loc["tx", "bus0"] == "a"
+    assert built.network.transformers.loc["tx", "bus1"] == "x"
+
+
+def test_transformer_terminal_anchor_cannot_map_away() -> None:
+    """An anchor cannot disappear into another Bus, even in its own layer."""
+    network = fixture_network()
+    sidecar, layers, protection, validator = context(network)
+    stable = {sidecar.source_id("Bus", name): sidecar.source_id("Bus", name)
+              for name in network.buses.index}
+    stable[sidecar.source_id("Bus", "a")] = sidecar.source_id("Bus", "b")
+    backend = {name: sidecar.backend_name(target)
+               for name in network.buses.index
+               for target in (stable[sidecar.source_id("Bus", name)],)}
+    partition = PartitionPlan(stable, backend, 4, 4, "reject")
+
+    with pytest.raises(PartitionError, match="anchor"):
+        validator.validate(network, sidecar, partition, layers, protection)
+
+
+def test_explicit_strict_singleton_rejects_incoming_bus() -> None:
+    """Strict singleton membership is exactly the protected Bus itself."""
+    network = fixture_network()
+    sidecar, layers, protection, validator = context(network)
+    strict = type(protection)(
+        protection.traced, protection.preserved_components,
+        protection.terminal_buses,
+        frozenset({sidecar.source_id("Bus", "a")}), protection.cannot_link,
+    )
+    stable = {sidecar.source_id("Bus", name): sidecar.source_id("Bus", name)
+              for name in network.buses.index}
+    stable[sidecar.source_id("Bus", "b")] = sidecar.source_id("Bus", "a")
+    backend = {name: sidecar.backend_name(target)
+               for name in network.buses.index
+               for target in (stable[sidecar.source_id("Bus", name)],)}
+    partition = PartitionPlan(stable, backend, 4, 4, "reject")
 
     with pytest.raises(PartitionError, match="singleton"):
-        validator.validate(network, sidecar, partition, layers, protection)
+        validator.validate(network, sidecar, partition, layers, strict)
 
 
 def test_cross_voltage_target_is_rejected() -> None:

@@ -78,7 +78,11 @@ class VoltageLayerEnergyPlanner:
         allocated = validator.allocate_targets(
             network, sidecar, layers, protection, n_clusters, per_layer,
         )
-        mandatory = validator.mandatory_singletons(network, sidecar, protection)
+        # Energy planners currently reserve anchors as their own clusters.
+        # Explicit adaptive action replay may absorb free Buses into an anchor;
+        # this conservative seeded planner does not synthesize such actions.
+        mandatory = (validator.mandatory_singletons(network, sidecar, protection) |
+                     validator.identity_anchors(network, sidecar, protection))
         materializer = LayerQuotientMaterializer()
         stable: dict[StableId, StableId] = {}
         backend: dict[str, str] = {}

@@ -33,10 +33,16 @@ from psdcalc.reduction.adaptive.contracts import (
     ExpansionDecision,
 )
 from psdcalc.reduction.adaptive.candidates import (
+    ActionCatalogNotReady,
     BuiltCandidate,
     CandidateBuildIdentity,
     CandidateReconstructionError,
     PypsaAdaptiveCandidateBuilder,
+)
+from psdcalc.reduction.adaptive.readiness import (
+    ActionCatalogReadinessResult,
+    ActionCatalogReadinessValidator,
+    ActionReadinessRejection,
 )
 from psdcalc.reduction.adaptive.journal import (
     ActionSetSnapshot,
@@ -62,7 +68,9 @@ from psdcalc.reduction.adaptive.evidence import (
 __all__ = [
     "ADAPTIVE_CLAIM_SCOPE", "ADAPTIVE_STRATEGY", "ActionContractError",
     "AttributionError", "ErrorAttributionEngine", "MetricFamily", "MetricSupport",
-    "ActionOperation", "ActionSetSnapshot", "AdaptiveContractError",
+    "ActionOperation", "ActionSetSnapshot", "ActionCatalogNotReady",
+    "ActionCatalogReadinessResult", "ActionCatalogReadinessValidator",
+    "ActionReadinessRejection", "AdaptiveContractError",
     "AdaptiveReductionConfig", "AdaptiveReductionIteration", "AdaptiveReductionReport",
     "AdaptiveReductionState", "AdaptiveStoppingReason", "AdaptiveStrategy", "AttributionStatus",
     "BuiltCandidate", "CandidateBuildIdentity", "CandidateEvaluation",
