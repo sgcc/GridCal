@@ -48,6 +48,9 @@ from psdcalc.reduction.fidelity.contracts import (
 from psdcalc.reduction.fidelity.metrics import operating_point_digest
 from psdcalc.reduction.fidelity.persistence import FrozenThresholdSet
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.parallel_provenance import (
+    ParallelSourceLedger, SourceProfileContract,
+)
 
 
 def _digest(text: str) -> str:
@@ -69,6 +72,7 @@ def _case(
     max_iterations: int = 3,
     strict_middle: bool = False,
     failure_mode: str | None = None,
+    config_path_prefix: str | None = None,
 ):
     network = pypsa.Network()
     network.add("Bus", "slack", v_nom=110.0)
@@ -87,8 +91,13 @@ def _case(
     sidecar = PypsaAdapter().identity_sidecar(network, "stage5-synthetic")
     reduction = load_config({
         "schema_version": "0.1.0",
-        "run": {"id": "stage5", "seed": 7, "output_dir": "stage5-output"},
-        "input": {"backend": "pypsa", "path": "frozen-s1.nc", "format": "netcdf",
+        "run": {"id": "stage5", "seed": 7,
+                "output_dir": str(Path(config_path_prefix) / "stage5-output")
+                if config_path_prefix else "stage5-output"},
+        "input": {"backend": "pypsa",
+                  "path": str(Path(config_path_prefix) / "frozen-s1.nc")
+                  if config_path_prefix else "frozen-s1.nc",
+                  "format": "netcdf",
                   "source_namespace": "stage5-synthetic"},
         "task": {"type": "planning", "profile": "planning_aggregation",
                  "reduction_role": "candidate", "final_authority": "original"},
@@ -181,6 +190,7 @@ def _case(
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=network, source_sidecar=sidecar, actions=actions,
         reduction_config=reduction, protection=empty_protection,
+        source_ledger=ParallelSourceLedger(SourceProfileContract("programmatic_pypsa", "unavailable")),
     )
     thresholds = FrozenThresholdSet.load()
     operating_point = PowerFlowOperatingPointContract(
@@ -298,6 +308,40 @@ def test_failed_initial_build_has_v2_identity_and_fresh_process_replay(
         )
 
 
+def test_failed_replay_is_path_independent_across_directories(tmp_path: Path) -> None:
+    """Clean-process failed replay keeps semantic identity after artifact relocation."""
+    first_dir, first = _persist(tmp_path / "first", strict_middle=True,
+                                config_path_prefix="first")
+    second_dir, second = _persist(tmp_path / "second", strict_middle=True,
+                                  config_path_prefix="second")
+    assert first[5].reduction_config_digest != second[5].reduction_config_digest
+    summaries = [case[7].final_incumbent_summary for case in (first, second)]
+    for key in ("build_attempt_fingerprint", "failure_code",
+                "offending_identity_fingerprints"):
+        assert summaries[0][key] == summaries[1][key]
+    assert first[7].terminal_reason == second[7].terminal_reason
+    assert summaries[0]["materialized_candidate_fingerprint"] is None
+    code = (
+        "import json, sys; "
+        "from psdcalc.reduction.adaptive.evidence import AdaptiveReductionEvidenceStore; "
+        "r=AdaptiveReductionEvidenceStore.replay(sys.argv[1]); "
+        "s=r.report.final_incumbent_summary; "
+        "print(json.dumps([s['build_attempt_fingerprint'], s['failure_code'], "
+        "s['offending_identity_fingerprints'], r.report.terminal_reason.value]))"
+    )
+    observed = []
+    for run_dir in (first_dir, second_dir):
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(Path(__file__).parents[1] / "src")
+        result = subprocess.run([sys.executable, "-c", code, str(run_dir)],
+                                cwd=run_dir, env=env, capture_output=True, text=True,
+                                check=False)
+        assert result.returncode == 0, result.stderr
+        observed.append(json.loads(result.stdout))
+    assert observed[0] == observed[1]
+    assert observed[0][-1] == "STRUCTURAL_INVALID"
+
+
 def test_dependency_chain_candidate_journal_and_clean_replay_agree(tmp_path: Path) -> None:
     """Persisted expansion uses the same dependent closure as Stage 3 and replay."""
     original = _case(tmp_path)
@@ -320,6 +364,7 @@ def test_dependency_chain_candidate_journal_and_clean_replay_agree(tmp_path: Pat
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=network, source_sidecar=sidecar, actions=actions,
         reduction_config=reduction, protection=protection,
+        source_ledger=ParallelSourceLedger(SourceProfileContract("programmatic_pypsa", "unavailable")),
     )
     assert builder.build(initial).structural_result.checks
     runtime = PypsaAdaptiveRuntime(
@@ -417,6 +462,17 @@ def test_source_ledger_artifact_tampering_fails_closed(
     else:
         artifact.write_bytes(artifact.read_bytes() + b"tampered")
     with pytest.raises(AdaptiveEvidenceError):
+        AdaptiveReductionEvidenceStore.replay(run_dir)
+
+
+def test_replay_rejects_source_ledger_digest_mismatch(tmp_path: Path) -> None:
+    """A well-formed but mismatched ledger digest cannot authorize replay."""
+    run_dir, _ = _persist(tmp_path, strict_middle=True)
+    evidence_path = run_dir / "adaptive/evidence.json"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["digests"]["source_ledger_digest"] = "0" * 64
+    evidence_path.write_text(json.dumps(evidence, sort_keys=True), encoding="utf-8")
+    with pytest.raises(AdaptiveEvidenceError, match="source ledger semantic digest differs"):
         AdaptiveReductionEvidenceStore.replay(run_dir)
 
 

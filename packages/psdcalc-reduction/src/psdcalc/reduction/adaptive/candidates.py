@@ -27,7 +27,7 @@ from psdcalc.reduction.protection.effective import (
     EffectiveProtectionResolver, ResolvedEffectiveProtection,
 )
 from psdcalc.reduction.topology.parallel_provenance import (
-    ParallelSourceLedger, SourceProfileContract,
+    ParallelSourceLedger,
 )
 from psdcalc.reduction.adaptive.readiness import (
     ActionCatalogReadinessResult, ActionCatalogReadinessValidator,
@@ -356,6 +356,7 @@ class PypsaAdaptiveCandidateBuilder:
         self._adapter.validate_model(source_network, source_sidecar)
         self._config = reduction_config
         self._config_digest = _config_digest(reduction_config)
+        self._semantic_config_digest = _semantic_config_digest(reduction_config)
         if protection_is_resolved:
             if protection is None:
                 raise CandidateReconstructionError(
@@ -372,12 +373,8 @@ class PypsaAdaptiveCandidateBuilder:
             compiled = (compiled_protection.union(protection)
                         if protection is not None else compiled_protection)
         if source_ledger is None:
-            if reduction_config.aggregation.parallel_corridors.policy in {
-                    "preserve_protected_members", "preserve_all_members"}:
-                raise CandidateReconstructionError(
-                    "source ledger must be explicit for protected parallel replay")
-            source_ledger = ParallelSourceLedger(
-                SourceProfileContract("programmatic_pypsa", "unavailable"))
+            raise CandidateReconstructionError(
+                "source ledger must be explicit for adaptive candidate replay")
         self._source_ledger = source_ledger
         self._effective = EffectiveProtectionResolver().resolve(
             network=source_network, sidecar=source_sidecar,
@@ -421,6 +418,16 @@ class PypsaAdaptiveCandidateBuilder:
         return self._config_digest
 
     @property
+    def full_config_digest(self) -> str:
+        """Return the complete config digest used for provenance and drift checks."""
+        return self._config_digest
+
+    @property
+    def semantic_config_digest(self) -> str:
+        """Return path-independent configuration semantics for attempt identity."""
+        return self._semantic_config_digest
+
+    @property
     def action_catalog_digest(self) -> str:
         """Return the canonical digest of the builder's complete action catalog."""
         return _digest({
@@ -450,7 +457,7 @@ class PypsaAdaptiveCandidateBuilder:
 
     @property
     def source_ledger(self) -> ParallelSourceLedger:
-        """Return the explicit or aggregate-policy programmatic source ledger."""
+        """Return the caller-supplied authoritative source ledger."""
         return self._source_ledger
 
     def build_attempt_fingerprint(self, active_action_ids: tuple[str, ...]) -> str:
@@ -460,7 +467,7 @@ class PypsaAdaptiveCandidateBuilder:
             "schema_version": "2.0",
             "source_model_digest": self._source_digest,
             "source_sidecar_digest": self._source_sidecar_digest,
-            "reduction_config_digest": self._config_digest,
+            "semantic_config_digest": self._semantic_config_digest,
             "effective_protection_digest": self._effective.digest,
             "source_ledger_digest": self.source_ledger_digest,
             "action_catalog_digest": self.action_catalog_digest,
@@ -803,6 +810,14 @@ def _sidecar_digest(sidecar: IdentitySidecar) -> str:
 def _config_digest(config: ReductionConfig) -> str:
     """Hash a resolved Pydantic configuration in canonical JSON mode."""
     return _digest(config.model_dump(mode="json"))
+
+
+def _semantic_config_digest(config: ReductionConfig) -> str:
+    """Hash algorithm configuration while omitting artifact location paths."""
+    payload = config.model_dump(mode="json")
+    payload["input"].pop("path", None)
+    payload["run"].pop("output_dir", None)
+    return _digest(payload)
 
 
 def _pf_output_digest(network: pypsa.Network) -> str:

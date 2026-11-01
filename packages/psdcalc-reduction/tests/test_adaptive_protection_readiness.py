@@ -65,12 +65,74 @@ def _fixture(tmp_path: Path):
     return network, sidecar, config, action, empty
 
 
+def _empty_ledger() -> ParallelSourceLedger:
+    """Declare an empty programmatic source ledger for synthetic tests."""
+    return ParallelSourceLedger(SourceProfileContract("programmatic_pypsa", "unavailable"))
+
+
+def test_ordinary_aggregation_requires_explicit_source_ledger(tmp_path: Path) -> None:
+    """Omitting source provenance must not manufacture an empty ledger."""
+    network, sidecar, config, action, empty = _fixture(tmp_path)
+    with pytest.raises(CandidateReconstructionError, match="source ledger"):
+        PypsaAdaptiveCandidateBuilder(
+            source_network=network, source_sidecar=sidecar, actions=(action,),
+            reduction_config=config, protection=empty,
+        )
+
+
+def test_ordinary_aggregation_accepts_explicit_empty_synthetic_ledger(tmp_path: Path) -> None:
+    """A declared empty programmatic ledger is a valid synthetic input."""
+    network, sidecar, config, action, empty = _fixture(tmp_path)
+    ledger = ParallelSourceLedger(SourceProfileContract("programmatic_pypsa", "unavailable"))
+    builder = PypsaAdaptiveCandidateBuilder(
+        source_network=network, source_sidecar=sidecar, actions=(action,),
+        reduction_config=config, protection=empty, source_ledger=ledger,
+    )
+    assert builder.source_ledger is ledger
+    assert builder.source_ledger_digest
+    assert builder.build((action.action_id,)).ac_readiness_result.status.value == "AC_MODEL_READY"
+
+
+def test_build_attempt_identity_ignores_only_runtime_paths(tmp_path: Path) -> None:
+    """A path-only move changes full provenance but not attempt semantics."""
+    network, sidecar, config, action, empty = _fixture(tmp_path)
+    moved = config.model_copy(update={
+        "input": config.input.model_copy(update={"path": "/other/source.nc"}),
+        "run": config.run.model_copy(update={"output_dir": "/other/run"}),
+    })
+    ledger = ParallelSourceLedger(SourceProfileContract("programmatic_pypsa", "unavailable"))
+    def make_builder(resolved_config):
+        return PypsaAdaptiveCandidateBuilder(
+            source_network=network, source_sidecar=sidecar, actions=(action,),
+            reduction_config=resolved_config, protection=empty, source_ledger=ledger,
+        )
+    first, second = make_builder(config), make_builder(moved)
+    assert first.full_config_digest != second.full_config_digest
+    assert first.semantic_config_digest == second.semantic_config_digest
+    assert first.build_attempt_fingerprint((action.action_id,)) == second.build_attempt_fingerprint(
+        (action.action_id,))
+    input_only = make_builder(config.model_copy(update={"input": moved.input}))
+    output_only = make_builder(config.model_copy(update={"run": moved.run}))
+    for variant in (input_only, output_only):
+        assert variant.full_config_digest != first.full_config_digest
+        assert variant.semantic_config_digest == first.semantic_config_digest
+        assert variant.build_attempt_fingerprint((action.action_id,)) == first.build_attempt_fingerprint(
+            (action.action_id,))
+    semantic_change = moved.model_copy(update={
+        "partition": moved.partition.model_copy(update={"connectivity_policy": "split_disconnected"}),
+    })
+    changed = make_builder(semantic_change)
+    assert changed.semantic_config_digest != second.semantic_config_digest
+    assert changed.build_attempt_fingerprint((action.action_id,)) != second.build_attempt_fingerprint(
+        (action.action_id,))
+
+
 def test_anchor_action_is_catalog_ready_and_reconstructable(tmp_path: Path) -> None:
     """An ordinary Bus may merge into its Transformer-terminal identity anchor."""
     network, sidecar, config, action, empty = _fixture(tmp_path)
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=network, source_sidecar=sidecar, actions=(action,),
-        reduction_config=config, protection=empty,
+        reduction_config=config, protection=empty, source_ledger=_empty_ledger(),
     )
 
     readiness = builder.action_catalog_readiness((action.action_id,))
@@ -108,7 +170,7 @@ def test_many_radial_actions_into_one_transformer_anchor(tmp_path: Path) -> None
         ))
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=network, source_sidecar=sidecar, actions=tuple(actions),
-        reduction_config=config, protection=empty,
+        reduction_config=config, protection=empty, source_ledger=_empty_ledger(),
     )
     active = tuple(action.action_id for action in actions)
     assert builder.action_catalog_readiness(active).ready
@@ -125,7 +187,7 @@ def test_strict_singleton_action_is_rejected_before_materialization(tmp_path: Pa
                            empty.terminal_buses, frozenset({anchor}), empty.cannot_link)
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=network, source_sidecar=sidecar, actions=(action,),
-        reduction_config=config, protection=strict,
+        reduction_config=config, protection=strict, source_ledger=_empty_ledger(),
     )
 
     readiness = builder.action_catalog_readiness((action.action_id,))
@@ -158,6 +220,7 @@ def test_preserve_policy_requires_an_explicit_source_ledger(tmp_path: Path) -> N
     )
     assert first.effective_protection_digest == second.effective_protection_digest
     assert first.source_ledger_digest == second.source_ledger_digest
+    assert first.build((action.action_id,)).ac_readiness_result.status.value == "AC_MODEL_READY"
 
 
 def test_protected_parallel_action_rejected_before_materialization(tmp_path: Path) -> None:
@@ -230,7 +293,7 @@ def test_failed_build_has_stable_attempt_identity_and_no_candidate(tmp_path: Pat
                            empty.terminal_buses, frozenset({anchor}), empty.cannot_link)
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=network, source_sidecar=sidecar, actions=(action,),
-        reduction_config=config, protection=strict,
+        reduction_config=config, protection=strict, source_ledger=_empty_ledger(),
     )
     identity = hashlib.sha256(b"synthetic").hexdigest()
     operating = PowerFlowOperatingPointContract(

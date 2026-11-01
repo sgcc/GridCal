@@ -26,6 +26,14 @@ from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.fidelity.persistence import canonical_model_digest
 from psdcalc.reduction.protection.engine import ProtectionSet
 from psdcalc.reduction.planners.energy import EnergyPartitionPlanner
+from psdcalc.reduction.topology.parallel_provenance import (
+    ParallelSourceLedger, SourceProfileContract,
+)
+
+
+def _empty_ledger() -> ParallelSourceLedger:
+    """Declare absent source-card provenance for this programmatic fixture."""
+    return ParallelSourceLedger(SourceProfileContract("programmatic_pypsa", "unavailable"))
 
 
 def _source() -> tuple[pypsa.Network, IdentitySidecar]:
@@ -139,6 +147,7 @@ def _builder(tmp_path: Path, actions: tuple[ReductionAction, ...]):
         reduction_config=_config(tmp_path),
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     )
     return network, sidecar, builder
 
@@ -163,6 +172,7 @@ def test_reconstruction_is_repeatable_and_source_is_immutable(tmp_path: Path) ->
         reduction_config=_config(tmp_path),
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     )
     source_digest = canonical_model_digest(source, sidecar)
     sidecar_rows = sidecar.to_rows()
@@ -209,6 +219,7 @@ def test_action_order_and_journal_reload_rebuild_identically(tmp_path: Path) -> 
         reduction_config=_config(tmp_path),
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     )
     direct = builder.build(tuple(action.action_id for action in actions))
     permutation_results = [builder.build(ids) for ids in (
@@ -222,6 +233,7 @@ def test_action_order_and_journal_reload_rebuild_identically(tmp_path: Path) -> 
         reduction_config=_config(tmp_path),
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     ).build(tuple(reversed(loaded.active_action_ids)))
     for candidate in (replay, *permutation_results):
         assert direct.identity.partition_digest == candidate.identity.partition_digest
@@ -243,6 +255,7 @@ def test_active_action_set_controls_exact_bus_and_line_effects(tmp_path: Path) -
         reduction_config=_config(tmp_path),
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     )
 
     candidate = builder.build(tuple(action.action_id for action in actions))
@@ -266,6 +279,7 @@ def test_empty_action_set_is_exact_s1_and_does_not_invent_reductions(
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=source, source_sidecar=sidecar, actions=(),
         reduction_config=_config(tmp_path),
+        source_ledger=_empty_ledger(),
     )
 
     candidate = builder.build(())
@@ -296,6 +310,7 @@ def test_frozen_config_protection_is_enforced_during_action_replay(
         actions=(_radial_action(sidecar),), reduction_config=config,
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     )
 
     with pytest.raises(CandidateReconstructionError, match="STRICT_SINGLETON_CONFLICT"):
@@ -315,6 +330,7 @@ def test_adaptive_replay_never_invokes_energy_planner(
     candidate = PypsaAdaptiveCandidateBuilder(
         source_network=source, source_sidecar=sidecar, actions=(action,),
         reduction_config=_config(tmp_path),
+        source_ledger=_empty_ledger(),
     ).build((action.action_id,))
     assert len(candidate.network.buses) == len(source.buses) - 1
 
@@ -328,10 +344,12 @@ def test_planner_target_config_does_not_change_active_action_partition(
     low = PypsaAdaptiveCandidateBuilder(
         source_network=source, source_sidecar=sidecar, actions=(action,),
         reduction_config=_config(tmp_path, n_clusters=2),
+        source_ledger=_empty_ledger(),
     ).build((action.action_id,))
     high = PypsaAdaptiveCandidateBuilder(
         source_network=source, source_sidecar=sidecar, actions=(action,),
         reduction_config=_config(tmp_path, n_clusters=6),
+        source_ledger=_empty_ledger(),
     ).build((action.action_id,))
     assert low.identity.partition_digest == high.identity.partition_digest
     assert low.identity.mapping_digest == high.identity.mapping_digest
@@ -377,6 +395,7 @@ def test_missing_ids_invalid_dependencies_and_unsupported_actions_fail_closed(
     builder = PypsaAdaptiveCandidateBuilder(
         source_network=source, source_sidecar=sidecar,
         actions=(bad_action,), reduction_config=config, protection=protection,
+        source_ledger=_empty_ledger(),
     )
     with pytest.raises(CandidateReconstructionError, match="ACTION_SOURCE_MISSING"):
         builder.build((bad_action.action_id,))
@@ -395,6 +414,7 @@ def test_missing_ids_invalid_dependencies_and_unsupported_actions_fail_closed(
         PypsaAdaptiveCandidateBuilder(
             source_network=source, source_sidecar=sidecar,
             actions=(dependent,), reduction_config=config, protection=protection,
+            source_ledger=_empty_ledger(),
         )
 
     base_action = ReductionAction.create(
@@ -415,6 +435,7 @@ def test_missing_ids_invalid_dependencies_and_unsupported_actions_fail_closed(
         source_network=source, source_sidecar=sidecar,
         actions=(base_action, dependent_action), reduction_config=config,
         protection=protection,
+        source_ledger=_empty_ledger(),
     )
     with pytest.raises(CandidateReconstructionError, match="INVALID_DEPENDENCY_CLOSURE"):
         closure_builder.build(("dependent-valid",))
@@ -434,6 +455,7 @@ def test_missing_ids_invalid_dependencies_and_unsupported_actions_fail_closed(
         PypsaAdaptiveCandidateBuilder(
             source_network=source, source_sidecar=sidecar,
             actions=(unsupported,), reduction_config=config, protection=protection,
+            source_ledger=_empty_ledger(),
         ).build((unsupported.action_id,))
 
 
@@ -462,6 +484,7 @@ def test_action_mapping_mismatch_and_ineffective_action_fail_closed(tmp_path: Pa
         reduction_config=_config(tmp_path),
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     )
     with pytest.raises(CandidateReconstructionError, match="ACTION_MAPPING_INCONSISTENT"):
         builder.build((invalid.action_id,))
@@ -483,6 +506,7 @@ def test_action_mapping_mismatch_and_ineffective_action_fail_closed(tmp_path: Pa
             reduction_config=_config(tmp_path),
             protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                      frozenset(), frozenset()),
+            source_ledger=_empty_ledger(),
         ).build((ineffective.action_id,))
 
 
@@ -509,6 +533,7 @@ def test_protected_action_cannot_be_omitted(tmp_path: Path) -> None:
         reduction_config=_config(tmp_path),
         protection=ProtectionSet(frozenset(), frozenset(), frozenset(),
                                  frozenset(), frozenset()),
+        source_ledger=_empty_ledger(),
     )
     with pytest.raises(CandidateReconstructionError, match="REQUIRED_ACTION_OMITTED"):
         builder.build(())
