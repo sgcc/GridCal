@@ -60,6 +60,10 @@ class QuotientMaterializer:
             "aggregate_one_ports": {name: {} for name in config.aggregate_one_ports},
             "generator_strategies": config.strategies.generators.model_dump(exclude_none=True),
             "one_port_strategies": config.strategies.one_ports.model_dump(exclude_none=True),
+            # Parallel source Lines can differ in active state. The target
+            # branch is active when any source member is active; electrical
+            # equivalencing then includes active members only.
+            "line_strategies": {"active": "any"},
         }
         try:
             cluster = get_clustering_from_busmap(

@@ -46,6 +46,10 @@ from psdcalc.reduction.protection.engine import ProtectionEngine
 from psdcalc.reduction.reporting.opportunity import (
     CompressionOpportunityReport, build_compression_opportunity_report,
 )
+from psdcalc.reduction.readiness.ac_model import (
+    AcModelReadinessResult,
+    AcModelReadinessValidator,
+)
 from psdcalc.reduction.topology.simplifier import VoltageAwareTopologySimplifier
 from psdcalc.reduction.topology.parallel_corridors import ParallelCorridorAnalyzer
 from psdcalc.reduction.topology.parallel_provenance import (
@@ -80,6 +84,7 @@ class MultiVoltagePipelineResult:
     voltage_policy: VoltagePolicyReportSummary | None = None
     voltage_policy_layer_costs: Mapping[str, Mapping[str, int]] | None = None
     protection_costs: Mapping[str, int] | None = None
+    ac_readiness: AcModelReadinessResult | None = None
 
 
 def _write_sidecar(store: ArtifactStore, relative: str,
@@ -546,6 +551,14 @@ class MultiVoltageQuotientPipeline:
             })
             store.record_artifact("multi_voltage_structural",
                                   "validation/multi_voltage_structural.json")
+            ac_readiness = AcModelReadinessValidator().validate(
+                original_network, source_sidecar, reloaded, target_sidecar,
+                persisted_composed,
+            )
+            store.write_json(
+                "validation/ac_model_readiness.json", ac_readiness.to_dict())
+            store.record_artifact(
+                "ac_model_readiness", "validation/ac_model_readiness.json")
             layers = VoltageLayerClassifier().classify(
                 topology.network, loaded_parent,
                 aliases=config.voltage_layers.aliases)
@@ -679,4 +692,5 @@ class MultiVoltageQuotientPipeline:
                 report_policy,
                 policy_layer_costs,
                 protection_costs,
+                ac_readiness,
             )

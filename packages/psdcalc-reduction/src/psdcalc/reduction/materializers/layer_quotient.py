@@ -13,6 +13,9 @@ from psdcalc.reduction.exceptions import (
 )
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.rows import MapEntry
+from psdcalc.reduction.materializers.line_equivalence import (
+    materialize_line_electrical_parameters,
+)
 from psdcalc.reduction.materializers.protected_parallel import ProtectedParallelLineHandler
 from psdcalc.reduction.materializers.quotient import (
     QuotientMaterializer, QuotientResult,
@@ -239,6 +242,9 @@ class LayerQuotientMaterializer:
             target_names = self._target_names(
                 bundle, quotient.network, partition, operation_id,
                 translated, child_sidecar,
+            )
+            materialize_line_electrical_parameters(
+                child, child_sidecar, quotient.network, bundle, target_names,
             )
             if detached:
                 restored = handler.reconnect(

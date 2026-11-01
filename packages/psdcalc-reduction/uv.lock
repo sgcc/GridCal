@@ -1104,7 +1104,7 @@ wheels = [
 
 [[package]]
 name = "psdcalc-reduction"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },

@@ -10,7 +10,11 @@ import pytest
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.models import AggregationConfig
 from psdcalc.reduction.core.ids import StableId
-from psdcalc.reduction.exceptions import BackendCapabilityError, ConfigSemanticError
+from psdcalc.reduction.exceptions import (
+    BackendCapabilityError,
+    ConfigSemanticError,
+    MaterializationError,
+)
 from psdcalc.reduction.materializers.multi_voltage import MultiVoltageQuotientBuilder
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.rows import MapEntry
@@ -201,6 +205,211 @@ def test_parallel_line_aggregation_keeps_many_to_one_branch_map() -> None:
     assert result.preliminary.checks["simple_ring_topology"]
     assert not result.preliminary.checks["cycle_corridors"]
     assert result.preliminary.details["multigraph_cycle_rank_delta"] == "-1"
+
+
+def test_one_to_one_line_materialization_preserves_zero_length_electrical_values() -> None:
+    """A surviving line with zero geometry keeps its source electrical model."""
+    network = three_voltage_network()
+    network.lines.loc["hab", ["r", "x", "g", "b", "length", "num_parallel",
+                               "terrain_factor"]] = (
+        0.012, 0.125, 0.0002, 0.0003, 0.0, 2.0, 0.8
+    )
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protection = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+
+    result = MultiVoltageQuotientBuilder().build(
+        network, sidecar, identity_partition(network, sidecar),
+        AggregationConfig(aggregate_one_ports=["Load"]), protection,
+    )
+    line_map = next(row for row in result.mappings.branch_map
+                    if row.source_id == sidecar.source_id("Line", "hab"))
+    assert line_map.target_id is not None
+    target_name = result.target_sidecar.backend_name(line_map.target_id)
+    target = result.network.lines.loc[target_name]
+
+    assert target.r == pytest.approx(0.012)
+    assert target.x == pytest.approx(0.125)
+    assert target.g == pytest.approx(0.0002)
+    assert target.b == pytest.approx(0.0003)
+    assert target.num_parallel == pytest.approx(2.0)
+    assert target.type == ""
+    assert bool(target.active)
+    assert target.s_nom == pytest.approx(100.0)
+    assert target.terrain_factor == pytest.approx(0.8)
+
+
+def _identity_build(network: pypsa.Network):
+    """Build an identity-busmap quotient for electrical line regressions."""
+    adapter = PypsaAdapter()
+    sidecar = adapter.identity_sidecar(network, "n")
+    protection = ProtectionEngine().compile(adapter.inventory(network, sidecar), [])
+    result = MultiVoltageQuotientBuilder().build(
+        network, sidecar, identity_partition(network, sidecar),
+        AggregationConfig(aggregate_one_ports=["Load"]), protection,
+    )
+    return result, sidecar
+
+
+def _target_line_for_source(result, source_sidecar, source_name: str) -> pd.Series:
+    """Resolve a source Line through the result map to its target row."""
+    source_id = source_sidecar.source_id("Line", source_name)
+    row = next(item for item in result.mappings.branch_map
+               if item.source_id == source_id)
+    assert row.target_id is not None
+    target_name = result.target_sidecar.backend_name(row.target_id)
+    return result.network.lines.loc[target_name]
+
+
+def test_parallel_line_materialization_preserves_total_series_and_shunt_admittance() -> None:
+    """Equal source members become one explicit electrical equivalent."""
+    network = three_voltage_network()
+    network.lines.loc["hab", ["r", "x", "g", "b", "length", "num_parallel"]] = (
+        0.01, 0.02, 0.0001, 0.0002, 0.0, 2.0
+    )
+    network.add("Line", "hab_parallel", bus0="ha", bus1="hb", r=0.01, x=0.02,
+                g=0.0001, b=0.0002, length=0.0, num_parallel=3.0, s_nom=100)
+
+    result, sidecar = _identity_build(network)
+    target = _target_line_for_source(result, sidecar, "hab")
+
+    assert target.r == pytest.approx(0.005)
+    assert target.x == pytest.approx(0.01)
+    assert target.g == pytest.approx(0.0002)
+    assert target.b == pytest.approx(0.0004)
+    assert target.num_parallel == pytest.approx(1.0)
+    assert target.type == ""
+
+
+def test_unequal_parallel_lines_use_effective_pypsa_member_admittances() -> None:
+    """Unequal members combine as admittances without reapplying num_parallel."""
+    network = three_voltage_network()
+    network.lines.loc["hab", ["r", "x", "g", "b", "length", "num_parallel"]] = (
+        0.01, 0.02, 0.0001, 0.0002, 0.0, 2.0
+    )
+    network.add("Line", "hab_parallel", bus0="ha", bus1="hb", r=0.03, x=0.04,
+                g=0.0003, b=0.0004, length=0.0, num_parallel=3.0, s_nom=100)
+
+    result, sidecar = _identity_build(network)
+    target = _target_line_for_source(result, sidecar, "hab")
+    expected_impedance = 1.0 / (1.0 / complex(0.01, 0.02)
+                                + 1.0 / complex(0.03, 0.04))
+
+    assert complex(target.r, target.x) == pytest.approx(expected_impedance)
+    assert target.g == pytest.approx(0.0004)
+    assert target.b == pytest.approx(0.0006)
+    assert target.num_parallel == pytest.approx(1.0)
+
+
+def test_inactive_parallel_member_does_not_change_active_equivalent() -> None:
+    """Inactive source members remain in lineage but do not alter active Y."""
+    network = three_voltage_network()
+    network.lines.loc["hab", ["r", "x", "g", "b", "length", "num_parallel"]] = (
+        0.01, 0.02, 0.0001, 0.0002, 0.0, 1.0
+    )
+    network.add("Line", "hab_inactive", bus0="ha", bus1="hb", r=0.03, x=0.04,
+                g=0.0003, b=0.0004, length=0.0, num_parallel=4.0,
+                active=False, s_nom=100)
+
+    result, sidecar = _identity_build(network)
+    target = _target_line_for_source(result, sidecar, "hab")
+    rows = [row for row in result.mappings.branch_map
+            if row.source_id in {sidecar.source_id("Line", "hab"),
+                                 sidecar.source_id("Line", "hab_inactive")}]
+
+    assert len(rows) == 2
+    assert rows[0].target_id == rows[1].target_id
+    assert target.r == pytest.approx(0.01)
+    assert target.x == pytest.approx(0.02)
+    assert target.g == pytest.approx(0.0001)
+    assert target.b == pytest.approx(0.0002)
+    assert bool(target.active)
+
+
+def test_one_to_one_typed_line_retains_type_length_and_num_parallel_semantics() -> None:
+    """A one-to-one typed line resolves to the same PyPSA electrical values."""
+    network = three_voltage_network()
+    network.add("LineType", "typed", r_per_length=0.2, x_per_length=0.4,
+                c_per_length=15.0, f_nom=50.0)
+    network.lines.loc["hab", ["type", "length", "num_parallel"]] = (
+        "typed", 12.0, 3.0
+    )
+    source_effective = network.copy()
+    source_effective.calculate_dependent_values()
+
+    result, sidecar = _identity_build(network)
+    target = _target_line_for_source(result, sidecar, "hab")
+    target_effective = result.network.copy()
+    target_effective.calculate_dependent_values()
+    target_name = result.target_sidecar.backend_name(
+        next(row.target_id for row in result.mappings.branch_map
+             if row.source_id == sidecar.source_id("Line", "hab"))
+    )
+
+    assert target.type == "typed"
+    assert target.length == pytest.approx(12.0)
+    assert target.num_parallel == pytest.approx(3.0)
+    assert target_effective.lines.at[target_name, "r"] == pytest.approx(
+        source_effective.lines.at["hab", "r"]
+    )
+    assert target_effective.lines.at[target_name, "x"] == pytest.approx(
+        source_effective.lines.at["hab", "x"]
+    )
+    assert target_effective.lines.at[target_name, "b"] == pytest.approx(
+        source_effective.lines.at["hab", "b"]
+    )
+
+
+def test_typed_parallel_lines_combine_pypsa_effective_admittances() -> None:
+    """Type length and multiplicity are resolved once before parallel reduction."""
+    network = three_voltage_network()
+    network.add("LineType", "typed", r_per_length=0.2, x_per_length=0.4,
+                c_per_length=15.0, f_nom=50.0)
+    network.lines.loc["hab", ["type", "length", "num_parallel", "g"]] = (
+        "typed", 12.0, 3.0, 0.0001
+    )
+    network.add("Line", "hab_parallel", bus0="ha", bus1="hb", type="typed",
+                length=8.0, num_parallel=4.0, g=0.0002, s_nom=100)
+    source_effective = network.copy()
+    source_effective.calculate_dependent_values()
+    first = source_effective.lines.loc["hab"]
+    second = source_effective.lines.loc["hab_parallel"]
+    expected_z = 1.0 / (
+        1.0 / complex(first.r, first.x) + 1.0 / complex(second.r, second.x)
+    )
+
+    result, sidecar = _identity_build(network)
+    target = _target_line_for_source(result, sidecar, "hab")
+
+    assert complex(target.r, target.x) == pytest.approx(expected_z)
+    assert target.g == pytest.approx(first.g + second.g)
+    assert target.b == pytest.approx(first.b + second.b)
+    assert target.num_parallel == pytest.approx(1.0)
+    assert target.type == ""
+
+
+def test_aggregated_active_zero_impedance_line_fails_closed() -> None:
+    """Unsupported active zero-Z members fail instead of creating a bad target."""
+    network = three_voltage_network()
+    network.lines.loc["hab", ["r", "x", "length"]] = (0.0, 0.0, 0.0)
+    network.add("Line", "hab_zero", bus0="ha", bus1="hb", r=0.0, x=0.0,
+                length=0.0, s_nom=100)
+
+    with pytest.raises(MaterializationError, match="AC_LINE_EQUIVALENCE_UNSUPPORTED"):
+        _identity_build(network)
+
+
+def test_all_inactive_parallel_corridor_fails_closed() -> None:
+    """A multi-member corridor with no active member has no AC equivalent."""
+    network = three_voltage_network()
+    network.lines.loc["hab", ["r", "x", "length", "active"]] = (
+        0.01, 0.02, 0.0, False
+    )
+    network.add("Line", "hab_inactive", bus0="ha", bus1="hb", r=0.03, x=0.04,
+                length=0.0, active=False, s_nom=100)
+
+    with pytest.raises(MaterializationError, match="all-inactive corridor"):
+        _identity_build(network)
 
 
 def test_declared_alias_materializes_one_layer_without_raw_voltage_guessing() -> None:
