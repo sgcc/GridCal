@@ -85,7 +85,7 @@ Protected objects remain protected. An action touching a protected object is eit
 
 ## Immutable ReductionActionJournal
 
-The journal contains an immutable action catalog and an ordered series of immutable active-action-set snapshots. “Active” means the reduction action is applied when rebuilding a candidate. Expansion deactivates one action together with all required dependent actions; it does not mutate or delete journal history.
+The journal contains an immutable action catalog and an ordered series of immutable active-action-set snapshots. “Active” means the reduction action is applied when rebuilding a candidate. An action's `dependencies` are prerequisites that must remain active while that action is active. Expansion deactivates the requested action together with all transitively active actions that depend on it; it does not deactivate prerequisites merely because their dependent was removed, or mutate or delete journal history. Stage-3 candidates and journal transitions use the same deactivation closure.
 
 For each iteration, the journal records:
 
@@ -133,7 +133,27 @@ Required attribution families:
 | Cluster net injection | source Bus membership and associated devices, preserving existing injection metric semantics |
 | Passive loss | mapped branches/corridors and the connected component contributing to the metric |
 
-A HARD violation that cannot be assigned to any legal expansion candidate is terminal `UNATTRIBUTABLE_HARD_VIOLATION`. It must not be discarded, downgraded, or treated as diagnostic. Diagnostic-only metrics may be recorded but cannot drive acceptance or override a HARD violation.
+A HARD violation is `UNATTRIBUTABLE` only when the available mapping and provenance cannot establish a supported deterministic relation between that violation, an `ErrorRegion`, and one or more supported `ReductionAction` relationships. A relation may refer to an action that is inactive, protected, irreversible, or otherwise unavailable for expansion. Those current availability conditions do not erase the causal attribution. An attributable violation with no currently legal expansion action is a separate run state: `NO_EXPANSION_CANDIDATE`. A HARD violation must not be discarded, downgraded, or treated as diagnostic. Diagnostic-only metrics may be recorded but cannot drive acceptance or override a HARD violation.
+
+Attribution answers, “Where can this error be causally associated within the supported adaptive reduction model?” Candidate generation answers, “Is there currently a legal resolution-expansion action available there?” These are separate questions. The earlier PR-023A wording conflated attribution with current candidate availability; this section records the implementation-derived clarification.
+
+```mermaid
+flowchart LR
+    accTitle: Attribution And Candidate Availability
+    accDescr: A HARD violation is first linked to a supported action relationship, then current action availability determines whether expansion candidates exist and which terminal partition applies.
+
+    hard_violation[HARD violation] --> relation_check{Supported region and action relation?}
+    relation_check -->|No| unattributable[UNATTRIBUTABLE_HARD_VIOLATION]
+    relation_check -->|Yes| attribution[ATTRIBUTABLE with related action IDs]
+    attribution --> availability{Any currently legal expansion action?}
+    availability -->|No| no_candidate[NO_EXPANSION_CANDIDATE]
+    availability -->|Yes| evaluate[Evaluate legal candidates]
+    evaluate -->|All prerequisite Gates fail| no_viable[NO_VIABLE_EXPANSION_CANDIDATE]
+    evaluate -->|A candidate reaches scoring| score[Score HARD violation improvement]
+    score -->|Insufficient improvement| no_benefit[NO_FURTHER_COMPRESSION_BENEFIT]
+```
+
+For each HARD violation, attribution records `related_action_ids` for supported relationships found from the full action catalog. Candidate generation separately considers only related actions that are currently active and satisfy the frozen expansion eligibility rules. `candidate_action_ids` contains the legal direct actions available in the current action set; it may be empty while the attribution remains `ATTRIBUTABLE`. Protected or inactive related actions remain visible in attribution and region evidence but never enter a legal candidate or dependency closure.
 
 ErrorRegion construction is deterministic and uses existing graph topology and StableIds. Allowed grouping dimensions are connected component, canonical voltage layer, target Bus cluster, source Bus membership, cutset boundary, branch corridor and action dependency relations. Statistical clustering and learned embeddings are excluded.
 
@@ -141,7 +161,7 @@ ErrorRegion construction is deterministic and uses existing graph topology and S
 
 The first strategy is `HIERARCHICALLY_CONSTRAINED_GREEDY_LOCAL_EXPANSION`.
 
-Candidate generation may only deactivate existing supported reduction actions. It may not redispatch generators, change voltage setpoints or taps, switch shunts, modify loads, mutate S1, relax thresholds, or alter solver settings. Every candidate is dependency-closed and rebuilt from the same S1.
+Candidate generation may only deactivate existing supported reduction actions that are currently active, reversible, eligible, unprotected, and supported by a valid dependency closure. It may not redispatch generators, change voltage setpoints or taps, switch shunts, modify loads, mutate S1, relax thresholds, or alter solver settings. Every candidate is dependency-closed and rebuilt from the same S1. Attribution itself considers supported related actions independently of whether they pass these current-availability filters.
 
 Candidate evaluation order:
 
@@ -167,9 +187,9 @@ Exactly one terminal reason is recorded:
 |---|---|---|
 | `FIDELITY_SATISFIED` | All HARD preregistered fidelity constraints pass and no configured compression objective remains unmet. | Success |
 | `FIDELITY_SATISFIED_BUT_COMPRESSION_BUDGET_NOT_MET` | Fidelity passes, but a configured compression objective/budget does not. | Not accepted |
-| `NO_EXPANSION_CANDIDATE` | A HARD violation remains, and candidate generation produces zero legal expansion candidates before candidate evaluation begins. This reason means exactly that the legal candidate set is empty. | Not accepted |
+| `NO_EXPANSION_CANDIDATE` | Mandatory HARD violations remain and all are `ATTRIBUTABLE`, but candidate generation produces zero legal expansion candidates before candidate evaluation begins because no related action is currently available for legal expansion. | Not accepted |
 | `NO_VIABLE_EXPANSION_CANDIDATE` | A non-empty legal expansion candidate set was generated, but every evaluated candidate was rejected by a candidate-level prerequisite Gate before becoming a viable scored expansion. Rejections may be from structural validity, AC model readiness, or PF execution; each reason is retained per candidate. | Not accepted |
-| `UNATTRIBUTABLE_HARD_VIOLATION` | At least one HARD violation cannot be mapped to a legal expansion candidate. | Not accepted |
+| `UNATTRIBUTABLE_HARD_VIOLATION` | At least one mandatory HARD violation cannot be deterministically mapped to a supported `ErrorRegion` / `ReductionAction` relationship using available mapping and provenance. | Not accepted |
 | `STRUCTURAL_INVALID` | The required current candidate fails the structural Gate before expansion-candidate generation. | Not accepted |
 | `AC_MODEL_NOT_READY` | The required current candidate fails AC model readiness before expansion-candidate generation. | Not accepted |
 | `PF_NOT_CONVERGED` | The required current candidate PF does not converge under the frozen executor contract before expansion-candidate generation. | Not accepted |
@@ -177,16 +197,20 @@ Exactly one terminal reason is recorded:
 | `NO_FURTHER_COMPRESSION_BENEFIT` | A non-empty legal candidate set was generated and at least one candidate passed structural validity, AC model readiness, and PF execution and reached fidelity evaluation/scoring. The configured bounded search is exhausted, but no viable candidate provided sufficient HARD-violation reduction. This heuristic result is not proof of infeasibility, global optimality, or absence of a better reduction. | Not accepted |
 | `CONFIGURATION_INVALID` | Configuration, referenced evidence, threshold binding, or required contracts are invalid. | Not accepted |
 
+`NO_VIABLE_EXPANSION_CANDIDATE` is a defensive controller terminal state. Its decision semantics are unit validated. Candidate-level failure evidence is retained in iteration data; Stage 5 validates typed `CandidateEvaluation` serialization/deserialization, evidence digest changes under tampering, stored terminal-reason checks, and replay schema handling. Under the currently supported PR-024A replayable action set (`BUS_CLUSTER`, `RADIAL_ABSORPTION`), constructive end-to-end reachability has not been established. No synthetic production fixture is fabricated solely for coverage. Any future supported action or backend that makes this state constructively reachable must add end-to-end persistence/replay coverage.
+
+Stage-5 replay requires real end-to-end fixtures for terminal states constructively reachable with the current action/backend capabilities. For the defensive `NO_VIABLE_EXPANSION_CANDIDATE` path while constructive reachability remains unestablished, Stage 5 validates controller decision semantics, `CandidateEvaluation` serialization/deserialization, candidate-level failure evidence digests and tamper detection, stored terminal-reason validation, and replay schema support. A fabricated PyPSA end-to-end fixture is not valid coverage.
+
 A result is accepted only if every HARD preregistered threshold passes and any configured compression requirement is met. Diagnostic metrics remain diagnostic. Structural validity, AC readiness, PF execution and reduction fidelity remain independent fields in every report.
 
 Terminal reasons are mutually exclusive run-level outcomes. Apply this decision order at the end of each completed iteration:
 
 1. If configuration or bound evidence is invalid, return `CONFIGURATION_INVALID`.
 2. If the required current candidate failed its structural, readiness, or PF Gate before expansion generation, return `STRUCTURAL_INVALID`, `AC_MODEL_NOT_READY`, or `PF_NOT_CONVERGED`, respectively.
-3. If a HARD violation is unattributable to any legal expansion, return `UNATTRIBUTABLE_HARD_VIOLATION`.
+3. If any mandatory HARD violation lacks a supported deterministic `ErrorRegion` / `ReductionAction` relation, return `UNATTRIBUTABLE_HARD_VIOLATION`.
 4. If fidelity passes but the configured compression requirement remains unmet, return `FIDELITY_SATISFIED_BUT_COMPRESSION_BUDGET_NOT_MET`.
 5. If fidelity and all configured objectives pass, return `FIDELITY_SATISFIED`.
-6. If the legal candidate set is empty before evaluation, return `NO_EXPANSION_CANDIDATE`.
+6. If mandatory HARD violations remain, every one is `ATTRIBUTABLE`, and the legal candidate set is empty before evaluation, return `NO_EXPANSION_CANDIDATE`.
 7. If the legal candidate set is non-empty but no candidate passes the prerequisite structural, readiness, and PF Gates, return `NO_VIABLE_EXPANSION_CANDIDATE`. This applies both when candidates fail the same Gate and when they fail different Gates; do not promote a candidate-level failure to the run-level reason.
 8. If at least one candidate reaches fidelity evaluation/scoring, all remaining candidate paths within the configured bound have been evaluated, and none provides sufficient HARD-violation improvement, return `NO_FURTHER_COMPRESSION_BENEFIT`. If a scored candidate provides improvement and another iteration remains, continue with that selected expansion instead of terminating here.
 9. Otherwise, if the completed iteration count has reached `max_iterations` and another iteration would be required, return `MAX_ITERATIONS_REACHED`. The limit is checked after evaluating the completed iteration and before starting a new one; success or another terminal condition established by that completed iteration takes precedence.
