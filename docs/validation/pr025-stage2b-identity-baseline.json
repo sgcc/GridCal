@@ -1,0 +1,83 @@
+{
+  "adaptive_controller_executed": false,
+  "all_action_fingerprints_valid": true,
+  "base_commit": "68bd37f1bc49e2bc31fa327fe4e66bf43e9398f7",
+  "base_tree": "13a5530f7df5a8663f27cf19dedfc14fa3a602e1",
+  "baseline_id": "STAGE2B_IDENTITY_BASELINE_V1",
+  "beijing_pf_executed": false,
+  "candidate_reconstruction_executed": false,
+  "canonical_set_fingerprint_scheme": {
+    "action_fingerprints_order": "lexicographically sorted ReductionAction.fingerprint values",
+    "hash": "SHA-256 of UTF-8 JSON with sorted keys, compact separators, and Unicode preserved",
+    "payload_fields": [
+      "schema",
+      "role",
+      "count",
+      "action_fingerprints"
+    ],
+    "role_values": [
+      "READY",
+      "REJECTED"
+    ],
+    "schema": "stage2b-action-fingerprint-set/v1"
+  },
+  "claim": "Stage2B establishes the first preregistered identity-level READY/REJECTED baseline before candidate reconstruction; PR-025R established count/category compatibility only.",
+  "fresh_process_two_pass_exact_equality": true,
+  "historical_action_catalog_count": 135,
+  "historical_action_catalog_digest": "70f5932d4d27b572425cadfb63cc79fe505f844ec9e49e81b5bbc08cab6fb99e",
+  "historical_pr025r_count_category_compatibility": {
+    "checked": 135,
+    "ready": 125,
+    "rejected": 10,
+    "rejection_category": "STRICT_SINGLETON_CONFLICT"
+  },
+  "historical_pr025r_identity_continuity": "NOT_INDEPENDENTLY_VERIFIABLE",
+  "historical_pr025r_identity_evidence": "NOT_PREVIOUSLY_PERSISTED",
+  "l_plus_association_count": 18,
+  "package_version": "0.7.0",
+  "physical_equivalence": "NOT CLAIMED",
+  "previous_stage2b_observation": {
+    "independently_reproduced_by_pass_a_and_b": true,
+    "readiness_result_digest": "e9f5d586e2fda969dd5cf9de5fc4228ae6bac4fb3df696d864c1f6fa085ea5cc",
+    "ready_action_id_set_fingerprint": "b41c6f3c0d5bd8968c3ab5430d346a1500026c865cb2ae411d647485622ad2ad",
+    "rejected_action_id_set_fingerprint": "525eaf6fdf1cb2b1fe7b43141ff0b4e110e0c0498ba632ee0974936d6b912269",
+    "scheme": "legacy action-ID journal and readiness result; not the canonical action-fingerprint-set scheme"
+  },
+  "projection_fidelity": "NOT VALIDATED",
+  "readiness": {
+    "checked": 135,
+    "ready": 125,
+    "ready_rejected_disjoint": true,
+    "ready_rejected_union_complete": true,
+    "rejected": 10,
+    "rejection_categories": [
+      "STRICT_SINGLETON_CONFLICT"
+    ]
+  },
+  "readiness_report_digest": "dc1326859c3b69a0a9ce83b2d97700d708a65501163c85bf1add0383b4df967b",
+  "readiness_report_digest_scheme": {
+    "hash": "SHA-256 of UTF-8 JSON with sorted keys, compact separators, and Unicode preserved",
+    "payload_fields": [
+      "schema",
+      "catalog_digest",
+      "resolved_protection_digest",
+      "source_ledger_digest",
+      "checked_count",
+      "ready_count",
+      "rejected_count",
+      "rejection_categories",
+      "ready_set_fingerprint",
+      "rejected_set_fingerprint"
+    ],
+    "schema": "stage2b-readiness-report/v1"
+  },
+  "ready_set_fingerprint": "64103a85f435ab6bbcd2e163016b93881a8efb6450506270586fe31892340261",
+  "rejected_set_fingerprint": "234c9e432982d92d151a59d289def2ce1172fea66529fc8e59b5538214614d3f",
+  "resolved_protection_digest": "45a7be7cfa3070507c8c8615a4676a6c7ed4b0b04ee1c571f27fcb4d14186f38",
+  "s1_model_digest": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+  "schema": "stage2b-identity-baseline/v1",
+  "sidecar_digest": "7fc151484448d06fe430b43a8618503a0caed123b2c9530d8b9de19afb3c6165",
+  "source_ledger_digest": "5293db89fee4cc9e773880afe8b5a17d00b75b78aa8cb5f15697d92170976bd7",
+  "stage2a_evidence_overwritten": false,
+  "unique_action_fingerprint_count": 135
+}

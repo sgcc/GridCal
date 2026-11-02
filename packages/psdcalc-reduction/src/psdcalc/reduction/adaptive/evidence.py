@@ -46,6 +46,7 @@ from psdcalc.reduction.protection.effective import source_ledger_digest
 
 EVIDENCE_SCHEMA = "adaptive-reduction-evidence/v2"
 LEGACY_EVIDENCE_SCHEMA = "adaptive-reduction-evidence/v1"
+_CANDIDATE_IDENTITY_SCHEMA = "adaptive-candidate-identity/v2"
 _ADAPTIVE_DIR = "adaptive"
 _ACTION_JOURNAL_REASON = "Stage-4 local expansion candidate"
 
@@ -155,6 +156,8 @@ class AdaptiveReductionEvidenceStore:
             candidate_rows = _candidate_evaluation_rows(report_payload)
             _validate_candidate_evaluation_rows(candidate_rows)
             _write_json(input_dir / "candidate_evaluations.json", candidate_rows)
+            derived_closures = list(runtime.derived_closure_evidence())
+            _write_json(input_dir / "derived_closures.json", derived_closures)
             journal = _journal_from_report(actions, initial_active_action_ids, durable_report)
             if journal.digest != report.journal_digest:
                 raise ValueError("reconstructed action journal does not match controller report")
@@ -178,6 +181,7 @@ class AdaptiveReductionEvidenceStore:
                 "ordered_iteration_evidence_digest": _digest(report_payload["iterations"]),
                 "iteration_bindings_digest": _digest(iteration_bindings),
                 "candidate_evaluation_digest": _digest(candidate_rows),
+                "derived_closures_digest": _digest(derived_closures),
                 "final_report_digest": _digest(report_payload),
                 "terminal_reason": durable_report.terminal_reason.value,
                 "final_action_set_fingerprint": _final_action_fingerprint(durable_report),
@@ -200,6 +204,7 @@ class AdaptiveReductionEvidenceStore:
             })
             evidence = {
                 "schema": EVIDENCE_SCHEMA,
+                "candidate_identity_schema": _CANDIDATE_IDENTITY_SCHEMA,
                 "run_identity": run_identity,
                 "semantic_digest": _digest(digests),
                 "digests": digests,
@@ -221,6 +226,7 @@ class AdaptiveReductionEvidenceStore:
                     "iterations": "adaptive/iterations.json",
                     "iteration_bindings": "adaptive/iteration_bindings.json",
                     "candidate_evaluations": "adaptive/candidate_evaluations.json",
+                    "derived_closures": "adaptive/derived_closures.json",
                     "report": "adaptive/report.json",
                 },
                 "runtime_policy": {"excluded_from_semantic_digest": True},
@@ -263,13 +269,18 @@ class AdaptiveReductionEvidenceStore:
             if evidence.get("schema") != EVIDENCE_SCHEMA:
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
                                             "unsupported adaptive evidence schema")
+            if evidence.get("candidate_identity_schema") != _CANDIDATE_IDENTITY_SCHEMA:
+                raise AdaptiveEvidenceError(
+                    AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
+                    "historical candidate identity cannot be reinterpreted as closure-bound v2",
+                )
             artifacts = evidence.get("artifacts")
             if not isinstance(artifacts, dict) or set(artifacts) != {
                 "frozen_s1", "source_sidecar", "reduction_config", "adaptive_config",
                 "operating_point", "metric_policy", "protection", "threshold_set",
                 "source_ledger_profile", "source_ledger_lines", "source_ledger_l_plus",
                 "action_catalog", "initial_action_set", "journal", "iterations", "iteration_bindings",
-                "candidate_evaluations", "report",
+                "candidate_evaluations", "derived_closures", "report",
             }:
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
                                             "adaptive evidence artifact index is incomplete")
@@ -355,6 +366,7 @@ class AdaptiveReductionEvidenceStore:
             iterations_expected = _read_json(paths["iterations"])
             iteration_bindings = _read_json(paths["iteration_bindings"])
             candidates_expected = _read_json(paths["candidate_evaluations"])
+            closures_expected = _read_json(paths["derived_closures"])
             if iterations_expected != report_expected.get("iterations"):
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
                                             "iteration artifact differs from final report")
@@ -371,6 +383,9 @@ class AdaptiveReductionEvidenceStore:
             if _digest(candidates_expected) != evidence["digests"].get("candidate_evaluation_digest"):
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
                                             "candidate evaluation artifact digest differs")
+            if _digest(closures_expected) != evidence["digests"].get("derived_closures_digest"):
+                raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                            "derived closure artifact digest differs")
             journal_binding = _read_json(paths["journal"])
             if (set(journal_binding) != {"schema", "run_identity", "journal"}
                     or journal_binding.get("schema") != "adaptive-action-journal-binding/v1"
@@ -390,6 +405,9 @@ class AdaptiveReductionEvidenceStore:
                 config=adaptive_config,
             )
             computed = replace(computed, evidence_reference="adaptive/evidence.json")
+            if list(runtime.derived_closure_evidence()) != closures_expected:
+                raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                            "recomputed derived closure evidence differs")
             _verify_reconstructed_journal(actions, initial, computed, stored_journal)
             _compare_report(report_expected, computed.to_dict(), replay_tolerance)
             if computed.terminal_reason.value != evidence["digests"]["terminal_reason"]:
@@ -567,6 +585,8 @@ def _iteration_bindings(iterations: object) -> list[dict[str, object]]:
             "failure_stage": iteration.get("failure_stage"),
             "failure_code": iteration.get("failure_code"),
             "offending_identity_fingerprints": iteration.get("offending_identity_fingerprints", []),
+            "expected_derived_closure_digest": iteration.get("expected_derived_closure_digest"),
+            "actual_derived_closure_digest": iteration.get("actual_derived_closure_digest"),
             "incumbent_action_set_fingerprint": iteration["action_set_fingerprint"],
             "incumbent_model_digest": iteration.get("model_digest"),
             "incumbent_mapping_bundle_digest": iteration.get("mapping_digest"),

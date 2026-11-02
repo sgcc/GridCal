@@ -14,6 +14,10 @@ from typing import TYPE_CHECKING
 import pypsa
 
 from psdcalc.reduction.adaptive.actions import ActionOperation, MappingTransition, ReductionAction
+from psdcalc.reduction.adaptive.derived_mapping import (
+    DerivedClosureError, DerivedMappingClosure, validate_derived_closures,
+)
+from psdcalc.reduction.adaptive.derived_mapping_pypsa import PypsaDerivedMappingAdapter
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.models import ReductionConfig
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
@@ -48,6 +52,17 @@ if TYPE_CHECKING:
 class CandidateReconstructionError(RuntimeError):
     """Raised when an active action set cannot be faithfully rebuilt from S1."""
 
+    def __init__(self, message: str, *, failure_code: str | None = None,
+                 offending_identity_fingerprints: tuple[str, ...] = (),
+                 expected_closure_digest: str | None = None,
+                 actual_closure_digest: str | None = None) -> None:
+        """Carry deterministic, public-safe failure evidence where available."""
+        self.failure_code = failure_code
+        self.offending_identity_fingerprints = offending_identity_fingerprints
+        self.expected_closure_digest = expected_closure_digest
+        self.actual_closure_digest = actual_closure_digest
+        super().__init__(message)
+
 
 class ActionCatalogNotReady(CandidateReconstructionError):
     """Raised before materialization when active actions violate the frozen contract."""
@@ -76,6 +91,7 @@ class CandidateBuildIdentity:
     reduction_config_digest: str
     effective_protection_digest: str
     source_ledger_digest: str
+    derived_mapping_closure_digest: str
 
 
 @dataclass(frozen=True)
@@ -89,6 +105,7 @@ class BuiltCandidate:
     structural_result: PreliminaryStructuralEvidence
     ac_readiness_result: AcModelReadinessResult
     records: tuple[ReductionRecord, ...]
+    derived_mapping_closure: DerivedMappingClosure
 
 
 class _PypsaActionReplay:
@@ -199,10 +216,13 @@ class _PypsaActionReplay:
         reduction_config: ReductionConfig,
         partition: PartitionPlan,
         active_transitions: Mapping[StableId, MappingTransition],
+        closure_adapter: PypsaDerivedMappingAdapter,
+        expected_closure: DerivedMappingClosure,
     ) -> tuple[pypsa.Network, IdentitySidecar, MappingBundle,
-               PreliminaryStructuralEvidence, tuple[ReductionRecord, ...]]:
+               PreliminaryStructuralEvidence, tuple[ReductionRecord, ...],
+               DerivedMappingClosure]:
         """Materialize the supplied explicit partition without replanning."""
-        if not active_actions:
+        if not active_actions and not expected_closure.effects:
             mapping = _identity_mapping(source_network, source_sidecar)
             target = PypsaAdapter().clone(source_network)
             aliases = {float(source): float(target_value)
@@ -226,7 +246,11 @@ class _PypsaActionReplay:
                 voltage_layer_map=voltage_map,
                 allowed_line_dynamic_names=frozenset(map(str, source_network.lines.index)),
             )
-            return target, source_sidecar, mapping, structural, ()
+            actual = self._validate_derived_reductions(
+                active_transitions, mapping, closure_adapter, expected_closure,
+                target, source_sidecar,
+            )
+            return target, source_sidecar, mapping, structural, (), actual
         aliases = {float(source): float(target)
                    for source, target in reduction_config.voltage_layers.aliases.items()}
         invariants = _invariants(reduction_config)
@@ -249,9 +273,12 @@ class _PypsaActionReplay:
                 f"active action set could not be materialized: {exc}"
             ) from exc
         self._validate_bus_action_map(partition.stable_busmap, result.mappings)
-        self._validate_derived_reductions(active_transitions, result.mappings)
+        actual = self._validate_derived_reductions(
+            active_transitions, result.mappings, closure_adapter,
+            expected_closure, result.network, result.target_sidecar,
+        )
         return (result.network, result.target_sidecar, result.mappings,
-                result.preliminary, result.records)
+                result.preliminary, result.records, actual)
 
     @staticmethod
     def _validate_action_shape(action: ReductionAction, sidecar: IdentitySidecar) -> None:
@@ -305,24 +332,33 @@ class _PypsaActionReplay:
     def _validate_derived_reductions(
         active_transitions: Mapping[StableId, MappingTransition],
         mappings: MappingBundle,
-    ) -> None:
-        """Reject unjournaled branch absorption or many-to-one device aggregation."""
-        for row in mappings.branch_map:
-            if row.mapping_type == "absorbed_internal" and row.source_id not in active_transitions:
+        closure_adapter: PypsaDerivedMappingAdapter,
+        expected: DerivedMappingClosure,
+        target: pypsa.Network,
+        target_sidecar: IdentitySidecar,
+    ) -> DerivedMappingClosure:
+        """Check exact derived branch effects while keeping devices fail-closed."""
+        try:
+            actual = closure_adapter.actual(mappings, target, target_sidecar)
+            validate_derived_closures(expected, actual)
+        except DerivedClosureError as exc:
+            raise CandidateReconstructionError(
+                exc.code, failure_code=exc.code,
+                offending_identity_fingerprints=exc.offending_identity_fingerprints,
+                expected_closure_digest=exc.expected_digest or expected.digest,
+                actual_closure_digest=exc.actual_digest,
+            ) from exc
+        groups: dict[StableId, list[MapEntry]] = defaultdict(list)
+        for row in mappings.device_map:
+            if row.target_id is not None:
+                groups[row.target_id].append(row)
+        for target_id, rows in groups.items():
+            if len(rows) > 1 and any(row.source_id not in active_transitions for row in rows):
                 raise CandidateReconstructionError(
-                    f"absorbed branch is absent from active action mapping: {row.source_id.encode()}"
+                    f"many-to-one device_map effect is absent from active action mapping: "
+                    f"{target_id.encode()}"
                 )
-        for name in ("branch_map", "device_map"):
-            groups: dict[StableId, list[MapEntry]] = defaultdict(list)
-            for row in getattr(mappings, name):
-                if row.target_id is not None:
-                    groups[row.target_id].append(row)
-            for target_id, rows in groups.items():
-                if len(rows) > 1 and any(row.source_id not in active_transitions for row in rows):
-                    raise CandidateReconstructionError(
-                        f"many-to-one {name} effect is absent from active action mapping: "
-                        f"{target_id.encode()}"
-                    )
+        return actual
 
 
 class PypsaAdaptiveCandidateBuilder:
@@ -536,13 +572,31 @@ class PypsaAdaptiveCandidateBuilder:
             detached_source, self._sidecar, active_actions, self._config,
         )
         partition_digest = _partition_digest(partition)
-        candidate_network, candidate_sidecar, mappings, structural, records = replay.rebuild(
+        try:
+            closure_adapter = PypsaDerivedMappingAdapter(
+                source=detached_source, sidecar=self._sidecar, partition=partition,
+                config=self._config, effective=self._effective,
+                source_model_digest=self._source_digest,
+                source_sidecar_digest=self._source_sidecar_digest,
+                partition_digest=partition_digest,
+            )
+            expected_closure = closure_adapter.expected()
+        except DerivedClosureError as exc:
+            raise CandidateReconstructionError(
+                exc.code, failure_code=exc.code,
+                offending_identity_fingerprints=exc.offending_identity_fingerprints,
+                expected_closure_digest=exc.expected_digest,
+                actual_closure_digest=exc.actual_digest,
+            ) from exc
+        candidate_network, candidate_sidecar, mappings, structural, records, actual_closure = replay.rebuild(
             detached_source,
             self._sidecar,
             active_actions,
             self._config,
             partition,
             active_transitions,
+            closure_adapter,
+            expected_closure,
         )
         self._assert_source_unchanged(before_digest, before_sidecar_digest, before_output_digest)
         self._adapter.validate_model(candidate_network, candidate_sidecar)
@@ -576,10 +630,10 @@ class PypsaAdaptiveCandidateBuilder:
             "execution_order": execution_order,
         })
         candidate_fingerprint = _digest({
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "s1_model_digest": self._source_digest,
             "s1_sidecar_digest": self._source_sidecar_digest,
-            "reduction_config_digest": self._config_digest,
+            "semantic_config_digest": self._semantic_config_digest,
             "effective_protection_digest": self._effective.digest,
             "source_ledger_digest": self.source_ledger_digest,
             "action_set_fingerprint": action_set_fingerprint,
@@ -588,6 +642,7 @@ class PypsaAdaptiveCandidateBuilder:
             "mapping_digest": mapping_digest,
             "structural_digest": structural_digest,
             "ac_readiness_digest": readiness_digest,
+            "derived_mapping_closure_digest": expected_closure.digest,
         })
         identity = CandidateBuildIdentity(
             candidate_fingerprint=candidate_fingerprint,
@@ -604,6 +659,7 @@ class PypsaAdaptiveCandidateBuilder:
             reduction_config_digest=self._config_digest,
             effective_protection_digest=self._effective.digest,
             source_ledger_digest=self.source_ledger_digest,
+            derived_mapping_closure_digest=expected_closure.digest,
         )
         self._assert_source_unchanged(before_digest, before_sidecar_digest, before_output_digest)
         return BuiltCandidate(
@@ -614,6 +670,7 @@ class PypsaAdaptiveCandidateBuilder:
             validation.structural,
             readiness,
             records,
+            actual_closure,
         )
 
     def _assert_source_unchanged(

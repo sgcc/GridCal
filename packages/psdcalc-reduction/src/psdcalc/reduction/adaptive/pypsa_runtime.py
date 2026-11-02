@@ -90,6 +90,7 @@ class PypsaAdaptiveRuntime:
         self._thresholds = threshold_set or FrozenThresholdSet.load()
         self._executor = executor or PypsaAcPowerFlowExecutor()
         self._attribution = attribution_engine or ErrorAttributionEngine()
+        self._derived_closure_evidence: dict[tuple[str, ...], dict[str, object]] = {}
         self.source_model_digest = canonical_model_digest(source_network, source_sidecar)
         self.source_sidecar_digest = builder.source_sidecar_digest
         self.action_catalog_digest = _action_catalog_digest(self._actions)
@@ -147,6 +148,11 @@ class PypsaAdaptiveRuntime:
         """Return the frozen PR-022 threshold artifact and verified raw bytes."""
         return self._thresholds
 
+    def derived_closure_evidence(self) -> tuple[dict[str, object], ...]:
+        """Return successful candidate closures for independent durable replay."""
+        return tuple(self._derived_closure_evidence[key]
+                     for key in sorted(self._derived_closure_evidence))
+
     def build(self, active_action_ids: tuple[str, ...]) -> AdaptiveCandidateSnapshot:
         """Rebuild through Stage 2 and expose its existing structural/readiness Gates."""
         active = tuple(sorted(active_action_ids))
@@ -163,9 +169,11 @@ class PypsaAdaptiveRuntime:
                 offending = tuple(sorted({identity for row in rejections
                                           for identity in row.offending_identity_fingerprints}))
             else:
-                failure_stage = "CANDIDATE_RECONSTRUCTION"
-                failure_code = "CANDIDATE_RECONSTRUCTION_FAILED"
-                offending = ()
+                failure_stage = ("DERIVED_MAPPING_CLOSURE" if exc.failure_code and
+                                 exc.failure_code.startswith(("DERIVED_", "UNAUTHORIZED_PROTECTED_"))
+                                 else "CANDIDATE_RECONSTRUCTION")
+                failure_code = exc.failure_code or "CANDIDATE_RECONSTRUCTION_FAILED"
+                offending = exc.offending_identity_fingerprints
             return AdaptiveCandidateSnapshot(
                 candidate_fingerprint=None,
                 active_action_ids=active,
@@ -184,9 +192,22 @@ class PypsaAdaptiveRuntime:
                 failure_stage=failure_stage,
                 failure_code=failure_code,
                 offending_identity_fingerprints=offending,
+                expected_derived_closure_digest=exc.expected_closure_digest,
+                actual_derived_closure_digest=exc.actual_closure_digest,
             )
         if built.identity.reduction_config_digest != self.reduction_config_digest:
             raise CandidateReconstructionError("Stage-2 candidate used a different frozen reduction config")
+        closure_payload = built.derived_mapping_closure.canonical_payload()
+        self._derived_closure_evidence[active] = {
+            "active_action_ids": list(active),
+            "partition_digest": built.identity.partition_digest,
+            "expected_closure_digest": built.identity.derived_mapping_closure_digest,
+            "actual_closure_digest": built.derived_mapping_closure.digest,
+            "expected_closure": closure_payload,
+            "actual_closure": closure_payload,
+            "candidate_fingerprint": built.identity.candidate_fingerprint,
+            "mapping_digest": built.identity.mapping_digest,
+        }
         structural_checks = dict(built.structural_result.checks)
         structural_status = (
             "STRUCTURALLY_VALID" if structural_checks and all(structural_checks.values())
@@ -201,6 +222,8 @@ class PypsaAdaptiveRuntime:
             action_set_fingerprint=built.identity.action_set_fingerprint,
             model_digest=built.identity.model_digest,
             mapping_digest=built.identity.mapping_digest,
+            expected_derived_closure_digest=built.identity.derived_mapping_closure_digest,
+            actual_derived_closure_digest=built.derived_mapping_closure.digest,
             structural_status=structural_status,
             structural_checks=structural_checks,
             readiness_status=built.ac_readiness_result.status.value,
