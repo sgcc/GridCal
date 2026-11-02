@@ -29,6 +29,9 @@ from psdcalc.reduction.fidelity.contracts import (
 )
 from psdcalc.reduction.fidelity.persistence import FrozenThresholdSet
 from psdcalc.reduction.protection.engine import ProtectionSet
+from psdcalc.reduction.topology.parallel_provenance import (
+    ParallelSourceLedger, SourceProfileContract,
+)
 
 
 def _case(
@@ -95,6 +98,7 @@ def _case(
         actions=actions,
         reduction_config=reduction_config,
         protection=protection,
+        source_ledger=ParallelSourceLedger(SourceProfileContract("programmatic_pypsa", "unavailable")),
     )
     thresholds = FrozenThresholdSet.load()
     operating_point = PowerFlowOperatingPointContract(

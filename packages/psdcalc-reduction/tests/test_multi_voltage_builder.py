@@ -1035,7 +1035,8 @@ def test_precheck_independently_checks_all_mandatory_singletons() -> None:
             network, result.network, sidecar, result.target_sidecar,
             forged, (), protected, voltage_layer_map=result.voltage_layer_map,
         )
-        assert not evidence.checks["protected_singletons"], name
+        check = "identity_anchors" if name == "ma" else "protected_singletons"
+        assert not evidence.checks[check], name
 
 
 def test_voltage_layer_gate_checks_link_terminals_and_extra_ports() -> None:

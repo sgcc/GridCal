@@ -524,6 +524,11 @@ class AdaptiveReductionIteration:
     error_region_fingerprints: tuple[str, ...] = ()
     expansion_candidate_fingerprints: tuple[str, ...] = ()
     rejected_candidate_fingerprints: tuple[str, ...] = ()
+    build_attempt_fingerprint: str | None = None
+    materialized_candidate_fingerprint: str | None = None
+    failure_stage: str | None = None
+    failure_code: str | None = None
+    offending_identity_fingerprints: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if isinstance(self.iteration_index, bool) or self.iteration_index < 0:
@@ -531,7 +536,8 @@ class AdaptiveReductionIteration:
         for name in ("action_set_fingerprint", "model_digest", "mapping_digest",
                      "candidate_fingerprint", "parent_incumbent_fingerprint",
                      "new_incumbent_fingerprint", "candidate_build_fingerprint",
-                     "metrics_digest", "threshold_digest", "attribution_digest"):
+                     "metrics_digest", "threshold_digest", "attribution_digest",
+                     "build_attempt_fingerprint", "materialized_candidate_fingerprint"):
             value = getattr(self, name)
             if value is not None:
                 _require_digest(value, name)
@@ -543,7 +549,7 @@ class AdaptiveReductionIteration:
         if tuple(sorted(set(self.action_set_delta))) != self.action_set_delta:
             raise AdaptiveContractError("action_set_delta must be unique and sorted")
         for name in ("error_region_fingerprints", "expansion_candidate_fingerprints",
-                     "rejected_candidate_fingerprints"):
+                     "rejected_candidate_fingerprints", "offending_identity_fingerprints"):
             values = getattr(self, name)
             if tuple(sorted(set(values))) != values:
                 raise AdaptiveContractError(f"{name} must be unique and sorted")

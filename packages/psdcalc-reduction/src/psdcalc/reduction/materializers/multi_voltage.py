@@ -92,6 +92,7 @@ class MultiVoltageQuotientBuilder:
               voltage_aliases: Mapping[float, float] | None = None,
               invariants: tuple[AggregationInvariantSpec, ...] = (),
               *, source_ledger: ParallelSourceLedger | None = None,
+              resolved_parallel_plan: ProtectedParallelPlan | None = None,
               ) -> MultiVoltageBuildResult:
         """Return a detached multi-voltage quotient and preliminary evidence."""
         adapter = PypsaAdapter()
@@ -158,7 +159,7 @@ class MultiVoltageQuotientBuilder:
             source_ledger.validate(
                 simplified_network, parent_sidecar,
                 voltage_aliases=voltage_aliases)
-            parallel_plan = ParallelCorridorAnalyzer().analyze(
+            parallel_plan = resolved_parallel_plan or ParallelCorridorAnalyzer().analyze(
                 simplified_network, parent_sidecar, protection,
                 voltage_aliases=voltage_aliases,
                 lplus_base_lines=frozenset(

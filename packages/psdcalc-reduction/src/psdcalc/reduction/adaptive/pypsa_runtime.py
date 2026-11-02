@@ -15,6 +15,7 @@ from psdcalc.reduction.adaptive.attribution import (
     Stage3AttributionInput,
 )
 from psdcalc.reduction.adaptive.candidates import (
+    ActionCatalogNotReady,
     BuiltCandidate,
     CandidateReconstructionError,
     PypsaAdaptiveCandidateBuilder,
@@ -149,24 +150,40 @@ class PypsaAdaptiveRuntime:
     def build(self, active_action_ids: tuple[str, ...]) -> AdaptiveCandidateSnapshot:
         """Rebuild through Stage 2 and expose its existing structural/readiness Gates."""
         active = tuple(sorted(active_action_ids))
+        attempt = self._builder.build_attempt_fingerprint(active)
         try:
             built = self._builder.build(active)
         except CandidateReconstructionError as exc:
             action_set_fingerprint = _digest({"schema_version": "1.0", "active_action_ids": active})
-            failure_digest = _digest({"active_action_ids": active, "failure": str(exc)})
+            if isinstance(exc, ActionCatalogNotReady):
+                rejections = exc.result.rejections
+                failure_stage = "ACTION_CATALOG_READINESS"
+                failure_code = (sorted({row.failure_code for row in rejections})[0]
+                                if rejections else "ACTION_CATALOG_NOT_READY")
+                offending = tuple(sorted({identity for row in rejections
+                                          for identity in row.offending_identity_fingerprints}))
+            else:
+                failure_stage = "CANDIDATE_RECONSTRUCTION"
+                failure_code = "CANDIDATE_RECONSTRUCTION_FAILED"
+                offending = ()
             return AdaptiveCandidateSnapshot(
-                candidate_fingerprint=failure_digest,
+                candidate_fingerprint=None,
                 active_action_ids=active,
                 action_set_fingerprint=action_set_fingerprint,
                 model_digest=None,
                 mapping_digest=None,
                 structural_status="STRUCTURAL_INVALID",
-                structural_checks={"candidate_reconstruction": False},
+                structural_checks={failure_stage.lower(): False},
                 readiness_status="NOT_RUN",
                 readiness_checks={},
                 bus_count=None,
                 branch_count=None,
-                failure_reason=str(exc),
+                failure_reason=f"{failure_stage}: {failure_code}",
+                build_attempt_fingerprint=attempt,
+                materialized_candidate_fingerprint=None,
+                failure_stage=failure_stage,
+                failure_code=failure_code,
+                offending_identity_fingerprints=offending,
             )
         if built.identity.reduction_config_digest != self.reduction_config_digest:
             raise CandidateReconstructionError("Stage-2 candidate used a different frozen reduction config")
@@ -178,6 +195,8 @@ class PypsaAdaptiveRuntime:
         readiness_checks = dict(built.ac_readiness_result.checks)
         return AdaptiveCandidateSnapshot(
             candidate_fingerprint=built.identity.candidate_fingerprint,
+            build_attempt_fingerprint=attempt,
+            materialized_candidate_fingerprint=built.identity.candidate_fingerprint,
             active_action_ids=active,
             action_set_fingerprint=built.identity.action_set_fingerprint,
             model_digest=built.identity.model_digest,
