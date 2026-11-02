@@ -39,6 +39,12 @@ from psdcalc.reduction.adaptive.candidates import (
     CandidateReconstructionError,
     PypsaAdaptiveCandidateBuilder,
 )
+from psdcalc.reduction.adaptive.derived_mapping import (
+    DerivedBranchEffect,
+    DerivedClosureError,
+    DerivedMappingClosure,
+    validate_derived_closures,
+)
 from psdcalc.reduction.adaptive.readiness import (
     ActionCatalogReadinessResult,
     ActionCatalogReadinessValidator,
@@ -75,6 +81,8 @@ __all__ = [
     "AdaptiveReductionState", "AdaptiveStoppingReason", "AdaptiveStrategy", "AttributionStatus",
     "BuiltCandidate", "CandidateBuildIdentity", "CandidateEvaluation",
     "CandidateReconstructionError", "CompressionRequirement",
+    "DerivedBranchEffect", "DerivedClosureError", "DerivedMappingClosure",
+    "validate_derived_closures",
     "ErrorAttribution", "ErrorRegion",
     "ExpansionCandidate", "ExpansionDecision", "JournalIntegrityError", "MappingTransition",
     "ReductionAction", "ReductionActionJournal", "PypsaAdaptiveCandidateBuilder",

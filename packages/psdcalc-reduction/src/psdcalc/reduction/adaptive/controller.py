@@ -75,6 +75,8 @@ class AdaptiveCandidateSnapshot:
     failure_stage: str | None = None
     failure_code: str | None = None
     offending_identity_fingerprints: tuple[str, ...] = ()
+    expected_derived_closure_digest: str | None = None
+    actual_derived_closure_digest: str | None = None
 
     def __post_init__(self) -> None:
         if self.candidate_fingerprint is not None:
@@ -101,7 +103,8 @@ class AdaptiveCandidateSnapshot:
         for fingerprint in self.offending_identity_fingerprints:
             _require_digest(fingerprint, "offending_identity_fingerprints")
         _require_digest(self.action_set_fingerprint, "action_set_fingerprint")
-        for name in ("model_digest", "mapping_digest"):
+        for name in ("model_digest", "mapping_digest", "expected_derived_closure_digest",
+                     "actual_derived_closure_digest"):
             value = getattr(self, name)
             if value is not None:
                 _require_digest(value, name)
@@ -637,6 +640,8 @@ class AdaptiveReductionController:
             fidelity_status=assessment.fidelity_status,
             model_digest=candidate.model_digest,
             mapping_digest=candidate.mapping_digest,
+            expected_derived_closure_digest=candidate.expected_derived_closure_digest,
+            actual_derived_closure_digest=candidate.actual_derived_closure_digest,
             rejection_reason=None,
             normalized_hard_violation=after,
             score=score,
@@ -741,6 +746,8 @@ class AdaptiveReductionController:
             failure_stage=candidate.failure_stage,
             failure_code=candidate.failure_code,
             offending_identity_fingerprints=candidate.offending_identity_fingerprints,
+            expected_derived_closure_digest=candidate.expected_derived_closure_digest,
+            actual_derived_closure_digest=candidate.actual_derived_closure_digest,
             parent_incumbent_fingerprint=parent_fingerprint,
             new_incumbent_fingerprint=new_fingerprint,
             action_set_delta=tuple(sorted(action_delta)),
@@ -811,6 +818,10 @@ def _failed_evaluation(
         rejection_reason=reason + (f": {detail}" if detail else ""),
         proposed_active_action_set_fingerprint=proposed_fingerprint,
         candidate_build_fingerprint=candidate.build_attempt_fingerprint if candidate else None,
+        expected_derived_closure_digest=(candidate.expected_derived_closure_digest
+                                         if candidate else None),
+        actual_derived_closure_digest=(candidate.actual_derived_closure_digest
+                                       if candidate else None),
         structural_checks=candidate.structural_checks if candidate else {},
         readiness_checks=candidate.readiness_checks if candidate else {},
         added_bus_count=expansion.added_bus_count,

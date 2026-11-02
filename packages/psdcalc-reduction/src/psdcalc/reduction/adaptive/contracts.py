@@ -366,11 +366,14 @@ class CandidateEvaluation:
     attributed_region_fingerprints: tuple[str, ...] = ()
     remaining_candidate_fingerprints: tuple[str, ...] = ()
     rejected_candidate_fingerprints: tuple[str, ...] = ()
+    expected_derived_closure_digest: str | None = None
+    actual_derived_closure_digest: str | None = None
 
     def __post_init__(self) -> None:
         for name in ("model_digest", "mapping_digest", "proposed_active_action_set_fingerprint",
                      "candidate_build_fingerprint", "metrics_digest", "threshold_digest",
-                     "attribution_digest"):
+                     "attribution_digest", "expected_derived_closure_digest",
+                     "actual_derived_closure_digest"):
             value = getattr(self, name)
             if value is not None:
                 _require_digest(value, name)
@@ -529,6 +532,8 @@ class AdaptiveReductionIteration:
     failure_stage: str | None = None
     failure_code: str | None = None
     offending_identity_fingerprints: tuple[str, ...] = ()
+    expected_derived_closure_digest: str | None = None
+    actual_derived_closure_digest: str | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.iteration_index, bool) or self.iteration_index < 0:
@@ -537,7 +542,8 @@ class AdaptiveReductionIteration:
                      "candidate_fingerprint", "parent_incumbent_fingerprint",
                      "new_incumbent_fingerprint", "candidate_build_fingerprint",
                      "metrics_digest", "threshold_digest", "attribution_digest",
-                     "build_attempt_fingerprint", "materialized_candidate_fingerprint"):
+                     "build_attempt_fingerprint", "materialized_candidate_fingerprint",
+                     "expected_derived_closure_digest", "actual_derived_closure_digest"):
             value = getattr(self, name)
             if value is not None:
                 _require_digest(value, name)
