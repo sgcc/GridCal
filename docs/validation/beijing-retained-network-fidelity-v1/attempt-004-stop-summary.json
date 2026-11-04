@@ -1,0 +1,432 @@
+{
+  "attempt_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1_ATTEMPT_004",
+  "claim_boundary": {
+    "accepted_compression_result": false,
+    "attempt005_started": false,
+    "code_changed_during_execution": false,
+    "historical_attempts_modified": false,
+    "physical_equivalence": "NOT_CLAIMED",
+    "private_model_or_ids_committed": false,
+    "projection_fidelity": "NOT_VALIDATED",
+    "stage2d_executed": false,
+    "thresholds_changed": false
+  },
+  "execution_commit": "ca3e2ec4e734a86a85202dc764b363c7e22ef4ba",
+  "execution_tree": "5f6c85b24222777df0adfce3059104f6ea434129",
+  "experiment_alias": "BEIJING_AC_ONLY",
+  "formal_run": {
+    "ac_readiness_status": "AC_MODEL_READY",
+    "candidate_counts_unaccepted": {
+      "compression_fraction": {
+        "bus_count": 0.08840864440078586,
+        "line_count": 0.3755868544600939,
+        "total_branch_count": 0.12102874432677761,
+        "transformer_count": 0.0
+      },
+      "source": {
+        "bus_count": 1527,
+        "generator_count": 56,
+        "line_count": 639,
+        "link_count": 0,
+        "load_count": 219,
+        "shunt_count": 135,
+        "total_branch_count": 1983,
+        "transformer_count": 1344
+      },
+      "target": {
+        "bus_count": 1392,
+        "generator_count": 56,
+        "line_count": 399,
+        "link_count": 0,
+        "load_count": 219,
+        "shunt_count": 135,
+        "total_branch_count": 1743,
+        "transformer_count": 1344
+      },
+      "transformer_count_basis": "BACKEND_ROWS; physical three-winding count NOT_RECORDED"
+    },
+    "candidate_mapping_coverage": 1.0,
+    "candidate_pf": {
+      "converged": true,
+      "status": "PF_CONVERGED",
+      "subnetworks": [
+        {
+          "converged": true,
+          "error": 6.467274374231142e-10,
+          "iterations": 6,
+          "subnetwork_ordinal": 0
+        }
+      ]
+    },
+    "candidate_pf_calls": 1,
+    "comprehensive_export_files": 6,
+    "comprehensive_report_metric_rows": 22,
+    "cross_policy_report": "NOT_RUN",
+    "cross_voltage_interfaces": {
+      "interface_count": 0,
+      "mapping_coverage": "NOT_RECORDED",
+      "p_error_mw": "NOT_RECORDED",
+      "q_error_mvar": "NOT_RECORDED"
+    },
+    "first_failed_gate": "FRESH_PROCESS_REPLAY_INVALID",
+    "fresh_process_replay_pf_calls": 0,
+    "fresh_replay_timing": "NOT_RECORDED_FAILED",
+    "numeric_observation_count": 3,
+    "persisted_stop_failure_code": "RetainedAttemptError",
+    "policy_states": {
+      "BACKBONE_100": "NOT_RUN",
+      "BACKBONE_220": "NOT_RUN",
+      "BACKBONE_500": "FAILED"
+    },
+    "private_artifact_sha256": {
+      "levels/L2.nc": "a0dd2e04fa49a1acd08527663d5209ea87e08b6486539fdf0a3463754e366d52",
+      "metrics/comprehensive.json": "dd63af4e659be606ed86b36aa82a6aac4a3b3b0aea80ee1685b17a2ed5dbdf17",
+      "metrics/fidelity.json": "beb78e73cbac398d61e16779f3307958b0eb671275e5be1731f3f7f20740b524",
+      "metrics/numeric_observations.json": "4dc88e0d94ecfc1c3a8f432721034fd1c285b00895a584941d68d8fa9c93fe63",
+      "metrics/retained_fidelity.json": "ad8065044c9d3089cbffa616f863b2f08798608506a90ecf10f220fb5dd99e01",
+      "metrics/stage_timings.json": "530cc1c1bff08484710c51a0cb2891d67985f7659d864346e2e8aea8d1854067",
+      "pf/binding.json": "0a5b87546a4df74e180275e261dde19d4346c5a043c2cd36593bec173d4ff9d0",
+      "pf/candidate.json": "de72c80c5dc6a427cb176ade5c415a74aed9b40bee73a4828d3d2dc46b54f32b",
+      "pf/source.json": "c14f160d664ec3282061c7f43b4b47a823fba79fded68bffd073638b36230ae7",
+      "run_manifest.json": "bad2321fb4e732f7166bc3b8145b7606b31490a78c29bc9595ba29840a71bdb7",
+      "validation/ac_model_readiness.json": "24c40f00620a1a933d3173f731574d807cda9e3bf00ddf47b4120badf6edc649",
+      "validation/multi_voltage_structural.json": "0f4a3a26db118b9ff036a7299e8dfbc350fe4a690d857487468eaa20535c096d"
+    },
+    "private_driver_log_sha256": "349410be2737c2747da507bc44f2cde6e6888b5d8fe4a45411826e89efb33967",
+    "private_stop_sha256": "340ea6d1bd026bf6b590139595573103803334d0c93814d26d1b18063f1b877e",
+    "protected_cycle_preservation": true,
+    "retained_backbone_diagnostic_only": {
+      "bus_va_degree": {
+        "max": 0.672112746540904,
+        "p95": 0.04327341037231207,
+        "rmse": 0.027602084887974887,
+        "sample_count": 1392
+      },
+      "bus_vm_pu": {
+        "max": 0.0001294820550685749,
+        "p95": 9.154695875879248e-05,
+        "rmse": 4.957787940019917e-05,
+        "sample_count": 1392
+      },
+      "compared_branch_count": 1558,
+      "compared_bus_count": 1392,
+      "line_p_mw": {
+        "max": 3.6516512391657017,
+        "p95": 1.9477384348087756,
+        "rmse": 0.7000204348019538,
+        "sample_count": 428
+      },
+      "line_q_mvar": {
+        "max": 0.5987708903607256,
+        "p95": 0.2198713114410516,
+        "rmse": 0.12131382763633891,
+        "sample_count": 428
+      },
+      "mapping_coverage": 1.0,
+      "transformer_p_mw": {
+        "max": 7.347785465051743,
+        "p95": 0.0345473769887235,
+        "rmse": 0.3573745259714882,
+        "sample_count": 2688
+      },
+      "transformer_q_mvar": {
+        "max": 1.0975636489835168,
+        "p95": 0.08189011746757686,
+        "rmse": 0.058211299664516346,
+        "sample_count": 2688
+      }
+    },
+    "run_manifest_artifact_count": 222,
+    "source_pf": {
+      "converged": true,
+      "status": "PF_CONVERGED",
+      "subnetworks": [
+        {
+          "converged": true,
+          "error": 1.419087716618256e-09,
+          "iterations": 5,
+          "subnetwork_ordinal": 0
+        }
+      ]
+    },
+    "source_pf_calls": 1,
+    "stage_timing_seconds_diagnostic_only": {
+      "candidate_pf_end_to_end": 0.3776008749991888,
+      "candidate_pf_solver": 0.2217282920028083,
+      "candidate_reconstruction": 57.8220690839953,
+      "fidelity_evaluation": 0.14815916599764023,
+      "report_generation": 2.5654217089977465,
+      "retained_fidelity": 1.7805214999971213,
+      "source_pf_end_to_end": 0.4102086249986314,
+      "source_pf_solver": 0.23655900000449037
+    },
+    "stored_fidelity_evaluation_diagnostic_only": {
+      "accepted": false,
+      "hard_metrics": {
+        "cutset_p_max_mw": {
+          "observed": 7.347785465051743,
+          "sample_count": 1392,
+          "threshold": 37.7,
+          "unit": "MW"
+        },
+        "cutset_q_max_mvar": {
+          "observed": 1.1963330126860683,
+          "sample_count": 1392,
+          "threshold": 10.806389513775056,
+          "unit": "MVAr"
+        },
+        "loss_rel_max": {
+          "observed": 0.000110974407528934,
+          "sample_count": null,
+          "threshold": 0.02,
+          "unit": "fraction"
+        },
+        "vm_max_pu": {
+          "observed": 0.0001963802709357143,
+          "sample_count": 1527,
+          "threshold": 0.01,
+          "unit": "pu"
+        },
+        "vm_rmse_pu": {
+          "observed": 5.3780459403704873e-05,
+          "sample_count": 1527,
+          "threshold": 0.005,
+          "unit": "pu"
+        }
+      },
+      "metric_digest": "9d993017381c41750d4a18318f5e90020e9200d7552fbd6f2c3c93db90679c4a",
+      "status": "PF_FIDELITY_WITHIN_TOLERANCE",
+      "threshold_digest": "d775de9e5a66480ff61c20fe9c631bcd5a8654989df0b597736207123cff803d",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1"
+    },
+    "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+    "timing_observation_count": 6,
+    "voltage_layer_candidate_counts_unaccepted": [
+      {
+        "actual_voltage_kv": 0.32,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 1,
+        "source_bus_count": 1,
+        "source_line_count": 0,
+        "target_bus_count": 1,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 0.6,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 5,
+        "source_bus_count": 5,
+        "source_line_count": 0,
+        "target_bus_count": 5,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 0.69,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 6,
+        "source_bus_count": 6,
+        "source_line_count": 0,
+        "target_bus_count": 6,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 0.8,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 1,
+        "source_bus_count": 1,
+        "source_line_count": 0,
+        "target_bus_count": 1,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 1.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 416,
+        "source_bus_count": 416,
+        "source_line_count": 0,
+        "target_bus_count": 416,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 1.14,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 1,
+        "source_bus_count": 1,
+        "source_line_count": 0,
+        "target_bus_count": 1,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 10.5,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 2,
+        "retained_bus_count": 376,
+        "source_bus_count": 378,
+        "source_line_count": 4,
+        "target_bus_count": 376,
+        "target_line_count": 2
+      },
+      {
+        "actual_voltage_kv": 13.8,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 6,
+        "source_bus_count": 6,
+        "source_line_count": 0,
+        "target_bus_count": 6,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 15.8,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 4,
+        "source_bus_count": 4,
+        "source_line_count": 0,
+        "target_bus_count": 4,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 16.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 6,
+        "source_bus_count": 6,
+        "source_line_count": 0,
+        "target_bus_count": 6,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 18.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 9,
+        "source_bus_count": 9,
+        "source_line_count": 0,
+        "target_bus_count": 9,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 20.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 22,
+        "source_bus_count": 22,
+        "source_line_count": 0,
+        "target_bus_count": 22,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 27.5,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 6,
+        "source_bus_count": 6,
+        "source_line_count": 0,
+        "target_bus_count": 6,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 37.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 32,
+        "source_bus_count": 32,
+        "source_line_count": 0,
+        "target_bus_count": 32,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 66.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 0,
+        "retained_bus_count": 40,
+        "source_bus_count": 40,
+        "source_line_count": 0,
+        "target_bus_count": 40,
+        "target_line_count": 0
+      },
+      {
+        "actual_voltage_kv": 115.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 129,
+        "retained_bus_count": 186,
+        "source_bus_count": 315,
+        "source_line_count": 152,
+        "target_bus_count": 186,
+        "target_line_count": 23
+      },
+      {
+        "actual_voltage_kv": 230.0,
+        "preserved_identity_coverage": "NOT_RECORDED",
+        "reduced_bus_count": 4,
+        "retained_bus_count": 231,
+        "source_bus_count": 235,
+        "source_line_count": 422,
+        "target_bus_count": 231,
+        "target_line_count": 313
+      },
+      {
+        "actual_voltage_kv": 525.0,
+        "preserved_identity_coverage": 1.0,
+        "reduced_bus_count": 0,
+        "retained_bus_count": 44,
+        "source_bus_count": 44,
+        "source_line_count": 61,
+        "target_bus_count": 44,
+        "target_line_count": 61
+      }
+    ]
+  },
+  "freeze_and_lease_sha256": {
+    "attempt_004_lease": "d3271be40cc2d59da358276217904d357c73d72416e32e6ca6d45bbea8aa2ba5",
+    "original_freeze": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476",
+    "revision_2": "25394674ba28e7de013bd3cc57da080155443109b77ec7f9eba7c8d57a8d2b04",
+    "synthetic_preflight": "9889d6946219e67e4a3fd673391f05fbc993fcd4318b14204478f7099d73a8a3"
+  },
+  "package_version": "0.8.0",
+  "prestart_invocation": {
+    "log_sha256": "b28162ee1d2e91407a63108fa1507a9026421f04021899b85b8c26de0d6bd94e",
+    "output_root_created": false,
+    "pf_calls": 0,
+    "status": "PATH_RESOLUTION_ERROR_BEFORE_FREEZE_READ"
+  },
+  "replay_mismatch": {
+    "accepted_fidelity_result": "NOT_ACCEPTED_REPLAY_FAILURE",
+    "classification": "EXACT_FLOAT_METRIC_REPLAY_MISMATCH",
+    "differing_fields": [
+      {
+        "absolute_delta": 5.684341886080802e-14,
+        "metric": "passive_branch_active_abs_diff_mw",
+        "unit": "MW"
+      },
+      {
+        "absolute_delta": 1.2307049910426082e-16,
+        "metric": "passive_branch_active_relative_diff",
+        "unit": "fraction"
+      },
+      {
+        "absolute_delta": 3.637978807091713e-12,
+        "metric": "total_active_balance_abs_diff_mw",
+        "unit": "MW"
+      }
+    ],
+    "final_evidence_gate": "FAIL_CLOSED",
+    "recomputed_metric_digest": "487e793cbceb6b31825a6ba19af41f3d2c65e7146b8adb30c0f3a66f2003f35f",
+    "recomputed_threshold_digest": "d775de9e5a66480ff61c20fe9c631bcd5a8654989df0b597736207123cff803d",
+    "stored_and_recomputed_admission": "PF_FIDELITY_WITHIN_TOLERANCE",
+    "stored_metric_digest": "9d993017381c41750d4a18318f5e90020e9200d7552fbd6f2c3c93db90679c4a",
+    "stored_threshold_digest": "d775de9e5a66480ff61c20fe9c631bcd5a8654989df0b597736207123cff803d"
+  },
+  "schema": "retained-fidelity-attempt-004-public-stop/v1",
+  "source_ledger_digest": "5293db89fee4cc9e773880afe8b5a17d00b75b78aa8cb5f15697d92170976bd7",
+  "source_model_digest": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+  "source_sidecar_digest": "7fc151484448d06fe430b43a8618503a0caed123b2c9530d8b9de19afb3c6165",
+  "status": "FAIL_STOPPED_FIRST_POLICY"
+}

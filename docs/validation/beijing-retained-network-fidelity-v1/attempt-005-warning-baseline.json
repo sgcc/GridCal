@@ -1,0 +1,46 @@
+{
+  "comparison": {
+    "difference_table": null,
+    "same_dependencies": false,
+    "same_public_test_set": false,
+    "same_pytest_configuration": null,
+    "same_python": false,
+    "warning_regression": "UNRESOLVED"
+  },
+  "current_revision": {
+    "actual_locked_test_run": "NOT_RUN",
+    "implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "reason": "The exact locked runtime could not be installed offline; tests were not started.",
+    "representative_messages": null,
+    "required_python": "3.11.15",
+    "warning_categories": null,
+    "warning_sources": null,
+    "warning_total": null
+  },
+  "non_comparable_prior_report": {
+    "category_counts_retained": false,
+    "comparable_to_locked_run": false,
+    "pypsa": "1.2.4",
+    "python": "3.13.9",
+    "source": "attempt-004-canonical-metric-replay-fix-review.md",
+    "warning_total": 19766
+  },
+  "revision_2_baseline": {
+    "implementation_commit": "e1f075d9923b6ed530603eb2676eb73d1c35131a",
+    "implementation_tree": "eb9cb40f8d79bc95daccca1f4a893bcda869b6ef",
+    "public_test_set_run": "NOT_RUN",
+    "reason": "The same locked test set could not be run against Revision 2 because the locked environment artifact is unavailable offline.",
+    "required_python": "3.11.15",
+    "warning_categories": null,
+    "warning_total": null
+  },
+  "schema": "retained-fidelity-warning-baseline/v1",
+  "status": "NOT_COMPARABLE_LOCKED_RUNTIME_UNAVAILABLE",
+  "warning_regression": "UNRESOLVED",
+  "warning_scope_review": {
+    "filters_changed": false,
+    "impacting_numeric_calculation_or_evidence_integrity": "NOT_ASSESSED_BY_TESTS_IN_THIS_AUDIT",
+    "new_warning_detected": null
+  }
+}

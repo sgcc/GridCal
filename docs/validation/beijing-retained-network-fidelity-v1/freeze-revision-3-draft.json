@@ -1,0 +1,1117 @@
+{
+  "attempt004_output_rule": {
+    "historical_candidate_input_allowed": false,
+    "new_directory_required": true,
+    "output_directory_must_not_exist_before_execution": true
+  },
+  "attempt004_stop_rule": {
+    "first_failed_policy_stops_attempt": true,
+    "later_policies": "NOT_RUN",
+    "replay_runs_pf": false
+  },
+  "attempt005_authorization": {
+    "approval_required": true,
+    "attempt005_authorized": false,
+    "beijing_pf": "NOT_AUTHORIZED",
+    "candidate_materialization": "NOT_AUTHORIZED",
+    "execution_lease_issued": false,
+    "fidelity_evaluation": "NOT_AUTHORIZED",
+    "independent_freeze_review_required": true
+  },
+  "attempt005_execution_request": {
+    "call_budget_note": "Early gates or first failure reduce actual calls; no diagnostic or replay PF calls are permitted.",
+    "cross_policy_report_requires_all_prior_policy_gates": true,
+    "first_hard_failure_stops_later_policies": true,
+    "historical_candidates_reusable": false,
+    "maximum_pf_call_breakdown": {
+      "candidate_pf_once_per_policy": 3,
+      "source_pf_once_per_attempt": 1
+    },
+    "maximum_pf_calls": 4,
+    "new_private_output_directory_required": true,
+    "replay_additional_pf_calls": 0,
+    "requested_policy_order": [
+      "BACKBONE_500",
+      "BACKBONE_220",
+      "BACKBONE_100"
+    ],
+    "stage2d": "NOT_IN_SCOPE"
+  },
+  "claim_boundary_revision": {
+    "allowed_claim": "RETAINED_FIDELITY_IMPLEMENTATION_AND_SYNTHETIC_REPLAY_VALIDATED; no Beijing result accepted",
+    "beijing_pf_executed": false,
+    "physical_equivalence_claimed": false,
+    "projection_fidelity_validated": false
+  },
+  "environment_gate": {
+    "locked_test_environment": {
+      "full_package_tests": {
+        "evidence": "SUPPLIED_PRIOR_PY311_GATE_NOT_RERUN_FOR_FREEZE",
+        "failed": 0,
+        "passed": 676
+      },
+      "installed_distribution_count": 67,
+      "installed_distribution_manifest_sha256": "c6501a0d9f7725541f82e3e555283b916ae91e0c5ab954c3c5f5b96666201a1a",
+      "key_versions": {
+        "highspy": "1.15.1",
+        "hypothesis": "6.170.13",
+        "networkx": "3.6.1",
+        "numpy": "2.4.6",
+        "pandas": "3.1.0",
+        "polars": "2.1.0",
+        "pydantic": "2.14.1",
+        "pypsa": "1.2.4",
+        "pytest": "9.2.0",
+        "scipy": "1.17.1"
+      },
+      "package_import_root": "CURRENT_CHECKOUT_SRC",
+      "pypsa": "1.2.4",
+      "python": "3.11.15",
+      "uv_lock_check_offline": "PASS",
+      "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+    },
+    "python_313_source_environment": {
+      "package_import_root": "CURRENT_CHECKOUT_SRC",
+      "package_version": "0.8.0",
+      "pypsa": "1.2.4",
+      "python": "3.13.9",
+      "regression_status": "PASS_FROM_PRIOR_GATE_NOT_RERUN_FOR_FREEZE"
+    }
+  },
+  "execution_contract": {
+    "adaptive_controller": "NOT_IN_SCOPE",
+    "each_policy_restarts_from_same_immutable_S1_sidecar_ledger": true,
+    "pipeline_order": [
+      "resolve policy and union protections",
+      "existing structural simplification and planning/materialization",
+      "MappingBundle and existing structural Gate",
+      "AC readiness",
+      "existing source/candidate PF calls",
+      "PR-022 HARD evaluation",
+      "retained metrics DIAGNOSTIC_ONLY",
+      "persist artifacts",
+      "fresh-process replay"
+    ],
+    "preserve_completed_failure_evidence": true,
+    "stage2d": "NOT_IN_SCOPE",
+    "stop_on": [
+      "source/parser digest drift",
+      "protection or policy mismatch",
+      "unsupported component",
+      "structural Gate failure",
+      "AC readiness failure",
+      "evidence integrity failure"
+    ]
+  },
+  "execution_status": {
+    "ac_readiness": "NOT_RUN_FOR_NEW_CANDIDATES",
+    "adaptive_controller": "NOT_IN_SCOPE",
+    "candidate_materialization": "NOT_RUN",
+    "candidate_pf": "NOT_RUN",
+    "fidelity_evaluation": "NOT_RUN",
+    "physical_equivalence": "NOT_CLAIMED",
+    "projection_fidelity": "NOT_VALIDATED",
+    "source_pf": "NOT_RUN",
+    "stage2d": "NOT_IN_SCOPE",
+    "structural_gate": "NOT_RUN_FOR_NEW_CANDIDATES"
+  },
+  "experiment": {
+    "experiment_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1",
+    "freeze_date": "2026-11-03",
+    "scenario_order": [
+      "BACKBONE_500",
+      "BACKBONE_220",
+      "BACKBONE_100"
+    ],
+    "status": "DRAFT_PENDING_INDEPENDENT_REVIEW"
+  },
+  "fidelity_contract": {
+    "denominator_floors": {
+      "loss_mw": 1e-06,
+      "p_mw": 1e-06,
+      "q_mvar": 1e-06
+    },
+    "diagnostic_only_metrics": [
+      "vm_p95_pu",
+      "angle_rmse_deg",
+      "angle_p95_deg",
+      "angle_max_deg",
+      "branch_p_rmse_mw",
+      "branch_p_p95_mw",
+      "branch_p_max_mw",
+      "branch_q_rmse_mvar",
+      "branch_q_p95_mvar",
+      "branch_q_max_mvar",
+      "cutset_p_rmse_mw",
+      "cutset_q_rmse_mvar",
+      "cluster_injection_p_rmse_mw",
+      "cluster_injection_p_max_mw",
+      "cluster_injection_q_rmse_mvar",
+      "cluster_injection_q_max_mvar",
+      "passive_branch_active_loss_absolute_error_mw",
+      "runtime_ratio_s4_over_s1"
+    ],
+    "evaluation_in_this_freeze": "NOT_RUN",
+    "frozen_before_real_case": true,
+    "hard_thresholds": {
+      "cutset_p_max_absolute_error_mw": "max(5 MW, 0.01 * bound S1 reference magnitude)",
+      "cutset_q_max_absolute_error_mvar": "max(5 MVAr, 0.02 * bound S1 reference magnitude)",
+      "mapping_coverage_fraction": 1.0,
+      "passive_branch_active_loss_relative_error_max": 0.02,
+      "preserved_comparison_coverage_fraction": 1.0,
+      "source_pf_converged": true,
+      "target_pf_converged": true,
+      "vm_max_absolute_error_pu": 0.01,
+      "vm_rmse_pu_max": 0.005
+    },
+    "metric_policy_digest": "745cdb4b5cdb6d8547e1ac9139be988b6cd393b9e1f7838bfb245aa32f6db5ad",
+    "retained_network_additions": "DIAGNOSTIC_ONLY; DO_NOT_CHANGE_PR022_PASS_FAIL_OR_ADMISSION",
+    "threshold_artifact_path": "packages/psdcalc-reduction/src/psdcalc/reduction/resources/pr022-beijing-threshold-set-v1.json",
+    "threshold_artifact_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+    "threshold_version": 1,
+    "thresholds_are_project_limits_not_standards": true
+  },
+  "freeze_revision": 3,
+  "freeze_revision_parent": {
+    "path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-2.json",
+    "revision": 2,
+    "sha256": "25394674ba28e7de013bd3cc57da080155443109b77ec7f9eba7c8d57a8d2b04",
+    "status": "FROZEN_NOT_EXECUTED"
+  },
+  "freeze_revision_schema": "beijing-retained-fidelity-freeze-revision/v2",
+  "freeze_revision_status": "DRAFT_PENDING_INDEPENDENT_REVIEW",
+  "historical_integrity": {
+    "attempt_004_canonical_fix_report_modified": false,
+    "attempt_004_lease_modified": false,
+    "attempt_004_replay_failure_classification": "EXACT_FLOAT_METRIC_REPLAY_MISMATCH",
+    "attempt_004_status_remains": "FAIL_STOPPED_FIRST_POLICY",
+    "attempt_004_stop_evidence_modified": false,
+    "attempt_004_stop_summary_json_sha256": "866221a956a2100a58b279e2d0386c4766d741295530f94244222a5e8e06c6f5",
+    "attempt_004_stop_summary_markdown_sha256": "d5490357a9c947ac97c73ab81ae7bfd68db226f8f0f92dafc30f46484a1b5fdf",
+    "attempts_001_003_modified": false,
+    "revision_2_modified": false
+  },
+  "implementation_baseline": {
+    "branch": "codex/psdcalc-phase1-base",
+    "commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+    "package": "psdcalc-reduction",
+    "package_version": "0.8.0",
+    "parent": "e16de2fb2d6a5f96246b1e47f361bb0d897607e5",
+    "source_pr_head": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+    "source_pr_url": "https://github.com/sgcc/GridCal/pull/15",
+    "supported_python": ">=3.11,<3.14",
+    "tree": "541a3fd05914db30fe63482e81fe58273ed82ef9"
+  },
+  "implementation_revision": {
+    "authority": "DRAFT_REVISION_3_POST_MERGE_REBIND_FOR_INDEPENDENT_REVIEW",
+    "diagnostic_classification_changed": false,
+    "float_type_changed": false,
+    "formula_changed": false,
+    "frozen_metric_source_sha256_unchanged": true,
+    "hard_thresholds_changed": false,
+    "historical_attempt004_promoted": false,
+    "implementation_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+    "implementation_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+    "mapping_or_reduction_semantics_changed": false,
+    "metric_fields_or_digest_contract_changed": false,
+    "metrics_source_sha256": "2f0bc8ad6ea9f6ac350bf4c6541327fbb6e11fdddfe501917e27a5d6b08dba26",
+    "parent_revision": 2,
+    "pf_executor_or_parameters_changed": false,
+    "prior_draft_implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "prior_draft_implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "production_content_equivalence": "PASS_FOR_FROZEN_SCOPE_WITH_DISCLOSED_REPORTING_EXPORT_OMISSION",
+    "scope_notes": [
+      "Merge tree equals PR #15 final head tree; the merge commit has new Git identity but same implementation snapshot.",
+      "metrics.py SHA-256 is unchanged from the old draft.",
+      "Duplicate PF evidence writer/reader definitions were removed; canonical definitions remain.",
+      "reporting/__init__.py omits comprehensive_history exports because that historical archive module was excluded; disclosed public-export difference is outside frozen PF metric/replay scope and needs independent interface review."
+    ],
+    "source_pr_head": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+    "summation_primitive_changed": false,
+    "units_or_denominator_floor_changed": false
+  },
+  "input_identity": {
+    "anonymous_source_alias": "BEIJING_AC_ONLY",
+    "base_resolved_protection_digest": "45a7be7cfa3070507c8c8615a4676a6c7ed4b0b04ee1c571f27fcb4d14186f38",
+    "map_input": "NOT_REQUIRED_FOR_FROZEN_PARSE",
+    "reference_input_sha256": "16af4d50f2fb57fa61185837e5c11140b2d0768f7ef7fcef6b5af3c897b549b6",
+    "source_dat_bytes": 423223,
+    "source_dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+    "source_ledger_digest": "5293db89fee4cc9e773880afe8b5a17d00b75b78aa8cb5f15697d92170976bd7",
+    "source_model_digest": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+    "source_semantic_signature_unchanged": true,
+    "source_sidecar_digest": "7fc151484448d06fe430b43a8618503a0caed123b2c9530d8b9de19afb3c6165"
+  },
+  "operating_point": {
+    "control_retuning": false,
+    "digest": "334a7275a2e837722016db2b732d23e2c30ce392e3b1f592ade5d5f995706c1e",
+    "redispatch": false,
+    "snapshot": "now",
+    "source_active_status_preserved": true,
+    "source_device_schedule_digest": "f01eaab395ab2e692d86ec290bf6159df3fb4e7ca1311b52487849f4308754ca",
+    "source_dispatch_and_device_schedules": "PRESERVE_EXACT_SOURCE_PROJECTION",
+    "source_topology_digest": "706719ce503a4e5744b571ece1ff72776e778578c7fdf6e665a8315ed04b8b67",
+    "tap_or_phase_shift_optimization": false
+  },
+  "original_freeze_sha256": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476",
+  "output_contract": {
+    "anonymous_result_root": "docs/validation/beijing-retained-fidelity-v1/",
+    "cross_policy_index_formats": [
+      "JSON",
+      "Markdown",
+      "CSV"
+    ],
+    "freeze_json": "docs/validation/beijing-retained-fidelity-v1-freeze.json",
+    "freeze_markdown": "docs/validation/2026-11-03-beijing-retained-fidelity-v1-freeze.md",
+    "per_policy_result_formats": [
+      "JSON",
+      "Markdown"
+    ],
+    "private_raw_artifacts_committed": false
+  },
+  "parser_provenance": {
+    "execution_must_verify_content_manifest": true,
+    "manifest": [
+      {
+        "path": "VeraGridEngine/IO/psd/__init__.py",
+        "sha256": "5183f53044ad825059d0b496585f7f2720b985787df8942772172d1a012c5fa0"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/api.py",
+        "sha256": "45ac3acca1e40dcd8c6b5ec766f81af6efe5e88c29486848db4ed49a80d6b142"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/builders/topology_validator.py",
+        "sha256": "d735a886500075127ffc7df23cede63f7dae8afce70a81c85f86b4cf162f5437"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/builders/transformer3w_builder.py",
+        "sha256": "3f3b82c2bdcad32cc25b56cf57a25f13129ea6f1a993151858a190929c55c7ed"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/dat/__init__.py",
+        "sha256": "9235dc6eb49f15ae94d47004b4674f0c28eb4dd328bce085660609c6ac88bc61"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/dat/parser.py",
+        "sha256": "93b017cb5609857003996b6327a000b70f1da3a3efcf0b64ee534d8605a17e40"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/diagnostics.py",
+        "sha256": "09502af586aef49a33be6d7b774c838768f28a0f4c5c14f91f590c5ee2b1ac89"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/legacy_records.py",
+        "sha256": "ef5e5cd212997d1825f5f2fb7899ab436111c9c3de2c50c7a564761461dfb174"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/map/__init__.py",
+        "sha256": "1df61ae2e75111e94d057d82739c953b223f8aec870bae194252e4c44085d148"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/map/parser.py",
+        "sha256": "1b6c3dbc5640b417a5a21a4f72a0f07292a5f9c85393f25040ed33d038b0d5e4"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/map/reference_parser.py",
+        "sha256": "fbbb9bbcdcacb713628c712bedea693bdd975a5ed8af3cac2d71c445accfecf7"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/model/__init__.py",
+        "sha256": "39e4e0b8c04cd1024511093cf849df3ad4e47f9cc5b24e2deee667ed5125976e"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/model/case.py",
+        "sha256": "4952269b5bf4058ce0a9b018ce6abc17fa927a90a4188214fc34a578e1ec40e1"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/model/provenance.py",
+        "sha256": "11650718e7ef837ed25c7c3fd83eafc3f7723850e8d7e6379023ae705d5e1780"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/model/results.py",
+        "sha256": "8dcf124e1e8caf70d319226ee85f96d178c41acd8236ddaecce9d32746d7c922"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/options.py",
+        "sha256": "1e7b572177ac15bec326cd67d5806362120222936d004105dd3011d6d9f7cfc7"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/raw/__init__.py",
+        "sha256": "897d992fb16e208db1bf7864afed89e2052d60e80e2ccc1d1daed27376e62f7e"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/raw/fixed_width.py",
+        "sha256": "b01c373a26b6ca6fb49440493075ddbd7f0044f82e509f5178bc2d8e3c18a18c"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/ref/__init__.py",
+        "sha256": "f441b79fe1bf152d0798942875b67624e1ab4f48a7b6ad69368680af9b25ae95"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/ref/parser.py",
+        "sha256": "d8fe565d277fe534ef494fb667d2911cdea45251b5d789e99307831a84ed4ebd"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/ref/reference_parser.py",
+        "sha256": "e6dd50f932cf9c16f2dc3c78637f530faf2f30d254c8a6b5b7491533230f5a21"
+      },
+      {
+        "path": "VeraGridEngine/IO/psd/ref/state_audit.py",
+        "sha256": "da2e37b76d4c95edd995543dd7b6a89d632afeec61002c170cb7a552acddb5e4"
+      }
+    ],
+    "manifest_file_count": 22,
+    "manifest_sha256": "609458cff5e87e710261ba5dbad9ba82872e0dfe9b832de4d20a13a2f950a596",
+    "parser_environment": {
+      "dependency_lock_equivalence": "NOT_ESTABLISHED",
+      "pypsa": "1.2.4",
+      "python": "3.11.15",
+      "role": "STATIC_PSDCASE_PARSE_ONLY"
+    },
+    "repository_commit": "0ad2dd941ab6941afe0e4eda51f2c607278fb38a",
+    "repository_tree": "60675f1e2b6902b5899c6826043a762e5085e2c6",
+    "some_parser_files_untracked_in_parser_checkout": true
+  },
+  "patch_review_evidence": {
+    "commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "evidence_source": "attempt-004-canonical-metric-replay-fix-review.md",
+    "files_changed_by_fix_commit": [
+      "packages/psdcalc-reduction/src/psdcalc/reduction/fidelity/metrics.py",
+      "packages/psdcalc-reduction/tests/test_pf_metrics.py",
+      "packages/psdcalc-reduction/tests/test_retained_fidelity_attempt_driver.py",
+      "docs/validation/beijing-retained-network-fidelity-v1/attempt-004-canonical-metric-replay-fix-review.md"
+    ],
+    "status": "PASS_PER_COMMITTED_REVIEW_REPORT",
+    "tree": "66c897e6357f09b3dff690166cfdfff96843cf75"
+  },
+  "pf_executor": {
+    "contract_digest": "221369358669457b9ebe013fb6443fdff008585b93d718f302ad814df3e29ac6",
+    "distribute_slack": false,
+    "extra_pf_calls_for_diagnostics": 0,
+    "max_iterations": "PYPSA_1.2.4_PUBLIC_DEFAULT",
+    "name": "PypsaAcPowerFlowExecutor",
+    "pf_execution_in_this_freeze": "NOT_RUN",
+    "public_api": "pypsa.Network.pf",
+    "slack_weights": "SOURCE_P_SET_DEFAULT",
+    "solver": "pypsa.newton_raphson",
+    "tolerance": 1e-08,
+    "use_seed": false
+  },
+  "planner_execution": "NOT_RUN",
+  "policies": [
+    {
+      "effective_protection_digest": "90fa5fcaa497ae096f9d8aa13d1ecf5142bcf1a4b6ad5c0877f5e57ed579c1d3",
+      "full_config_digest_symbolic_paths": "91ef3af77fd8b2b279064bdf4c74d8db6040b94aec95ef2143eabb2439096eaa",
+      "parallel_corridor_evidence": {
+        "cycle_flags_are_mutually_exclusive": false,
+        "parallel_mandatory_singleton_bus_count": 158,
+        "parallel_multiplicity_on_simple_cycle_count": 103,
+        "parallel_only_cycle_corridor_count": 91,
+        "protected_parallel_corridor_count": 91,
+        "source_parallel_corridor_count": 194
+      },
+      "planner_request": {
+        "aggregate_one_ports": [
+          "Load"
+        ],
+        "algorithm": "pypsa_modularity",
+        "connectivity_policy": "reject",
+        "parallel_corridors_policy": "preserve_protected_members",
+        "per_layer_override": {},
+        "seed": 17,
+        "target_total_clusters": 1392,
+        "topology_mode": "keep_transformer_interface"
+      },
+      "planning_or_candidate_result": "NOT_RUN",
+      "policy_id": "BACKBONE_500",
+      "requested_cutoff_kv": 500.0,
+      "resolved_compressible_layers_kv": [
+        0.32,
+        0.6,
+        0.69,
+        0.8,
+        1.0,
+        1.14,
+        10.5,
+        13.8,
+        15.8,
+        16.0,
+        18.0,
+        20.0,
+        27.5,
+        37.0,
+        66.0,
+        115.0,
+        230.0
+      ],
+      "resolved_policy_fingerprint": "9bc79f4ffc72574e402701b965009b4b53ef2868f3ffcfe3d48dce0d457ee11a",
+      "resolved_protection_counts": {
+        "anchors": 1341,
+        "cutoff_only_protection_counts": "NOT_RECORDED",
+        "protected_lines": 214,
+        "protected_parallel_corridors": 91,
+        "strict_singletons": 376
+      },
+      "resolved_retained_layers_kv": [
+        525.0
+      ],
+      "retained_source_backbone_inventory": {
+        "bus_count": 44,
+        "line_count": 61,
+        "note": "Source objects on retained voltage layers; not final target counts or accepted compression results."
+      },
+      "semantic_config_digest": "37e33807332de8db1c7091bad2dbc07a12be0011a219a765004d97c7d9bf9f22"
+    },
+    {
+      "effective_protection_digest": "7baecd611eb313e90255c8bbcda68ff90ee3d294ac07a6449a5b760e0749bb77",
+      "full_config_digest_symbolic_paths": "9a12fc191d7142dd9b3262f57556b8656eb0169554d5ba1d975118a21d2c1531",
+      "parallel_corridor_evidence": {
+        "cycle_flags_are_mutually_exclusive": false,
+        "parallel_mandatory_singleton_bus_count": 292,
+        "parallel_multiplicity_on_simple_cycle_count": 103,
+        "parallel_only_cycle_corridor_count": 91,
+        "protected_parallel_corridor_count": 194,
+        "source_parallel_corridor_count": 194
+      },
+      "planner_request": {
+        "aggregate_one_ports": [
+          "Load"
+        ],
+        "algorithm": "pypsa_modularity",
+        "connectivity_policy": "reject",
+        "parallel_corridors_policy": "preserve_protected_members",
+        "per_layer_override": {},
+        "seed": 17,
+        "target_total_clusters": 1392,
+        "topology_mode": "keep_transformer_interface"
+      },
+      "planning_or_candidate_result": "NOT_RUN",
+      "policy_id": "BACKBONE_220",
+      "requested_cutoff_kv": 220.0,
+      "resolved_compressible_layers_kv": [
+        0.32,
+        0.6,
+        0.69,
+        0.8,
+        1.0,
+        1.14,
+        10.5,
+        13.8,
+        15.8,
+        16.0,
+        18.0,
+        20.0,
+        27.5,
+        37.0,
+        66.0,
+        115.0
+      ],
+      "resolved_policy_fingerprint": "d1e41e3787653b83050758f352f86d6847514b207818ad84a393c3886127840d",
+      "resolved_protection_counts": {
+        "anchors": 1341,
+        "cutoff_only_protection_counts": "NOT_RECORDED",
+        "protected_lines": 498,
+        "protected_parallel_corridors": 194,
+        "strict_singletons": 446
+      },
+      "resolved_retained_layers_kv": [
+        230.0,
+        525.0
+      ],
+      "retained_source_backbone_inventory": {
+        "bus_count": 279,
+        "line_count": 483,
+        "note": "Source objects on retained voltage layers; not final target counts or accepted compression results."
+      },
+      "semantic_config_digest": "5c224eeb145b3b78cae1a7ab6b8fc9a4658ba16002bd56773cbf4b4552901a4e"
+    },
+    {
+      "effective_protection_digest": "c40fd93c94c8f6e059df74cdab9f9f71de709041c8cd33c78d24a2bc967aa119",
+      "full_config_digest_symbolic_paths": "d1f155690cb32aecf84f1e4b7b2e2ef7c2f626fa9123b985aecfb960b5e21a0f",
+      "parallel_corridor_evidence": {
+        "cycle_flags_are_mutually_exclusive": false,
+        "parallel_mandatory_singleton_bus_count": 552,
+        "parallel_multiplicity_on_simple_cycle_count": 103,
+        "parallel_only_cycle_corridor_count": 91,
+        "protected_parallel_corridor_count": 194,
+        "source_parallel_corridor_count": 194
+      },
+      "planner_request": {
+        "aggregate_one_ports": [
+          "Load"
+        ],
+        "algorithm": "pypsa_modularity",
+        "connectivity_policy": "reject",
+        "parallel_corridors_policy": "preserve_protected_members",
+        "per_layer_override": {},
+        "seed": 17,
+        "target_total_clusters": 1392,
+        "topology_mode": "keep_transformer_interface"
+      },
+      "planning_or_candidate_result": "NOT_RUN",
+      "policy_id": "BACKBONE_100",
+      "requested_cutoff_kv": 100.0,
+      "resolved_compressible_layers_kv": [
+        0.32,
+        0.6,
+        0.69,
+        0.8,
+        1.0,
+        1.14,
+        10.5,
+        13.8,
+        15.8,
+        16.0,
+        18.0,
+        20.0,
+        27.5,
+        37.0,
+        66.0
+      ],
+      "resolved_policy_fingerprint": "620dc3dba2b46e65ea7dd6cccb5b64d9b70897c9f284fa2527977829e77ea0fd",
+      "resolved_protection_counts": {
+        "anchors": 1341,
+        "cutoff_only_protection_counts": "NOT_RECORDED",
+        "protected_lines": 635,
+        "protected_parallel_corridors": 194,
+        "strict_singletons": 748
+      },
+      "resolved_retained_layers_kv": [
+        115.0,
+        230.0,
+        525.0
+      ],
+      "retained_source_backbone_inventory": {
+        "bus_count": 594,
+        "line_count": 635,
+        "note": "Source objects on retained voltage layers; not final target counts or accepted compression results."
+      },
+      "semantic_config_digest": "f4711573087fce3688f0e22addf38f63ceb687a9f709633b4a23bc9556454990"
+    }
+  ],
+  "post_merge_rebinding": {
+    "attempt005_execution_request_comparison": "UNCHANGED_FROM_PRE_MERGE_REVISION_3_DRAFT; field did not exist in Revision 2",
+    "dependency_lock_path": "packages/psdcalc-reduction/uv.lock",
+    "dependency_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "frozen_contract_comparison": {
+      "attempt004_stop_rule": "UNCHANGED_FROM_REVISION_2",
+      "execution_contract": "UNCHANGED_FROM_REVISION_2",
+      "fidelity_contract": "UNCHANGED_FROM_REVISION_2",
+      "operating_point": "UNCHANGED_FROM_REVISION_2",
+      "pf_executor": "UNCHANGED_FROM_REVISION_2",
+      "policies": "UNCHANGED_FROM_REVISION_2",
+      "retained_metric_contract": "UNCHANGED_FROM_REVISION_2"
+    },
+    "historical_ci_and_review": {
+      "formal_github_review_record": "NONE",
+      "pylint_executed": false,
+      "pylint_python_3_8": "SETUP_FAILED_UBUNTU_26_04_PYTHON_UNAVAILABLE",
+      "pylint_python_3_9_3_10": "CANCELLED"
+    },
+    "merge_method": "NORMAL_TWO_PARENT_MERGE",
+    "merge_tree_equals_pr_head_tree": true,
+    "pr022_threshold_path": "packages/psdcalc-reduction/src/psdcalc/reduction/resources/pr022-beijing-threshold-set-v1.json",
+    "pr022_threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+    "pr022_threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "pr_number": 15,
+    "pr_state": "MERGED",
+    "pr_url": "https://github.com/sgcc/GridCal/pull/15",
+    "production_source_sha256": {
+      "packages/psdcalc-reduction/experiment_tools/__init__.py": "e1567df305d68b7c3c8e6604a22e75826c7a251e73e0069672ecb5a6b4f6f1ec",
+      "packages/psdcalc-reduction/experiment_tools/retained_fidelity_attempt_cli.py": "80c251dacfed2519933c00e189561209034e808a3b76be15367cb856ac27355a",
+      "packages/psdcalc-reduction/experiment_tools/retained_fidelity_driver.py": "36832348f084341ce6381b81510a2a85ac434c83feaa19828f85aaa9060b1edb",
+      "packages/psdcalc-reduction/experiment_tools/retained_fidelity_outputs.py": "e0078c72ec06e5e11ab9612fbf101a618c330ac323030811dddccc58aa5af6e4",
+      "packages/psdcalc-reduction/experiment_tools/retained_pf_evidence.py": "4e37992ee5559322911aa6bdd79ae2a68af519bc629d74061f4526daf7666255",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/__init__.py": "44293e32e33fcc292beb0b1c5f70979e067cb97567ecd5d9453499ceffac8934",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/candidates.py": "70b9f754ffad574747cf48c064f427023997ed72f200e43025abdc41b4a92dbd",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/controller.py": "859bee31295e9880d2f2473e96f5d0fd22304da901eed07206b1e5c854853dfa",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/evidence.py": "fdda6ef5ea2ccd4f418e04e279f8fdd3397a03b7985d8d257b426f0ffe0a7b89",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/observations.py": "93c55cc284e95b0410a5c559106493a5c84003accc0b34b60a2fd176017003ec",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/pypsa_runtime.py": "aff8d7088afd685b101031fd66eba12ebf183f440254f435d019e40b6b17eef6",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/core/artifact_store.py": "70b09d5842aba454367835ff1fde2bdb960268a87312b878526098d0fbb780bd",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/core/manifests.py": "64d56cb8599a7db259fee1599790aea2ab9fd245d8ba68d43beace20f2d8e2c7",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/fidelity/metrics.py": "2f0bc8ad6ea9f6ac350bf4c6541327fbb6e11fdddfe501917e27a5d6b08dba26",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/fidelity/pypsa_executor.py": "920207daf0a8d4e5962b39558c22611f1bfa0a1c8054550b253469812e48f972",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/__init__.py": "bf9d81cd3b497432986a14d28b91f334f48e1da8ae70d574e0b86ef8fb53a87c",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/comprehensive.py": "b4657f07315f52572cb234879b097b75980a25e84226231add7ceb74547a1a00",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/comprehensive_builder.py": "2203d81a432df6d5447c7811780ebc6e42913550f3e469d1ca8f00049a331ee8",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/comprehensive_export.py": "d6ed136795ce08c62d90909abab5fabbfd5cea8531c2081741963886883d66a6",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/retained_fidelity.py": "7cec95dc54246fbdca9ce07ac73aee0f384b45ce2b0e5812ac4038782ead3b9d",
+      "packages/psdcalc-reduction/src/psdcalc/reduction/resources/comprehensive-report.schema.json": "51cec9d24cbff443718e7ae543529668b6c015ffd9df1d142117bd2ca1dcfa82"
+    },
+    "reporting_export_difference": {
+      "classification": "DISCLOSED_PUBLIC_EXPORT_SURFACE_DIFFERENCE_OUTSIDE_FROZEN_CALCULATION_SCOPE",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/__init__.py",
+      "review_required": true
+    },
+    "revision2_sha256": "25394674ba28e7de013bd3cc57da080155443109b77ec7f9eba7c8d57a8d2b04",
+    "source_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+    "source_parent_1": "e16de2fb2d6a5f96246b1e47f361bb0d897607e5",
+    "source_parent_2": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+    "source_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+    "status": "DRAFT_PENDING_INDEPENDENT_REVIEW",
+    "superseded_original_freeze_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+    "target_branch": "codex/psdcalc-phase1-base",
+    "test_source_sha256": {
+      "packages/psdcalc-reduction/tests/test_adaptive_numeric_observations.py": "704bc612de1f8be8b1e3ef6daaad23683437d4284366a55b721305195ada836d",
+      "packages/psdcalc-reduction/tests/test_adaptive_persistence_stage5.py": "9ff78e23e6d3c0f84efecacfbbc9ac73dec3bf785d68eb0dcf9b08c9f8dd5656",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_builder.py": "07d41ef6dae26292eb4a6b04de2cf6612221796a249d1d0e2fe331079efc9a19",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_contracts.py": "9f384005d793497c12f4e5cae7c90a544919f0f23bed0a2fd5904f56c8e22bad",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_export.py": "ecb13819aa0da582dbcbb7309c4eeae1c9907a86c8068d23fcba5248d503e3bb",
+      "packages/psdcalc-reduction/tests/test_pf_metrics.py": "e70253f5236abf97b1294fc4bb4013e8943322e46d3730a76a9cf936e28dbfae",
+      "packages/psdcalc-reduction/tests/test_retained_fidelity_attempt_driver.py": "17cd5d628a52a6bf8f134b94cbd2039cfc5800b1958f0c38652db4e1beba6cf8",
+      "packages/psdcalc-reduction/tests/test_retained_network_fidelity.py": "5c2d4126685ddb32e0d6df00903f014ca5acaba994e71e55c58eb7ddd27b1bf0",
+      "packages/psdcalc-reduction/tests/test_retained_pf_driver_evidence.py": "ebbc0684d48b841ff0e2613f57ac3b0211619e03f7f9f0854a21c840060eefaa"
+    }
+  },
+  "preparation_runtime_environment": {
+    "environment_note": "The recorded full-suite run used Python 3.13.9; the frozen execution environment remains the Python 3.11.15 lock-bound environment and must be revalidated at execution preflight.",
+    "lock_compatible_check": "PASS_FROM_PRIOR_FIX_REVIEW",
+    "lock_path": "packages/psdcalc-reduction/uv.lock",
+    "lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "locked_attempt_runtime": {
+      "highspy": "1.15.1",
+      "networkx": "3.6.1",
+      "numpy": "2.4.6",
+      "pandas": "3.1.0",
+      "polars": "2.1.0",
+      "pydantic": "2.14.1",
+      "pypsa": "1.2.4",
+      "python": "3.11.15",
+      "scipy": "1.17.1",
+      "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+    },
+    "locked_version_differences_in_current_dev_env": {
+      "networkx": {
+        "current": "3.7",
+        "locked": "3.6.1"
+      },
+      "numpy": {
+        "current": "2.5.4",
+        "locked": "2.4.6"
+      },
+      "scipy": {
+        "current": "1.18.1",
+        "locked": "1.17.1"
+      }
+    },
+    "test_hypothesis": "6.170.13",
+    "test_networkx": "3.7",
+    "test_numpy": "2.5.4",
+    "test_pandas": "3.1.0",
+    "test_pydantic": "2.14.1",
+    "test_pypsa": "1.2.4",
+    "test_pytest": "9.2.0",
+    "test_python": "3.13.9",
+    "test_scipy": "1.18.1"
+  },
+  "privacy": {
+    "absolute_local_paths_committed": false,
+    "device_names_or_stable_ids_committed": false,
+    "private_host_or_user_identity_committed": false,
+    "raw_model_or_cards_committed": false
+  },
+  "report_revision": {
+    "adaptive_evaluations_fabricated": false,
+    "candidate_provenance_schema": "retained-fidelity-candidate-provenance/v1",
+    "comprehensive_schema": "psdcalc-comprehensive-reduction-report/v1",
+    "comprehensive_schema_sha256": "51cec9d24cbff443718e7ae543529668b6c015ffd9df1d142117bd2ca1dcfa82",
+    "cross_policy_schema": "retained-fidelity-cross-policy/v1",
+    "numeric_observation_schema": "adaptive-numeric-observations/v1",
+    "numeric_observations_are_experiment_projection": true,
+    "report_export_files": [
+      "comprehensive.json",
+      "comprehensive.md",
+      "comprehensive-metrics.csv",
+      "comprehensive-voltage-layers.csv",
+      "comprehensive-retained-fidelity.csv",
+      "comprehensive-policy-comparison.csv"
+    ],
+    "stage_timing_schema": "retained-fidelity-stage-timings/v1"
+  },
+  "retained_metric_contract": {
+    "canonical_sha256": "e8ed3e40e9cde4f8c4b9ebef6712cc846379f386d9b7e10d1f1134cf811c200b",
+    "contract_id": "retained-network-metrics/v1",
+    "eligibility": "ONLY_OBJECTS_WITH_PRESERVED_IDENTITY_AND_FINAL_MAPPING",
+    "groups": [
+      "WHOLE_NETWORK",
+      "RETAINED_BACKBONE",
+      "CROSS_VOLTAGE_INTERFACES",
+      "AGGREGATED_REGION"
+    ],
+    "metrics": {
+      "all_metric_rows_bind": [
+        "unit",
+        "sample_count",
+        "mapping_coverage",
+        "source_identity",
+        "target_identity",
+        "optional_threshold",
+        "status"
+      ],
+      "cross_voltage_interfaces": [
+        "direction-normalized P/Q value and error",
+        "region net injection P/Q error"
+      ],
+      "retained_bus": [
+        "Vm max/RMSE/P95 (pu)",
+        "Va max/RMSE/P95 (deg; reference-aligned)"
+      ],
+      "retained_line_terminal": [
+        "P and Q max/RMSE/P95 (MW/MVAr; both ends)"
+      ],
+      "retained_transformer_terminal": [
+        "P and Q max/RMSE/P95 (MW/MVAr; both ends)"
+      ]
+    },
+    "missing_data": [
+      "NOT_RECORDED",
+      "NOT_AVAILABLE"
+    ],
+    "no_aggregate_back_inference": true,
+    "three_winding_t_leg_deduplication": "BY_PHYSICAL_OR_INTERFACE_IDENTITY; KEEP_LEG_ROWS_DISTINCT_FROM_PHYSICAL_UNITS"
+  },
+  "runtime_environment_revision": {
+    "highspy": "1.15.1",
+    "networkx": "3.6.1",
+    "numpy": "2.4.6",
+    "pandas": "3.1.0",
+    "polars": "2.1.0",
+    "pydantic": "2.14.1",
+    "pypsa": "1.2.4",
+    "python": "3.11.15",
+    "scipy": "1.17.1",
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+  },
+  "schema_and_replay": {
+    "comprehensive_report_schema": "psdcalc-comprehensive-reduction-report/v1",
+    "comprehensive_report_schema_sha256": "51cec9d24cbff443718e7ae543529668b6c015ffd9df1d142117bd2ca1dcfa82",
+    "fresh_process_replay_required": true,
+    "mismatch_behavior": "FAIL_CLOSED",
+    "numeric_observation_schema": "adaptive-numeric-observations/v1",
+    "numeric_replay_tolerance": {
+      "absolute": 1e-12,
+      "relative": 1e-10
+    },
+    "replay_checks": [
+      "artifact content hashes",
+      "source/target semantic digests",
+      "MappingBundle digest",
+      "threshold file SHA",
+      "resolved threshold payload/digest",
+      "numeric metric digest",
+      "schema versions"
+    ],
+    "replay_runs_pf": false,
+    "timing_values_participate_in_numeric_equality": false
+  },
+  "schema_version": "retained-network-fidelity-experiment-freeze/v1",
+  "source_inventory": {
+    "bus": 1527,
+    "generator": 56,
+    "line": 639,
+    "link": 0,
+    "load": 219,
+    "physical_transformer_group_basis": {
+      "three_winding": 416,
+      "two_winding": 96
+    },
+    "physical_transformer_groups": 512,
+    "projected_transformer_leg_rows": 1344,
+    "projected_transformer_leg_rows_are_not_physical_units": true,
+    "shunt_impedance": 135,
+    "snapshots": [
+      "now"
+    ],
+    "voltage_layers_kv": [
+      0.32,
+      0.6,
+      0.69,
+      0.8,
+      1.0,
+      1.14,
+      10.5,
+      13.8,
+      15.8,
+      16.0,
+      18.0,
+      20.0,
+      27.5,
+      37.0,
+      66.0,
+      115.0,
+      230.0,
+      525.0
+    ]
+  },
+  "static_parse_gate": {
+    "ac_only": true,
+    "dat_line_count": 5114,
+    "immutable_source_check": "PASS",
+    "known_dc_card_count": 0,
+    "l_plus_source_card_associations": 9,
+    "l_plus_terminal_associations": 18,
+    "parse_dc": false,
+    "sidecar_row_count": 3920,
+    "source_line_rows": 639,
+    "source_namespace": "ANONYMOUS_SOURCE_CASE",
+    "status": "PASS",
+    "unsupported_active_card_prefix_count": 0
+  },
+  "superseded_pre_merge_binding": {
+    "authority": "SUPERSEDED_BY_POST_MERGE_REBIND_DRAFT; exact former draft retained byte-for-byte",
+    "freeze_json_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+    "implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "test_driver_sha256": "0d50c6549439c65fcb3b76c710811c70aaea13fea2029691f3cd25ee2c3dab53",
+    "test_pf_metrics_sha256": "e70253f5236abf97b1294fc4bb4013e8943322e46d3730a76a9cf936e28dbfae",
+    "test_repair_commit": "32006039913aecb4ba9c46fc1b24e5e0a07b8014",
+    "test_repair_tree": "740b93010b6d8cd53fe97ba87f4115269e531e05"
+  },
+  "superseded_pre_merge_test_evidence": {
+    "additional_real_grid_pf_calls": 0,
+    "canonical_order_test_rerun": {
+      "failed": 0,
+      "passed": 1
+    },
+    "compileall": "PASS",
+    "dependency_lock": "PASS",
+    "evidence_json_source": "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-source-drift-test-repair-review.json",
+    "evidence_source": "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-source-drift-test-repair-review.md",
+    "focused_regression": {
+      "failed": 0,
+      "passed": 192,
+      "warnings": 4479
+    },
+    "full_package_suite": {
+      "failed": 0,
+      "passed": 695,
+      "pypsa": "1.2.4",
+      "python": "3.11.15",
+      "source_commit": "32006039913aecb4ba9c46fc1b24e5e0a07b8014",
+      "source_tree": "740b93010b6d8cd53fe97ba87f4115269e531e05",
+      "warnings": 20671
+    },
+    "git_diff_check": "PASS",
+    "hard_admission": {
+      "failed": 0,
+      "passed": 22,
+      "status": "PASS"
+    },
+    "historical_attempt004_evidence_changed": false,
+    "matched_source_three_policy_execution": {
+      "candidate_pf_status": "PF_CONVERGED",
+      "policies": [
+        "BACKBONE_500",
+        "BACKBONE_220",
+        "BACKBONE_100"
+      ],
+      "status": "PASS"
+    },
+    "runtime_snapshot": {
+      "highspy": "1.15.1",
+      "hypothesis": "6.170.13",
+      "networkx": "3.6.1",
+      "numpy": "2.4.6",
+      "pandas": "3.1.0",
+      "platform": "macOS 26.2 arm64",
+      "polars": "2.1.0",
+      "pydantic": "2.14.1",
+      "pypsa": "1.2.4",
+      "pytest": "9.2.0",
+      "python": "3.11.15",
+      "scipy": "1.17.1",
+      "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+    },
+    "source_drift_rejection": {
+      "failure_reason": "FROZEN_IMPLEMENTATION_CHANGE_REQUIRED",
+      "pf_calls": 0,
+      "status": "PASS"
+    },
+    "strict_digest_validation": "PASS",
+    "strict_replay_and_metric": {
+      "failed": 0,
+      "passed": 81,
+      "status": "PASS",
+      "warnings": 127
+    },
+    "synthetic_fresh_process_replay": "PASS",
+    "tamper_rejection": "PASS",
+    "test_driver_sha256": "0d50c6549439c65fcb3b76c710811c70aaea13fea2029691f3cd25ee2c3dab53",
+    "test_driver_sha256_supersedes": "867b446dbcba648f8cd805acce842d933dabcf81f474f1396e9ef7061f459588",
+    "test_pf_metrics_sha256": "e70253f5236abf97b1294fc4bb4013e8943322e46d3730a76a9cf936e28dbfae",
+    "test_pf_metrics_sha256_unchanged_from_prior_draft": true,
+    "test_repair_commit": "32006039913aecb4ba9c46fc1b24e5e0a07b8014",
+    "test_repair_tree": "740b93010b6d8cd53fe97ba87f4115269e531e05",
+    "uv_lock_check_offline": "PASS",
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "warning_comparison": {
+      "revision2_common": {
+        "failed": 0,
+        "passed": 670,
+        "warnings": 16703
+      },
+      "revision3_common": {
+        "failed": 0,
+        "passed": 670,
+        "warnings": 16703
+      },
+      "status": "NO_REGRESSION_IN_COMMON_TEST_SET"
+    },
+    "warning_regression": "NO"
+  },
+  "synthetic_full_e2e_preflight": {
+    "evidence_file": "report-repair-full-e2e-preflight.json",
+    "sha256": "9889d6946219e67e4a3fd673391f05fbc993fcd4318b14204478f7099d73a8a3",
+    "status": "PASS"
+  },
+  "test_binding_reconciliation": {
+    "authority": "POST_MERGE_REBIND_DRAFT_FOR_INDEPENDENT_REVIEW",
+    "binding_status": "PASS_FOR_CURRENT_PR15_TEST_SNAPSHOT",
+    "execution_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+    "execution_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+    "prior_test_repair_commit": "32006039913aecb4ba9c46fc1b24e5e0a07b8014",
+    "prior_test_repair_driver_sha256": "0d50c6549439c65fcb3b76c710811c70aaea13fea2029691f3cd25ee2c3dab53",
+    "prior_test_repair_tree": "740b93010b6d8cd53fe97ba87f4115269e531e05",
+    "test_file_sha256": {
+      "packages/psdcalc-reduction/tests/test_adaptive_numeric_observations.py": "704bc612de1f8be8b1e3ef6daaad23683437d4284366a55b721305195ada836d",
+      "packages/psdcalc-reduction/tests/test_adaptive_persistence_stage5.py": "9ff78e23e6d3c0f84efecacfbbc9ac73dec3bf785d68eb0dcf9b08c9f8dd5656",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_builder.py": "07d41ef6dae26292eb4a6b04de2cf6612221796a249d1d0e2fe331079efc9a19",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_contracts.py": "9f384005d793497c12f4e5cae7c90a544919f0f23bed0a2fd5904f56c8e22bad",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_export.py": "ecb13819aa0da582dbcbb7309c4eeae1c9907a86c8068d23fcba5248d503e3bb",
+      "packages/psdcalc-reduction/tests/test_pf_metrics.py": "e70253f5236abf97b1294fc4bb4013e8943322e46d3730a76a9cf936e28dbfae",
+      "packages/psdcalc-reduction/tests/test_retained_fidelity_attempt_driver.py": "17cd5d628a52a6bf8f134b94cbd2039cfc5800b1958f0c38652db4e1beba6cf8",
+      "packages/psdcalc-reduction/tests/test_retained_network_fidelity.py": "5c2d4126685ddb32e0d6df00903f014ca5acaba994e71e55c58eb7ddd27b1bf0",
+      "packages/psdcalc-reduction/tests/test_retained_pf_driver_evidence.py": "ebbc0684d48b841ff0e2613f57ac3b0211619e03f7f9f0854a21c840060eefaa"
+    }
+  },
+  "test_evidence": {
+    "authority": "POST_MERGE_REBIND_EVIDENCE; full suite is attributed to exact PR head tree; focused suite rerun on merge commit",
+    "compileall": "NOT_RUN_THIS_REBIND_TASK",
+    "focused_regression": {
+      "coverage": "PF/Fidelity, adaptive observations and persistence, comprehensive reporting, retained fidelity, attempt driver, PF evidence and replay",
+      "duration_seconds": 106.96,
+      "execution_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+      "execution_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+      "failed": 0,
+      "passed": 140,
+      "pypsa": "1.2.4",
+      "python": "3.11.15",
+      "test_files": [
+        "packages/psdcalc-reduction/tests/test_adaptive_numeric_observations.py",
+        "packages/psdcalc-reduction/tests/test_adaptive_persistence_stage5.py",
+        "packages/psdcalc-reduction/tests/test_comprehensive_report_builder.py",
+        "packages/psdcalc-reduction/tests/test_comprehensive_report_contracts.py",
+        "packages/psdcalc-reduction/tests/test_comprehensive_report_export.py",
+        "packages/psdcalc-reduction/tests/test_pf_metrics.py",
+        "packages/psdcalc-reduction/tests/test_retained_fidelity_attempt_driver.py",
+        "packages/psdcalc-reduction/tests/test_retained_network_fidelity.py",
+        "packages/psdcalc-reduction/tests/test_retained_pf_driver_evidence.py"
+      ],
+      "warnings": 4352
+    },
+    "full_package_suite": {
+      "applies_to_merge_commit_by_exact_tree_equality": true,
+      "execution_commit": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+      "execution_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+      "failed": 0,
+      "passed": 687,
+      "rerun_at_merge_commit": false,
+      "runtime": {
+        "networkx": "3.6.1",
+        "numpy": "2.4.6",
+        "pandas": "3.1.0",
+        "pypsa": "1.2.4",
+        "pytest": "9.2.0",
+        "python": "3.11.15",
+        "scipy": "1.17.1"
+      },
+      "skipped": 0,
+      "source": "PR #15 final validation evidence",
+      "warnings": 20674
+    },
+    "git_diff_check": "PENDING_FINAL_VALIDATION",
+    "hard_admission_unchanged": "PASS; frozen Revision 2/3 contracts match and focused regression passes",
+    "real_grid_pf_runs": 0,
+    "source_drift_rejection": {
+      "pf_calls": 0,
+      "status": "PASS"
+    },
+    "source_import_verification": "PASS_CURRENT_MERGE_WORKTREE_EXPLICIT_SOURCE_PATH",
+    "stable_id_canonical_order": "PASS_WITHIN_FOCUSED_REGRESSION",
+    "strict_digest_validation": "PASS_WITHIN_FOCUSED_REGRESSION",
+    "strict_fresh_process_replay": "PASS_WITHIN_FOCUSED_REGRESSION",
+    "tamper_rejection": "PASS_WITHIN_FOCUSED_REGRESSION",
+    "uv_lock_check_offline": "PASS_WITH_ISOLATED_EMPTY_UV_CACHE",
+    "warning_comparison": {
+      "current_focused_warnings": 4352,
+      "directly_comparable": false,
+      "old_common_suite_each": {
+        "failed": 0,
+        "passed": 670,
+        "warnings": 16703
+      },
+      "revision2_vs_revision3_common_suite": "NO_REGRESSION"
+    }
+  },
+  "timing_contract": {
+    "clock": "time.perf_counter",
+    "events": [
+      "source_pf",
+      "candidate_pf",
+      "candidate_reconstruction",
+      "structural_and_ac_readiness",
+      "fidelity_evaluation",
+      "evidence_persistence",
+      "fresh_process_replay"
+    ],
+    "fingerprint_or_admission_inclusion": false,
+    "runtime_speedup_claim_requires_both_pf_runs_converged": true,
+    "semantic_digest_inclusion": false,
+    "solver_only_distinguished_from_end_to_end": true
+  },
+  "warning_review": {
+    "categories_observed": [
+      "Pandas4Warning",
+      "UserWarning"
+    ],
+    "changed_production_source_warning": "NONE_IDENTIFIED",
+    "common_test_set": {
+      "revision2": {
+        "failed": 0,
+        "passed": 670,
+        "warnings": 16703
+      },
+      "revision3": {
+        "failed": 0,
+        "passed": 670,
+        "warnings": 16703
+      },
+      "source_counts": {
+        "joblib loky CPU discovery": 1,
+        "pypsa.network.io.py:1104": 301,
+        "pypsa.network.io.py:1440": 375,
+        "pypsa.network.transform.py:454": 1867,
+        "pypsa.network.transform.py:458": 13890,
+        "pypsa.networks.py:1201": 266,
+        "synthetic test dtype assignment": 3
+      }
+    },
+    "numerical_or_evidence_integrity_warning": "NONE_IDENTIFIED",
+    "per_category_counts": {
+      "full_locked_suite": {
+        "Pandas4Warning": 20670,
+        "UserWarning": 1
+      },
+      "revision2_revision3_common_test_set": {
+        "Pandas4Warning": 16702,
+        "UserWarning": 1
+      }
+    },
+    "reason": "The same locked Python 3.11.15 environment and common test set produced matching warning categories and source counts for Revision 2 and Revision 3; the repaired full suite introduced no new warning category.",
+    "regression_assessment": "NO",
+    "total_warnings_reported": 20671
+  }
+}

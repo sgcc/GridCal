@@ -1,0 +1,78 @@
+{
+  "schema": "retained-fidelity-stop-evidence/v1",
+  "experiment_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1",
+  "freeze_commit": "741a6e9f7411176b321e6becd51749bcbc6ffa16",
+  "freeze_tree": "5edb132b158953ef21580d5ecb5d52df70151dc3",
+  "implementation_commit": "30d8c3e2cb75732a8e2fe151d1fd50ea3319344c",
+  "implementation_tree": "a40d8623dcee5e1004603b95cb93afc9790823de",
+  "package_version": "0.8.0",
+  "environment_gate": {
+    "status": "PASS",
+    "python": "3.11.15",
+    "pypsa": "1.2.4",
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+  },
+  "source_identity": {
+    "status": "PASS",
+    "dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+    "reference_bytes_sha256": "16af4d50f2fb57fa61185837e5c11140b2d0768f7ef7fcef6b5af3c897b549b6",
+    "source_model_sha256": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+    "source_sidecar_sha256": "7fc151484448d06fe430b43a8618503a0caed123b2c9530d8b9de19afb3c6165",
+    "source_ledger_sha256": "5293db89fee4cc9e773880afe8b5a17d00b75b78aa8cb5f15697d92170976bd7",
+    "base_protection_sha256": "45a7be7cfa3070507c8c8615a4676a6c7ed4b0b04ee1c571f27fcb4d14186f38",
+    "parser_manifest_sha256": "609458cff5e87e710261ba5dbad9ba82872e0dfe9b832de4d20a13a2f950a596"
+  },
+  "thresholds": {
+    "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+    "threshold_set_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "changed": false
+  },
+  "policies": [
+    {
+      "policy": "BACKBONE_500",
+      "policy_fingerprint": "9bc79f4ffc72574e402701b965009b4b53ef2868f3ffcfe3d48dce0d457ee11a",
+      "semantic_config_sha256": "37e33807332de8db1c7091bad2dbc07a12be0011a219a765004d97c7d9bf9f22",
+      "candidate_construction": "COMPLETED",
+      "source_inventory": {"bus": 1527, "line": 639, "transformer_rows": 1344},
+      "candidate_inventory": {"bus": 1392, "line": 399, "transformer_rows": 1344},
+      "structural_status": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+      "ac_readiness_status": "AC_MODEL_READY",
+      "source_pf": "RESULT_RETURNED_BUT_NOT_CAPTURED",
+      "source_pf_convergence": "UNKNOWN_NOT_CAPTURED",
+      "source_pf_invocations": 1,
+      "candidate_pf": "NOT_RUN",
+      "whole_network_fidelity": "NOT_RUN",
+      "retained_network_fidelity": "NOT_RUN",
+      "comprehensive_report": "NOT_GENERATED",
+      "fresh_process_replay": "NOT_RUN"
+    },
+    {
+      "policy": "BACKBONE_220",
+      "status": "NOT_RUN"
+    },
+    {
+      "policy": "BACKBONE_100",
+      "status": "NOT_RUN"
+    }
+  ],
+  "stop": {
+    "status": "STOPPED",
+    "reason": "EVIDENCE_CAPTURE_FAILURE",
+    "component": "PRIVATE_EXECUTION_DRIVER",
+    "detail": "The driver attempted to serialize PowerFlowSubnetworkStatus.ordinal; the result type exposes subnetwork_ordinal. The source PF executor returned a result object, but the driver failed before persisting its PF payload.",
+    "source_pf_numerical_status": "UNKNOWN_NOT_CAPTURED",
+    "source_pf_solver_timing": "NOT_CAPTURED",
+    "candidate_pf_started": false,
+    "subsequent_policies_started": false,
+    "retry_performed": false
+  },
+  "evidence_boundary": {
+    "projection_fidelity": "NOT_VALIDATED",
+    "physical_equivalence": "NOT_CLAIMED",
+    "adaptive_controller_executed": false,
+    "stage2d_executed": false,
+    "historical_evidence_overwritten": false,
+    "private_model_or_device_identity_committed": false,
+    "implementation_changed": false
+  }
+}

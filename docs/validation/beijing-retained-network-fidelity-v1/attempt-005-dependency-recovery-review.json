@@ -1,0 +1,112 @@
+{
+  "additional_missing_artifact": {
+    "distribution": "pillow",
+    "file_hash_verified": false,
+    "filename": "pillow-13.0.0-cp311-cp311-macosx_11_0_arm64.whl",
+    "found_in_accessible_local_sources": false,
+    "locked_sha256": "37290fbef0c73e2d51d594eb78fded7dc7170d1c3ad0a890269e6fd8c8c4e061",
+    "platform_tag": "macosx_11_0_arm64",
+    "version": "13.0.0"
+  },
+  "baseline": {
+    "attempt005": "NOT_STARTED",
+    "attempt005_lease": "NOT_ISSUED",
+    "implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "last_preparation_commit": "c70fba720d10862d4867c1188397e10f95914ee6",
+    "revision3": "DRAFT"
+  },
+  "changed_files": [
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-dependency-recovery-review.md",
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-dependency-recovery-review.json"
+  ],
+  "environment": {
+    "frozen_environment_status": "UNAVAILABLE",
+    "lock_modified": false,
+    "lock_path": "packages/psdcalc-reduction/uv.lock",
+    "lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "lock_sha256_matches_revision2": true,
+    "locked_sync_attempts": [
+      {
+        "command": "uv sync --offline --locked --group dev --find-links <approved-wheelhouse> --python <python-3.11.15>",
+        "status": "BLOCKED_MISSING_POLARS_RUNTIME_BEFORE_WHEEL_SEEDED"
+      },
+      {
+        "command": "uv sync --offline --locked --group dev --find-links <approved-wheelhouse> --python <python-3.11.15>",
+        "status": "BLOCKED_MISSING_PILLOW_13.0.0_AFTER_POLARS_SEEDED"
+      }
+    ],
+    "os": "macOS 26.2 arm64",
+    "python_interpreter": "~/.local/bin/python3.11",
+    "python_version": "3.11.15",
+    "uv_pip_seed_command_status": "PASS_POLARS_RUNTIME_WHEEL_INSTALLED_OFFLINE",
+    "uv_sync_previous_attempt": "BLOCKED_MISSING_WHEEL"
+  },
+  "external_acquisition": {
+    "action": "STOP_AND_REQUEST_APPROVED_ARTIFACT_ACQUISITION",
+    "explicit_authorization_in_this_task": false,
+    "requirement_before_use": "Verify file SHA-256 equals both official digest and uv.lock entry; fail closed on mismatch."
+  },
+  "local_search": {
+    "approved_offline_mirror_found": false,
+    "exact_named_wheel_found": false,
+    "pillow_wheel_found": false,
+    "pip_cache": "NOT_ACCESSIBLE; pip reported cache not owned/writable and disabled it",
+    "search_network_used": false,
+    "searched_locations": [
+      "~/.cache/uv",
+      "~/.local/share/uv",
+      "project wheelhouse/package cache",
+      "~/Downloads",
+      "~/.codex worktrees",
+      "system temporary storage",
+      "mounted volumes",
+      "~/work",
+      "~/look",
+      "~/Documents",
+      "~/anaconda3/pkgs",
+      "Homebrew locations",
+      "~/approved-wheelhouse/attempt005 for Pillow wheel"
+    ],
+    "uv_cache_dir": "~/.cache/uv",
+    "uv_extracted_package_dirs_may_be_reused_as_original_wheel": false
+  },
+  "privacy": {
+    "installed_package_directory_committed": false,
+    "private_grid_data_committed": false,
+    "serena_committed": false,
+    "temporary_environment_committed": false,
+    "third_party_wheel_committed": false
+  },
+  "required_artifact": {
+    "distribution": "polars-runtime-32",
+    "file_found": true,
+    "file_hash_verified": true,
+    "file_location": "~/approved-wheelhouse/attempt005/polars_runtime_32-2.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "filename": "polars_runtime_32-2.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "installed_into_isolated_environment_with_uv_pip": true,
+    "official_and_lock_hash_match": true,
+    "official_sha256": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+    "official_source_url": "https://files.pythonhosted.org/packages/fe/38/07066430ac655a8cab2f9e96ea1fec6ca1f20ec47844afe117662d43ace0/polars_runtime_32-2.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "platform_tag": "macosx_11_0_arm64",
+    "python_tag": "cp311-abi3",
+    "sha256_observed": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+    "uv_lock_sha256": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+    "version": "2.1.0",
+    "version_platform_verified_from_lock_tags": true
+  },
+  "schema": "attempt005-dependency-recovery-review/v1",
+  "status": "ARTIFACT_ACQUISITION_REQUIRED",
+  "validation": {
+    "attempt005": "NOT_STARTED",
+    "dependency_lock": "FAIL_MISSING_PILLOW_WHEEL",
+    "focused_tests": "NOT_RUN",
+    "full_test_suite": "NOT_RUN",
+    "lease_issued": false,
+    "real_grid_pf_runs": 0,
+    "revision3_freeze_approval_ready": false,
+    "strict_digest_validation": "NOT_RUN",
+    "synthetic_fresh_process_replay": "NOT_RUN",
+    "warning_regression": "UNRESOLVED"
+  }
+}

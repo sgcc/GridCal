@@ -1,0 +1,71 @@
+{
+  "schema": "retained-fidelity-attempt-preflight-stop/v1",
+  "experiment_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1",
+  "attempt_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1_ATTEMPT_003",
+  "status": "STOPPED_BEFORE_REAL_CASE_EXECUTION",
+  "stop_code": "ATTEMPT_003_PREFLIGHT_CONTRACT_GAP",
+  "git_identity": {
+    "head": "187d0dd7264e4c4ea09afd00dce20f3e2fdcd359",
+    "tree": "b169e4b164e9228bddacbe36fe4bbbd74ec0e730",
+    "frozen_implementation_commit": "30d8c3e2cb75732a8e2fe151d1fd50ea3319344c",
+    "driver_fix_commit": "3755f59d4b8741670d4a644a61684a75ae3ed4b5"
+  },
+  "binding_checks": {
+    "original_freeze_sha256": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476",
+    "attempt_003_lease_sha256": "e6807bc1e75b1d3ae3be3a4cfba6bc0611d43ca0580b881eca2c0a132ff877ba",
+    "driver_sha256": "34704d02ab58ed7112a7b5b4ee1ca2b56d8caafa30b53e648633d7a2ee2bf1de",
+    "launcher_sha256": "72f02a368316a73e2803c1ea1c1ace51d1859f91de530673b57a90be42b5ea28",
+    "original_freeze": "PASS",
+    "attempt_003_lease": "PASS",
+    "frozen_implementation_unchanged": "PASS",
+    "driver_bytes": "PASS",
+    "environment_python": "3.11.15",
+    "environment_pypsa": "1.2.4",
+    "package_version": "0.8.0"
+  },
+  "synthetic_preflight": {
+    "focused_tests_passed": 7,
+    "focused_tests_failed": 0,
+    "fresh_candidate_and_mapping_reconstruction": "PASS",
+    "synthetic_ac_pf_and_replay": "PASS",
+    "complete_frozen_execution_contract": "FAIL"
+  },
+  "contract_gaps": [
+    {
+      "code": "COMPREHENSIVE_REPORT_EXPORT_NOT_WIRED",
+      "required": "Per-policy comprehensive JSON, Markdown, metrics CSV, voltage-layer CSV, retained-fidelity CSV and cross-policy comparison",
+      "observed": "Frozen driver and launcher do not call comprehensive report construction or any comprehensive export function; the core pipeline writes only its existing structural/opportunity reports"
+    },
+    {
+      "code": "NUMERIC_AND_TIMING_EVIDENCE_NOT_WIRED",
+      "required": "Versioned numeric observation companion and diagnostic solver/end-to-end stage timings",
+      "observed": "Frozen driver and launcher do not invoke numeric observation serialization or record requested end-to-end timings; the core pipeline has only partial structural-stage timers"
+    }
+  ],
+  "real_case_execution": {
+    "parser_manifest_check": "NOT_RUN",
+    "source_identity_check": "NOT_RUN",
+    "candidate_materialization": "NOT_RUN",
+    "source_pf": "NOT_RUN",
+    "candidate_pf": "NOT_RUN",
+    "fidelity_evaluation": "NOT_RUN",
+    "policy_states": {
+      "BACKBONE_500": "NOT_RUN",
+      "BACKBONE_220": "NOT_RUN",
+      "BACKBONE_100": "NOT_RUN"
+    },
+    "private_attempt_003_output_created": false
+  },
+  "historical_evidence": {
+    "attempt_001_stop_sha256": "fd6d4f4301d086e084f963d79d14eeac92aee2876b20f26dd34c036f6c55ef3e",
+    "attempt_002_stop_sha256": "3853bb109900417ef5fff2ae5f2cdd6555d6191abc04e785db72cd456041a9b5",
+    "overwritten": false
+  },
+  "claim_boundary": {
+    "projection_fidelity": "NOT_VALIDATED",
+    "physical_equivalence": "NOT_CLAIMED",
+    "adaptive_controller_executed": false,
+    "stage2d_executed": false
+  },
+  "recommended_next_step": "SEPARATE_REMEDIATION_REQUIRED"
+}

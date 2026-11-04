@@ -1,0 +1,47 @@
+{
+  "application_status": "DRAFT_PENDING_INDEPENDENT_FREEZE_APPROVAL_AND_LEASE_ISSUANCE",
+  "attempt004_historical_status": "FAIL_STOPPED_FIRST_POLICY",
+  "attempt005": "NOT_STARTED",
+  "attempt_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1_ATTEMPT_005",
+  "authorized": false,
+  "document_kind": "attempt005_execution_lease_application_post_merge_rebind",
+  "execution_contract": {
+    "call_budget_note": "Early gates or first failure reduce actual calls; no diagnostic or replay PF calls are permitted.",
+    "cross_policy_report_requires_all_prior_policy_gates": true,
+    "first_hard_failure_stops_later_policies": true,
+    "historical_candidates_reusable": false,
+    "maximum_pf_call_breakdown": {
+      "candidate_pf_once_per_policy": 3,
+      "source_pf_once_per_attempt": 1
+    },
+    "maximum_pf_calls": 4,
+    "new_private_output_directory_required": true,
+    "replay_additional_pf_calls": 0,
+    "requested_policy_order": [
+      "BACKBONE_500",
+      "BACKBONE_220",
+      "BACKBONE_100"
+    ],
+    "stage2d": "NOT_IN_SCOPE"
+  },
+  "freeze_revision": 3,
+  "freeze_revision_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-3-draft.json",
+  "freeze_revision_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930",
+  "freeze_revision_status": "DRAFT_PENDING_INDEPENDENT_REVIEW",
+  "implementation_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+  "implementation_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+  "issued": false,
+  "lease_issued": false,
+  "package_version": "0.8.0",
+  "parent_freeze_revision_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-2.json",
+  "parent_freeze_revision_sha256": "25394674ba28e7de013bd3cc57da080155443109b77ec7f9eba7c8d57a8d2b04",
+  "real_grid_pf_runs": 0,
+  "requested_policies": [
+    "BACKBONE_500",
+    "BACKBONE_220",
+    "BACKBONE_100"
+  ],
+  "schema": "beijing-retained-fidelity-attempt-lease-application/v1",
+  "source_pr_head": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+  "superseded_pre_merge_freeze_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee"
+}

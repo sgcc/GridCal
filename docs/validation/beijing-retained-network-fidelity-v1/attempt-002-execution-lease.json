@@ -1,0 +1,96 @@
+{
+  "schema": "retained-network-fidelity-execution-lease/v1",
+  "attempt_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1_ATTEMPT_002",
+  "status": "READY_NOT_EXECUTED",
+  "attempt_001": {
+    "status": "FAILED",
+    "stop_evidence": "docs/validation/beijing-retained-network-fidelity-v1/stop-summary.json",
+    "stop_summary_sha256": "fd6d4f4301d086e084f963d79d14eeac92aee2876b20f26dd34c036f6c55ef3e",
+    "failure_code": "EVIDENCE_SERIALIZATION_INTERFACE_MISMATCH",
+    "source_pf_status": "NOT_RECORDED",
+    "candidate_pf_executed": false
+  },
+  "original_freeze": {
+    "commit": "741a6e9f7411176b321e6becd51749bcbc6ffa16",
+    "tree": "5edb132b158953ef21580d5ecb5d52df70151dc3",
+    "implementation_commit": "30d8c3e2cb75732a8e2fe151d1fd50ea3319344c",
+    "implementation_tree": "a40d8623dcee5e1004603b95cb93afc9790823de",
+    "package": "psdcalc-reduction",
+    "version": "0.8.0",
+    "source_model_digest": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+    "source_sidecar_digest": "7fc151484448d06fe430b43a8618503a0caed123b2c9530d8b9de19afb3c6165",
+    "source_ledger_digest": "5293db89fee4cc9e773880afe8b5a17d00b75b78aa8cb5f15697d92170976bd7",
+    "source_dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+    "resolved_protection_digest": "45a7be7cfa3070507c8c8615a4676a6c7ed4b0b04ee1c571f27fcb4d14186f38",
+    "operating_point_digest": "334a7275a2e837722016db2b732d23e2c30ce392e3b1f592ade5d5f995706c1e",
+    "pf_executor_contract_digest": "221369358669457b9ebe013fb6443fdff008585b93d718f302ad814df3e29ac6",
+    "metric_policy_digest": "745cdb4b5cdb6d8547e1ac9139be988b6cd393b9e1f7838bfb245aa32f6db5ad",
+    "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+    "threshold_set_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "retained_metric_contract_sha256": "e8ed3e40e9cde4f8c4b9ebef6712cc846379f386d9b7e10d1f1134cf811c200b",
+    "numeric_observation_schema": "adaptive-numeric-observations/v1",
+    "timing_not_in_numeric_equality": true
+  },
+  "attempt_002_binding": {
+    "code_commit": "68cb7813357943bcfa85b0b1030880e71cd7151f",
+    "code_tree": "a1d285d327410364b7921efcf264d31bee7b2dac",
+    "driver_serializer_path": "packages/psdcalc-reduction/experiment_tools/retained_pf_evidence.py",
+    "driver_serializer_sha256": "443a397f3bb9ba3d85a413e5a34c278daa5b947d075f8687429a1236abeab073",
+    "private_runner_sha256": "245bd9bec25ed2193b2a2cb5e8bd87ad9f7dcda3615118a64da6797beb0d73cd",
+    "driver_bundle_sha256": "7b50477998d85bce6ca50deb95e8d2bc548c909e4d72cf4e433c19fac3cce313",
+    "driver_schema": "retained-pf-execution-result/v1",
+    "change_class": "OBSERVABILITY_ONLY",
+    "changed_behavior": "strict result serialization uses subnetwork_ordinal and writes to a fresh attempt namespace",
+    "unchanged_contracts": [
+      "PyPSA Network.pf call count and arguments",
+      "PF solver and operating point",
+      "fidelity evaluation and thresholds",
+      "structural and AC readiness Gates",
+      "MappingBundle and candidate identity",
+      "adaptive controller and action selection"
+    ],
+    "package_source_matches_frozen_implementation": true
+  },
+  "runtime_environment": {
+    "python": "3.11.15",
+    "pypsa": "1.2.4",
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "installed_distribution_manifest_sha256": "c6501a0d9f7725541f82e3e555283b916ae91e0c5ab954c3c5f5b96666201a1a",
+    "package_import_root": "CURRENT_CHECKOUT_SRC"
+  },
+  "execution_scope": {
+    "first_policy": "BACKBONE_500",
+    "other_policies": "NOT_AUTHORIZED_BY_THIS_ATTEMPT_LEASE",
+    "start_from_frozen_source_and_sidecar": true,
+    "attempt_001_candidate_artifacts": "READ_ONLY_INPUTS; verify their stored identity digests before use",
+    "source_pf_calls_expected": 1,
+    "candidate_pf_calls_expected_after_source_capture": 1,
+    "extra_diagnostic_pf_calls": 0,
+    "on_source_capture_failure": "STOP_BEFORE_CANDIDATE_PF",
+    "replay_runs_pf": false
+  },
+  "output_contract": {
+    "private_output_namespace": "attempt-002/backbone-500-v1/",
+    "manifest": "manifest.json",
+    "pf_results": [
+      "pf/source.json",
+      "pf/candidate.json"
+    ],
+    "numeric_observations": "observations/numeric-observations.json",
+    "fresh_process_replay": "required; verify result and observation digests without PF",
+    "timing_is_semantically_excluded": true,
+    "must_not_reuse_or_overwrite_attempt_001": true
+  },
+  "not_executed": {
+    "candidate_materialization": false,
+    "beijing_pf": false,
+    "fidelity_evaluation": false,
+    "adaptive_controller": false,
+    "backbone_220": false,
+    "backbone_100": false
+  },
+  "claim_boundary": {
+    "projection_fidelity": "NOT VALIDATED",
+    "physical_equivalence": "NOT CLAIMED"
+  }
+}

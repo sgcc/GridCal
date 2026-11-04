@@ -1,0 +1,62 @@
+{
+  "schema": "retained-fidelity-attempt-stop/v1",
+  "attempt_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1_ATTEMPT_002",
+  "status": "STOPPED_BEFORE_SYNTHETIC_PREFLIGHT_AND_REAL_CASE_EXECUTION",
+  "baseline": {
+    "head": "05c1daf8b3a24042f3c65ace80fc66652a347f10",
+    "tree": "5c14e5d5780cfa7f0bf80e13773ffaa1d1c9b322",
+    "freeze_commit": "741a6e9f7411176b321e6becd51749bcbc6ffa16",
+    "implementation_commit": "30d8c3e2cb75732a8e2fe151d1fd50ea3319344c",
+    "driver_remediation_commit": "68cb7813357943bcfa85b0b1030880e71cd7151f",
+    "package_version": "0.8.0"
+  },
+  "stop_reasons": [
+    {
+      "code": "EXECUTION_LEASE_POLICY_SCOPE_CONFLICT",
+      "freeze_scenario_order": ["BACKBONE_500", "BACKBONE_220", "BACKBONE_100"],
+      "attempt_002_lease_first_policy": "BACKBONE_500",
+      "attempt_002_lease_other_policies": "NOT_AUTHORIZED_BY_THIS_ATTEMPT_LEASE",
+      "requested_execution": "all three policies in one Attempt 002"
+    },
+    {
+      "code": "EXECUTION_DRIVER_CANDIDATE_REUSE_CONFLICT",
+      "driver_behavior": "reads the previous attempt's persisted candidate as input",
+      "requested_behavior": "rebuild each policy candidate independently from frozen S1"
+    }
+  ],
+  "read_only_checks": {
+    "exact_git_lease": "PASS",
+    "freeze_and_driver_commits_are_ancestors": true,
+    "attempt_001_stop_evidence_sha256": {
+      "markdown": "57d753473d677f69b8ba5b6af851c195f7df876d96ce555241d6b8ac3619b607",
+      "json": "fd6d4f4301d086e084f963d79d14eeac92aee2876b20f26dd34c036f6c55ef3e"
+    },
+    "driver_runner_and_serializer_hashes_match_lease": true,
+    "attempt_002_private_output_directory_exists": false
+  },
+  "gates": {
+    "synthetic_driver_preflight": "NOT_RUN_AFTER_CONTRACT_STOP",
+    "environment": "NOT_RUN",
+    "parser_manifest": "NOT_RUN",
+    "source_identity": "NOT_RUN",
+    "source_pf": "NOT_RUN",
+    "backbone_500": "NOT_RUN",
+    "backbone_220": "NOT_RUN",
+    "backbone_100": "NOT_RUN",
+    "private_manifest": "NOT_RUN",
+    "fresh_process_replay": "NOT_RUN",
+    "cross_policy_comparison": "NOT_RUN"
+  },
+  "preservation": {
+    "attempt_001_stop_evidence_modified": false,
+    "original_freeze_modified": false,
+    "implementation_semantics_modified": false,
+    "historical_stage2_evidence_modified": false,
+    "private_data_committed": false
+  },
+  "claim_boundary": {
+    "projection_fidelity": "NOT VALIDATED",
+    "physical_equivalence": "NOT CLAIMED"
+  },
+  "recommended_next_step": "SEPARATE_REMEDIATION_REQUIRED"
+}

@@ -1,0 +1,58 @@
+{
+  "schema": "retained-fidelity-revision-3-approval-request/v1",
+  "request_status": "PREPARED_NOT_SUBMITTED",
+  "freeze_status": "DRAFT",
+  "independent_approval": "PENDING",
+  "approval_record": null,
+  "revision3": {
+    "draft_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-3-draft.json",
+    "draft_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+    "preparation_commit": "d3039b53c3e63d978fa0bfcf31de9249168102a2",
+    "preparation_tree": "ebcfec4c1f077445f6408374d963e952a58ba16b",
+    "parent_revision": 2,
+    "parent_sha256": "25394674ba28e7de013bd3cc57da080155443109b77ec7f9eba7c8d57a8d2b04"
+  },
+  "bindings": {
+    "production_implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "production_implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "test_repair_commit": "32006039913aecb4ba9c46fc1b24e5e0a07b8014",
+    "test_repair_tree": "740b93010b6d8cd53fe97ba87f4115269e531e05"
+  },
+  "evidence": {
+    "python": "3.11.15",
+    "full_package_tests": {"passed": 695, "failed": 0},
+    "focused_tests": {"passed": 192, "failed": 0},
+    "strict_digest_fresh_process_replay": {"passed": 81, "failed": 0},
+    "hard_admission": {"passed": 22, "failed": 0},
+    "warning_regression": "NO",
+    "attempt004": "FAIL_STOPPED_FIRST_POLICY"
+  },
+  "claim_boundary": {
+    "projection_fidelity": "NOT VALIDATED",
+    "physical_equivalence": "NOT CLAIMED",
+    "attempt005": "NOT_STARTED",
+    "lease_issued": false,
+    "real_grid_pf_runs": 0
+  },
+  "submission_route": {
+    "existing_approval_portal": "NOT_FOUND",
+    "associated_open_pull_request": "NOT_FOUND",
+    "designated_approver": "NOT_SPECIFIED",
+    "status": "PREPARED_FOR_HANDOFF_NOT_SUBMITTED"
+  },
+  "review_materials": [
+    "freeze-revision-3-draft.md",
+    "freeze-revision-3-draft.json",
+    "freeze-revision-2.md",
+    "freeze-revision-2.json",
+    "attempt-004-canonical-metric-replay-fix-review.md",
+    "attempt-005-source-drift-test-repair-review.md",
+    "attempt-005-source-drift-test-repair-review.json",
+    "revision-3-independent-approval-review.md",
+    "revision-3-independent-approval-review.json",
+    "attempt-004-stop-summary.md",
+    "attempt-004-stop-summary.json",
+    "attempt-005-execution-lease-application.md",
+    "attempt-005-execution-lease-application.json"
+  ]
+}

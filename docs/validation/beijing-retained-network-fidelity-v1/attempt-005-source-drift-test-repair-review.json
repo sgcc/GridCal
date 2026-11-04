@@ -1,0 +1,94 @@
+{
+  "schema": "retained-fidelity-attempt-005-source-drift-test-repair-review/v1",
+  "test_root_cause": "CONFIRMED",
+  "root_cause": "The prior test derived its frozen source identity from current HEAD and then expected that matching source to be rejected as drift.",
+  "production_code_changed": false,
+  "source_drift_rejection": {
+    "status": "PASS",
+    "expected_reason": "FROZEN_IMPLEMENTATION_CHANGE_REQUIRED",
+    "rejection_stage": "frozen implementation source comparison before source input loading and PF",
+    "pf_call_count": 0,
+    "formal_result_created": false,
+    "frozen_identity_commit": "e1f075d9923b6ed530603eb2676eb73d1c35131a",
+    "frozen_identity_tree": "eb9cb40f8d79bc95daccca1f4a893bcda869b6ef"
+  },
+  "matched_source_execution": {
+    "status": "PASS",
+    "test": "test_frozen_attempt004_entry_runs_three_synthetic_policies",
+    "policies": ["BACKBONE_500", "BACKBONE_220", "BACKBONE_100"],
+    "candidate_pf_status": "PF_CONVERGED"
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "environment": "isolated locked Python 3.11.15 environment",
+    "platform": "macOS 26.2 arm64",
+    "versions": {
+      "pypsa": "1.2.4",
+      "numpy": "2.4.6",
+      "pandas": "3.1.0",
+      "networkx": "3.6.1",
+      "scipy": "1.17.1",
+      "highspy": "1.15.1",
+      "polars": "2.1.0",
+      "pydantic": "2.14.1",
+      "hypothesis": "6.170.13"
+    },
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "dependency_lock": "PASS"
+  },
+  "tests": {
+    "focused": {"passed": 192, "failed": 0, "warnings": 4479},
+    "strict_digest_and_fresh_process_replay": {"passed": 81, "failed": 0, "warnings": 127},
+    "hard_admission": {"passed": 22, "failed": 0},
+    "full_package": {"passed": 695, "failed": 0, "skipped": 0, "warnings": 20671, "duration_seconds": 375.55},
+    "stable_id_canonical_order": "PASS",
+    "synthetic_fresh_process_replay": "PASS",
+    "strict_digest_validation": "PASS",
+    "tamper_rejection": "PASS",
+    "hard_admission_unchanged": true,
+    "compileall": "PASS",
+    "uv_lock_check_offline": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "warnings": {
+    "regression": "NO",
+    "full_suite_total": 20671,
+    "categories": {"Pandas4Warning": 20670, "UserWarning": 1},
+    "user_warning_source": "joblib loky physical-core discovery",
+    "comparable_common_suite": {
+      "revision2": {"passed": 670, "failed": 0, "warnings": 16703},
+      "revision3": {"passed": 670, "failed": 0, "warnings": 16703},
+      "categories": {"Pandas4Warning": 16702, "UserWarning": 1},
+      "numeric_or_evidence_integrity_warning_found": false
+    }
+  },
+  "revision3_binding": {
+    "freeze_status": "DRAFT",
+    "implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "production_source_unchanged": true,
+    "metrics_source_sha256": "2f0bc8ad6ea9f6ac350bf4c6541327fbb6e11fdddfe501917e27a5d6b08dba26",
+    "test_file_sha256_frozen": "867b446dbcba648f8cd805acce842d933dabcf81f474f1396e9ef7061f459588",
+    "test_file_sha256_current": "0d50c6549439c65fcb3b76c710811c70aaea13fea2029691f3cd25ee2c3dab53",
+    "test_file_binding_stale": true,
+    "freeze_files_modified": false,
+    "approval_ready": false,
+    "resolution_required": "Independent review of a draft amendment or validation addendum that binds the repaired test SHA and this test result."
+  },
+  "scope": {
+    "production_code_changed": false,
+    "dependency_lock_changed": false,
+    "thresholds_or_metric_contract_changed": false,
+    "historical_attempt_evidence_changed": false,
+    "lease_issued": false,
+    "real_grid_pf_runs": 0,
+    "attempt005": "NOT_STARTED",
+    "projection_fidelity": "NOT VALIDATED",
+    "physical_equivalence": "NOT CLAIMED"
+  },
+  "changed_files": [
+    "packages/psdcalc-reduction/tests/test_retained_fidelity_attempt_driver.py",
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-source-drift-test-repair-review.md",
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-source-drift-test-repair-review.json"
+  ]
+}

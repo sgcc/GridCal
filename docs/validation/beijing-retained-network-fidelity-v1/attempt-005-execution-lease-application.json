@@ -1,0 +1,87 @@
+{
+  "application_prerequisites": {
+    "exact_locked_environment_revalidation": "REQUIRED_BEFORE_FORMAL_EXECUTION_REQUEST",
+    "execution_lease_issuance": "SEPARATE_APPROVAL_REQUIRED",
+    "independent_freeze_review": "REQUIRED",
+    "warning_regression_classification": "UNRESOLVED_REVIEW_REQUIRED"
+  },
+  "application_status": "DRAFT_PENDING_FREEZE_REVIEW_AND_APPROVAL",
+  "attempt004_historical_status": "FAIL_STOPPED_FIRST_POLICY",
+  "attempt_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1_ATTEMPT_005",
+  "authorized": false,
+  "claim_boundary": {
+    "adaptive_reduction_validation": "NOT_CLAIMED",
+    "physical_equivalence": "NOT_CLAIMED",
+    "projection_fidelity": "NOT_VALIDATED"
+  },
+  "document_kind": "LEASE_APPLICATION_NOT_ISSUED_LEASE",
+  "execution_contract": {
+    "adaptive_controller": "NOT_IN_SCOPE",
+    "candidate_pf_calls_max": 3,
+    "cross_policy_report_only_after_all_prior_policy_gates_pass": true,
+    "diagnostic_pf_calls": 0,
+    "historical_candidate_reuse": false,
+    "later_policies_after_failure": "NOT_RUN",
+    "output_directory": "NEW_PRIVATE_ATTEMPT_005_ROOT_CREATED_AT_EXECUTION_ONLY",
+    "output_directory_must_not_exist_before_execution": true,
+    "policy_order": [
+      "BACKBONE_500",
+      "BACKBONE_220",
+      "BACKBONE_100"
+    ],
+    "replay_pf_calls": 0,
+    "source_pf_calls_max": 1,
+    "stage2d": "NOT_IN_SCOPE",
+    "stop_on_first_hard_failure": true,
+    "total_pf_calls_max": 4
+  },
+  "experiment_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1",
+  "failure_handling": {
+    "metric_or_threshold_tampering": "STOP_AND_PRESERVE_STOP_EVIDENCE",
+    "never_retry_or_continue_failed_policy_in_same_attempt": true,
+    "pf_nonconvergence": "RECORD_STATUS_AND_STOP_PER_FROZEN_CONTRACT",
+    "preserve_failed_attempt_evidence": true,
+    "strict_digest_mismatch": "STOP_AND_PRESERVE_STOP_EVIDENCE"
+  },
+  "freeze_revision": 3,
+  "freeze_revision_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-3-draft.json",
+  "freeze_revision_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+  "freeze_revision_status": "DRAFT_PENDING_INDEPENDENT_REVIEW",
+  "implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+  "implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+  "input_bindings": {
+    "metric_policy_digest": "745cdb4b5cdb6d8547e1ac9139be988b6cd393b9e1f7838bfb245aa32f6db5ad",
+    "operating_point_digest": "334a7275a2e837722016db2b732d23e2c30ce392e3b1f592ade5d5f995706c1e",
+    "resolved_protection_digest": "45a7be7cfa3070507c8c8615a4676a6c7ed4b0b04ee1c571f27fcb4d14186f38",
+    "source_dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+    "source_ledger_digest": "5293db89fee4cc9e773880afe8b5a17d00b75b78aa8cb5f15697d92170976bd7",
+    "source_model_digest": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+    "source_sidecar_digest": "7fc151484448d06fe430b43a8618503a0caed123b2c9530d8b9de19afb3c6165",
+    "threshold_artifact_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+  },
+  "issued": false,
+  "original_freeze_sha256": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476",
+  "package_version": "0.8.0",
+  "parent_freeze_revision": 2,
+  "parent_freeze_revision_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-2.json",
+  "parent_freeze_revision_sha256": "25394674ba28e7de013bd3cc57da080155443109b77ec7f9eba7c8d57a8d2b04",
+  "requested_policies": [
+    "BACKBONE_500",
+    "BACKBONE_220",
+    "BACKBONE_100"
+  ],
+  "runtime_contract": {
+    "current_development_environment_differences": {
+      "networkx": "3.7 (locked 3.6.1)",
+      "numpy": "2.5.4 (locked 2.4.6)",
+      "scipy": "1.18.1 (locked 1.17.1)"
+    },
+    "execution_environment_recheck_required": true,
+    "pypsa": "1.2.4",
+    "python": "3.11.15",
+    "runtime_versions_and_distribution_manifest": "MUST_MATCH_REVISION_2_LOCKED_ENVIRONMENT"
+  },
+  "schema": "retained-fidelity-execution-lease/v1"
+}

@@ -1,0 +1,180 @@
+{
+  "approval_readiness": {
+    "attempt005_started": false,
+    "freeze_approval_ready": false,
+    "lease_issued": false,
+    "physical_equivalence": "NOT_CLAIMED",
+    "projection_fidelity": "NOT_VALIDATED",
+    "reason": [
+      "exact locked runtime unavailable offline",
+      "warning baseline comparison not run"
+    ]
+  },
+  "baseline": {
+    "attempt005": "NOT_STARTED",
+    "attempt005_lease": "NOT_ISSUED",
+    "current_head": "5d69466c056cac4fc6ebc8e85b9f875f0066b004",
+    "freeze_preparation_commit": "5d69466c056cac4fc6ebc8e85b9f875f0066b004",
+    "implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "revision3_status": "DRAFT"
+  },
+  "environment_discovery": {
+    "alternatives": [
+      {
+        "environment": "pypsa1",
+        "highspy": "1.13.1",
+        "hypothesis": "MISSING",
+        "matches_lock": false,
+        "networkx": "3.6.1",
+        "numpy": "2.3.5",
+        "pandas": "2.3.3",
+        "polars": "1.39.3",
+        "pydantic": "2.12.5",
+        "pypsa": "0.18.0.post1.dev2165+gc06804b53",
+        "pytest": "9.0.2",
+        "python": "3.11.15",
+        "scipy": "1.16.3"
+      },
+      {
+        "environment": "GridCal_env",
+        "highspy": "1.14.0",
+        "hypothesis": "MISSING",
+        "matches_lock": false,
+        "networkx": "3.6.1",
+        "numpy": "2.3.0",
+        "pandas": "3.0.3",
+        "polars": "MISSING",
+        "pydantic": "2.13.4",
+        "pypsa": "MISSING",
+        "pytest": "9.0.3",
+        "python": "3.11.15",
+        "scipy": "1.17.1"
+      },
+      {
+        "environment": "current package virtual environment",
+        "highspy": "1.15.1",
+        "hypothesis": "6.170.13",
+        "matches_lock": false,
+        "networkx": "3.7",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "polars": "2.1.0",
+        "pydantic": "2.14.1",
+        "pypsa": "1.2.4",
+        "pytest": "9.2.0",
+        "python": "3.13.9",
+        "scipy": "1.18.1"
+      }
+    ],
+    "exact_dependency_environment_found": false,
+    "existing_freeze_environment_creation_script": "NOT_FOUND_IN_PACKAGE_OR_VALIDATION_DIRECTORY_SCAN"
+  },
+  "evidence_files": {
+    "audit_report_path": "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-locked-runtime-audit.md",
+    "audit_report_sha256": "3fbb3ab3001428ee351eb9a5aa01e233419e71df77be6adf6d21cbafc7b17d9b",
+    "revision3_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-3-draft.json",
+    "revision3_sha256": "6a728e66ff3803ec17d51fa7c1e0c063e7a6b2813ff248e467ce1f755bbda4d7",
+    "warning_baseline_path": "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-warning-baseline.json",
+    "warning_baseline_sha256": "b82c963b99e2c2d4b5197dc23ab6dbb80d50b287fccd1e8205bfe2f5a171e357"
+  },
+  "host": {
+    "architecture": "arm64",
+    "interpreter_path": "~/.local/bin/python3.11",
+    "os": "macOS 26.2"
+  },
+  "offline_environment_attempt": {
+    "dependency_sync_command": "uv sync --offline --locked --group dev",
+    "environment_python": "3.11.15",
+    "exit_code": 1,
+    "failure_text": "Network connectivity is disabled, and the requested wheel was not found in the cache.",
+    "isolated_environment_creation": "PASS",
+    "lockfile_modified": false,
+    "missing_artifact": {
+      "distribution": "polars-runtime-32",
+      "version": "2.1.0",
+      "wheel": "polars_runtime_32-2.1.0-cp311-abi3-macosx_11_0_arm64.whl"
+    },
+    "network_used": false,
+    "status": "LOCKED_RUNTIME_UNAVAILABLE",
+    "test_suite_started": false
+  },
+  "python_interpreter_check": {
+    "executable": "~/.local/bin/python3.11",
+    "installed_locked_dependencies": "NO",
+    "status": "PASS_INTERPRETER_ONLY",
+    "version": "3.11.15"
+  },
+  "required_runtime": {
+    "highspy": "1.15.1",
+    "hypothesis": "6.170.13",
+    "networkx": "3.6.1",
+    "numpy": "2.4.6",
+    "pandas": "3.1.0",
+    "polars": "2.1.0",
+    "pydantic": "2.14.1",
+    "pypsa": "1.2.4",
+    "pytest": "9.2.0",
+    "python": "3.11.15",
+    "scipy": "1.17.1"
+  },
+  "required_runtime_binding": {
+    "evidence_component_schemas": {
+      "candidate_provenance": "retained-fidelity-candidate-provenance/v1",
+      "comprehensive_report": "psdcalc-comprehensive-reduction-report/v1",
+      "cross_policy": "retained-fidelity-cross-policy/v1",
+      "numeric_observations": "adaptive-numeric-observations/v1",
+      "retained_metrics": "retained-network-metrics/v1",
+      "stage_timings": "retained-fidelity-stage-timings/v1"
+    },
+    "lock_digest_matches": true,
+    "lock_path": "packages/psdcalc-reduction/uv.lock",
+    "lock_sha256_observed": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "lock_sha256_required": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "metric_and_evidence_contract": "INHERITED_UNCHANGED_FROM_REVISION_2",
+    "metric_source_sha256": "2f0bc8ad6ea9f6ac350bf4c6541327fbb6e11fdddfe501917e27a5d6b08dba26",
+    "package_version": "0.8.0",
+    "pf_executor": {
+      "contract_digest": "221369358669457b9ebe013fb6443fdff008585b93d718f302ad814df3e29ac6",
+      "distribute_slack": false,
+      "extra_pf_calls_for_diagnostics": 0,
+      "max_iterations": "PYPSA_1.2.4_PUBLIC_DEFAULT",
+      "name": "PypsaAcPowerFlowExecutor",
+      "pf_execution_in_this_freeze": "NOT_RUN",
+      "public_api": "pypsa.Network.pf",
+      "slack_weights": "SOURCE_P_SET_DEFAULT",
+      "solver": "pypsa.newton_raphson",
+      "tolerance": 1e-08,
+      "use_seed": false
+    }
+  },
+  "revision3_contract_review": {
+    "attempt004_failure_preserved": "PASS",
+    "diagnostic_only_classification_unchanged": "PASS",
+    "fixed_commit_tree_binding": "PASS",
+    "hard_thresholds_unchanged": "PASS",
+    "independent_approval": "NOT_GRANTED",
+    "input_environment_and_budget_bindings_present": "PASS_WITH_RUNTIME_UNAVAILABLE",
+    "metric_formula_fields_and_digest_unchanged": "PASS",
+    "policy_order_preserved": "PASS",
+    "revision2_parent_binding": "PASS",
+    "status": "PASS_STATIC_REVIEW_ONLY",
+    "stop_on_first_hard_failure_preserved": "PASS",
+    "strict_fresh_process_replay_gate_preserved": "PASS",
+    "unsupported_physical_or_projection_claims_added": "NO"
+  },
+  "schema": "retained-fidelity-locked-runtime-audit/v1",
+  "status": "LOCKED_RUNTIME_UNAVAILABLE",
+  "task": "ATTEMPT005_LOCKED_RUNTIME_AND_WARNING_AUDIT",
+  "verification": {
+    "compileall": "NOT_RUN",
+    "fidelity_pf_evidence_attempt_driver": "NOT_RUN",
+    "full_suite": "NOT_RUN_LOCKED_RUNTIME_UNAVAILABLE",
+    "git_diff_check": "NOT_RUN_AFTER_AUDIT_DOCS",
+    "real_grid_pf_calls": 0,
+    "stableid_order_test": "NOT_RUN",
+    "strict_digest_and_tamper_tests": "NOT_RUN",
+    "synthetic_fresh_process_replay": "NOT_RUN",
+    "uv_lock_check": "NOT_RUN_IN_THIS_AUDIT; LOCK_SHA_MATCHES_REVISION_2"
+  }
+}
