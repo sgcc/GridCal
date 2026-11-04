@@ -173,34 +173,6 @@ def read_power_flow_result(path: Path) -> PowerFlowExecutionResult:
     return deserialize_power_flow_result(payload)
 
 
-def write_power_flow_result(path: Path, result: PowerFlowExecutionResult) -> str:
-    """Atomically persist one result payload and return its semantic digest."""
-    payload = serialize_power_flow_result(result)
-    text = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
-    destination = Path(path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_name(destination.name + ".tmp")
-    try:
-        temporary.write_text(text, encoding="utf-8")
-        os.replace(temporary, destination)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
-    return str(payload["result_sha256"])
-
-
-def read_power_flow_result(path: Path) -> PowerFlowExecutionResult:
-    """Reload JSON evidence, rejecting non-standard JSON constants and bad digests."""
-    try:
-        payload = json.loads(
-            Path(path).read_text(encoding="utf-8"),
-            parse_constant=lambda token: (_ for _ in ()).throw(ValueError(token)),
-        )
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
-        raise RetainedPfEvidenceError("PF result JSON could not be read safely") from exc
-    return deserialize_power_flow_result(payload)
-
-
 def _encode_values(values: Mapping[StableId, float], field_name: str) -> dict[str, float]:
     if not isinstance(values, Mapping):
         raise RetainedPfEvidenceError(f"{field_name} must be a StableId mapping")
