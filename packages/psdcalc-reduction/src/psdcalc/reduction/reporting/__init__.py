@@ -36,18 +36,6 @@ from .comprehensive_export import (
     render_voltage_layers_csv,
     validate_public_export_text,
 )
-from .comprehensive_history import (
-    HistoricalEvidenceBundle,
-    HistoricalEvidenceError,
-    HistoricalObservation,
-    HistoricalScenarioEvidence,
-    export_historical_evidence_bundle,
-    historical_evidence_csv,
-    historical_evidence_json,
-    historical_evidence_markdown,
-    historical_policy_comparison_csv,
-    load_historical_evidence,
-)
 
 __all__ = [
     "CompressionOpportunityReport", "build_compression_opportunity_report",
@@ -65,9 +53,5 @@ __all__ = [
     "ComprehensiveExportError", "export_report_bundle", "render_markdown",
     "render_metrics_csv", "render_policy_comparison_csv", "render_voltage_layers_csv",
     "render_retained_fidelity_csv",
-    "validate_public_export_text", "HistoricalEvidenceError",
-    "HistoricalEvidenceBundle", "HistoricalObservation", "HistoricalScenarioEvidence",
-    "export_historical_evidence_bundle", "historical_evidence_csv",
-    "historical_evidence_json", "historical_evidence_markdown",
-    "historical_policy_comparison_csv", "load_historical_evidence",
+    "validate_public_export_text",
 ]
