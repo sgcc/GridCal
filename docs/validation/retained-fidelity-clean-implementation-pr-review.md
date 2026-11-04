@@ -4,11 +4,11 @@
 
 - `BASE_BRANCH`: `origin/codex/psdcalc-phase1-base`
 - Base commit/tree: `e16de2fb2d6a5f96246b1e47f361bb0d897607e5` / `8adbfbd057181a82b502c758403e9d19fda8a07a`
-- Implementation commit/tree: `35c9c473e41693d78555eddbceddf60a3cdd0068` / `a348ed39f0259161e0e166145317a6a89746528d`
-- Review-material commit/tree at report preparation: `8ec73f18f90a56e0e329b01964d889b94593350b` / `0d0ac5411c8579467950c5e9a5502a46b952594b`
+- Implementation commit/tree: `35c9c473e52d2a55d1081a72ac3b400d4c9d23c1` / `a348ed39f0259161e0e166145317a6a89746528d`
+- Latest verified implementation/test commit/tree before this report update: `3672684c2497443cbcb0cf069c53b166de455808` / `41c4d971086c18920e16450346fdbb3371c9debf`
 - Base contains the merged PR-022 prerequisites; no prerequisite code is duplicated.
 
-The implementation-only change set has 33 files: 16 package source files, 9 test files, 5 Retained Fidelity experiment-tool files, and 3 narrowly relevant design/freeze documents. The JSON digest catalog lists each path and SHA-256. After removing independent historical-report archive code/data, the PR does not contain the comprehensive-history dataset or Stage2D-specific implementation files.
+The implementation-only change set has 33 files: 16 package source files, 9 test files, 5 Retained Fidelity experiment-tool files, and 3 narrowly relevant design/freeze documents. The two required review artifacts bring the final PR diff to 35 files. The JSON digest catalog lists each implementation path and SHA-256. After removing independent historical-report archive code/data, the PR does not contain the comprehensive-history dataset or unrelated Stage2D-specific files.
 
 ## Source selection and identity
 
@@ -20,7 +20,7 @@ The included original anonymized freeze contract JSON is required by the existin
 
 ## Verification
 
-- Focused PF/Fidelity, Retained Fidelity, numeric observation, report, evidence, and replay tests: **235 passed, 0 failed**.
+- Focused PF/Fidelity, Retained Fidelity, numeric observation, report, evidence, and replay tests: **235 passed, 0 failed**. The final privacy-fixture recheck additionally passed 20 focused report tests and 2 source-identity tests.
 - Full package suite on Python 3.11.15: **687 passed, 0 failed, 0 skipped**.
 - Synthetic PF → persistence → fresh-process replay and source identity matching/drift rejection: passed. Source drift is rejected before PF; PF call count is zero on the rejection path.
 - Strict digest/tamper checks and existing HARD/DIAGNOSTIC admission regression tests: passed.
@@ -34,7 +34,7 @@ The suite emitted 20,674 warnings, principally PyPSA/pandas deprecations from Ne
 ## Boundaries and publication
 
 - No unrelated Stage2D files are included; shared controller/runtime edits add observational recording and elapsed-time capture only. Existing action-selection, admission, PF contracts, thresholds, mappings, and candidate identity behavior were regression-tested.
-- No Revision 3 draft/approval/lease, private Beijing model, raw real-case run output, third-party wheel, credentials, `.serena/`, or `uv.lock` change is included.
+- No Revision 3 draft/approval/lease, private Beijing model, raw real-case run output, third-party wheel, credentials, local code-graph cache, or `uv.lock` change is included.
 - Beijing PF runs: `0`.
 - Revision 3 rebind required after PR-1 merge: `YES`.
 - Revision 3 freeze status: `DRAFT`; lease issued: `NO`; Attempt005: `NOT_STARTED`.
