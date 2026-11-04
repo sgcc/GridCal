@@ -2,6 +2,7 @@
   "attempt005": "NOT_STARTED",
   "base_branch": "origin/codex/psdcalc-phase1-base",
   "base_commit": "e16de2fb2d6a5f96246b1e47f361bb0d897607e5",
+  "clean_pr_created": false,
   "environment": {
     "locked_dev_dependencies_verified": 67,
     "networkx": "3.6.1",
@@ -184,6 +185,8 @@
   "implementation_source_tree": "a348ed39f0259161e0e166145317a6a89746528d",
   "latest_verified_source_commit": "3672684c2497443cbcb0cf069c53b166de455808",
   "latest_verified_source_tree": "41c4d971086c18920e16450346fdbb3371c9debf",
+  "pr_url": null,
+  "publication_blocker": "GitHub integration returned 403 Resource not accessible by integration; Git transport could not resolve github.com",
   "real_grid_pf_runs": 0,
   "revision3_rebind_required": true,
   "schema": "retained-fidelity-clean-implementation-review/v1",

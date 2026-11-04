@@ -38,4 +38,5 @@ The suite emitted 20,674 warnings, principally PyPSA/pandas deprecations from Ne
 - Beijing PF runs: `0`.
 - Revision 3 rebind required after PR-1 merge: `YES`.
 - Revision 3 freeze status: `DRAFT`; lease issued: `NO`; Attempt005: `NOT_STARTED`.
-- `CLEAN_PR_CREATED` and `PR_URL`: pending remote publication and verification.
+- `CLEAN_PR_CREATED`: `NO`; `PR_URL`: `NONE`.
+- Publication blocker: the GitHub integration returned `403 Resource not accessible by integration` while creating the remote branch. Git transport also could not resolve `github.com`; no remote ref or PR was created.
