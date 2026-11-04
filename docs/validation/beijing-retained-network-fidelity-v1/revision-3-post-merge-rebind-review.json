@@ -18,6 +18,11 @@
     "status": "PASS"
   },
   "disclosed_reporting_export_difference": "OUTSIDE_FROZEN_CALCULATION_SCOPE_REQUIRES_REVIEW",
+  "draft_pr_material": {
+    "body_path": "docs/validation/beijing-retained-network-fidelity-v1/revision-3-review-pr-description.md",
+    "publication": "NOT_CREATED_GITHUB_INTEGRATION_403",
+    "title": "Revision 3: rebind retained-fidelity freeze to merged implementation"
+  },
   "formal_github_review": "NONE",
   "hard_admission_unchanged": "PASS",
   "historical_ci": {

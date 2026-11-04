@@ -63,3 +63,6 @@ PR #15's historical Pylint workflow did not run Pylint: Python 3.8 setup failed 
 The canonical revised draft is `freeze-revision-3-draft.json` and its readable companion is `freeze-revision-3-draft.md`. New post-merge approval and lease-request documents bind the revised freeze SHA; the lease remains an unissued request. Existing historical freeze, STOP, replay, warning and test evidence was copied without alteration. No model, raw run output, third-party wheel, credential, or local checkout path is included.
 
 The proposed review branch is based on the PR #15 merge commit and contains only validation/freeze/approval evidence. It does not repeat the 35 PR #15 implementation files. Independent reviewers should specifically inspect the disclosed `reporting/__init__.py` export difference and the distinction between the reused full-suite tree evidence and the fresh merge-commit focused run.
+
+
+Draft PR title/body material is prepared in `revision-3-review-pr-description.md`. GitHub branch creation returned HTTP 403 (`Resource not accessible by integration`), so no remote branch or PR was created; no further write attempt was made.
