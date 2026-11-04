@@ -1,0 +1,3132 @@
+{
+  "records": [
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "NOT_RECORDED",
+      "evaluation_convention": "Structural final Gate; physical fidelity not evaluated.",
+      "experiment_id": "PR020_REAL_CASE_STRUCTURE",
+      "implementation_commit": null,
+      "implementation_tree": "3b93139a25eec6624e62e399e48afda266d3d13a",
+      "observations": [
+        {
+          "name": "s1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "s1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "accepted_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "candidate_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08840864440078586
+        },
+        {
+          "name": "candidate_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08840864440078586
+        },
+        {
+          "name": "accepted_line_count",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l0_source_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "l1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "l1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 504
+        },
+        {
+          "name": "l0_to_l1_preserved_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 504
+        },
+        {
+          "name": "l0_to_l1_absorbed_internal_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "l0_to_l1_aggregated_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l1_derived_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "protected_l0_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 189
+        },
+        {
+          "name": "protected_l1_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 189
+        },
+        {
+          "name": "protected_l1_lost_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l_plus_association_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_base_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_shunt_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_terminal_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "final_structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        }
+      ],
+      "package_version": "0.3.0",
+      "scenario_id": "beijing-base",
+      "software_versions": {},
+      "source_document_sha256": "fc46af8c4ab223ec83a6f04fe73426136a79dc2e25d75f6b3d72da240d1cdbda",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr020-real-case-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "NOT_RECORDED",
+      "evaluation_convention": "Structural final Gate; physical fidelity not evaluated.",
+      "experiment_id": "PR020_REAL_CASE_STRUCTURE",
+      "implementation_commit": null,
+      "implementation_tree": "3b93139a25eec6624e62e399e48afda266d3d13a",
+      "observations": [
+        {
+          "name": "s1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "s1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "accepted_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1395
+        },
+        {
+          "name": "candidate_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1395
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08644400785854617
+        },
+        {
+          "name": "candidate_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08644400785854617
+        },
+        {
+          "name": "accepted_line_count",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l0_source_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "l1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1396
+        },
+        {
+          "name": "l1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 508
+        },
+        {
+          "name": "l0_to_l1_preserved_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 508
+        },
+        {
+          "name": "l0_to_l1_absorbed_internal_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 131
+        },
+        {
+          "name": "l0_to_l1_aggregated_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l1_derived_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "protected_l0_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 189
+        },
+        {
+          "name": "protected_l1_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 189
+        },
+        {
+          "name": "protected_l1_lost_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l_plus_association_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_base_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_shunt_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_terminal_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "final_structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        }
+      ],
+      "package_version": "0.3.0",
+      "scenario_id": "beijing-low_115",
+      "software_versions": {},
+      "source_document_sha256": "fc46af8c4ab223ec83a6f04fe73426136a79dc2e25d75f6b3d72da240d1cdbda",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr020-real-case-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "NOT_RECORDED",
+      "evaluation_convention": "Structural final Gate; physical fidelity not evaluated.",
+      "experiment_id": "PR020_REAL_CASE_STRUCTURE",
+      "implementation_commit": null,
+      "implementation_tree": "3b93139a25eec6624e62e399e48afda266d3d13a",
+      "observations": [
+        {
+          "name": "s1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "s1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "accepted_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "candidate_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.0013097576948264572
+        },
+        {
+          "name": "candidate_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.0013097576948264572
+        },
+        {
+          "name": "accepted_line_count",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l0_source_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "l1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "l1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "l0_to_l1_preserved_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "l0_to_l1_absorbed_internal_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 2
+        },
+        {
+          "name": "l0_to_l1_aggregated_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l1_derived_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "protected_l0_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 189
+        },
+        {
+          "name": "protected_l1_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 189
+        },
+        {
+          "name": "protected_l1_lost_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l_plus_association_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_base_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_shunt_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "l_plus_terminal_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 18
+        },
+        {
+          "name": "final_structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        }
+      ],
+      "package_version": "0.3.0",
+      "scenario_id": "beijing-lt110",
+      "software_versions": {},
+      "source_document_sha256": "fc46af8c4ab223ec83a6f04fe73426136a79dc2e25d75f6b3d72da240d1cdbda",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr020-real-case-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "JILIN",
+      "declared_schema": "NOT_RECORDED",
+      "evaluation_convention": "Structural final Gate; physical fidelity not evaluated.",
+      "experiment_id": "PR020_REAL_CASE_STRUCTURE",
+      "implementation_commit": null,
+      "implementation_tree": "3b93139a25eec6624e62e399e48afda266d3d13a",
+      "observations": [
+        {
+          "name": "s1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1803
+        },
+        {
+          "name": "s1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 847
+        },
+        {
+          "name": "accepted_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1775
+        },
+        {
+          "name": "candidate_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1775
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.01552967276760954
+        },
+        {
+          "name": "candidate_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.01552967276760954
+        },
+        {
+          "name": "accepted_line_count",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l0_source_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 847
+        },
+        {
+          "name": "l1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1775
+        },
+        {
+          "name": "l1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 819
+        },
+        {
+          "name": "l0_to_l1_preserved_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 819
+        },
+        {
+          "name": "l0_to_l1_absorbed_internal_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 28
+        },
+        {
+          "name": "l0_to_l1_aggregated_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l1_derived_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "protected_l0_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 119
+        },
+        {
+          "name": "protected_l1_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 119
+        },
+        {
+          "name": "protected_l1_lost_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l_plus_association_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "l_plus_base_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "l_plus_shunt_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "l_plus_terminal_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "final_structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        }
+      ],
+      "package_version": "0.3.0",
+      "scenario_id": "jilin-base",
+      "software_versions": {},
+      "source_document_sha256": "fc46af8c4ab223ec83a6f04fe73426136a79dc2e25d75f6b3d72da240d1cdbda",
+      "source_model_sha256": "2ceb9219686671e406c4d9186358245a58b927f06fb115b0fa7ec52ad66cb128",
+      "source_name": "pr020-real-case-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "JILIN",
+      "declared_schema": "NOT_RECORDED",
+      "evaluation_convention": "Structural final Gate; physical fidelity not evaluated.",
+      "experiment_id": "PR020_REAL_CASE_STRUCTURE",
+      "implementation_commit": null,
+      "implementation_tree": "3b93139a25eec6624e62e399e48afda266d3d13a",
+      "observations": [
+        {
+          "name": "s1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1803
+        },
+        {
+          "name": "s1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 847
+        },
+        {
+          "name": "accepted_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1775
+        },
+        {
+          "name": "candidate_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1775
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.01552967276760954
+        },
+        {
+          "name": "candidate_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.01552967276760954
+        },
+        {
+          "name": "accepted_line_count",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l0_source_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 847
+        },
+        {
+          "name": "l1_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1775
+        },
+        {
+          "name": "l1_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 819
+        },
+        {
+          "name": "l0_to_l1_preserved_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 819
+        },
+        {
+          "name": "l0_to_l1_absorbed_internal_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 28
+        },
+        {
+          "name": "l0_to_l1_aggregated_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l1_derived_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "protected_l0_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 119
+        },
+        {
+          "name": "protected_l1_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 119
+        },
+        {
+          "name": "protected_l1_lost_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "l_plus_association_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "l_plus_base_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "l_plus_shunt_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "l_plus_terminal_preserved_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 10
+        },
+        {
+          "name": "final_structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        }
+      ],
+      "package_version": "0.3.0",
+      "scenario_id": "jilin-lt110",
+      "software_versions": {},
+      "source_document_sha256": "fc46af8c4ab223ec83a6f04fe73426136a79dc2e25d75f6b3d72da240d1cdbda",
+      "source_model_sha256": "2ceb9219686671e406c4d9186358245a58b927f06fb115b0fa7ec52ad66cb128",
+      "source_name": "pr020-real-case-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr021-beijing-voltage-policy-summary/v1",
+      "evaluation_convention": "Voltage cutoff structural matrix; exact source layers; no PF fidelity claim.",
+      "experiment_id": "PR021_BEIJING_VOLTAGE_POLICY_MATRIX",
+      "implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+      "implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "BASE"
+        },
+        {
+          "name": "requested_cutoff_kv",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "retained_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[]"
+        },
+        {
+          "name": "resolved_policy_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "0cf409cf27f343aea661c37ff48118a62315fe7812a792439e2a592c68d8abf5"
+        },
+        {
+          "name": "final_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "{\"bus\":0.08840864440078586,\"line\":0.3755868544600939}"
+        },
+        {
+          "name": "retained_identity_set_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "mapping_semantic_sha256",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "f71e32ec0d7f60ec1840cf1a61b94fe4d8fc80a4e3ac2555f6947f6147da7883"
+        },
+        {
+          "name": "equivalent_policy_ids",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.projected_transformer_rows",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.generator",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 56
+        },
+        {
+          "name": "source.load",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 219
+        },
+        {
+          "name": "source.shunt_impedance",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.storage_unit",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.store",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "actual_source_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[0.32,0.6,0.69,0.8,1.0,1.14,10.5,13.8,15.8,16.0,18.0,20.0,27.5,37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "source_absent_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[330,110,35]"
+        },
+        {
+          "name": "candidate.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "candidate.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 399
+        },
+        {
+          "name": "candidate.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "accepted.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "accepted.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 399
+        },
+        {
+          "name": "accepted.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l1.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "l1.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 504
+        },
+        {
+          "name": "l1.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        }
+      ],
+      "package_version": "0.4.0",
+      "scenario_id": "base",
+      "software_versions": {
+        "highspy_version": "1.15.1",
+        "pypsa_version": "1.2.4",
+        "python_version": "3.11.15"
+      },
+      "source_document_sha256": "99ba97ab4df6dffcb7d78bcc47877e47a657fbfd0b649f969d4b8d203a87a450",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr021-beijing-voltage-policy-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr021-beijing-voltage-policy-summary/v1",
+      "evaluation_convention": "Voltage cutoff structural matrix; exact source layers; no PF fidelity claim.",
+      "experiment_id": "PR021_BEIJING_VOLTAGE_POLICY_MATRIX",
+      "implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+      "implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_35"
+        },
+        {
+          "name": "requested_cutoff_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 35.0
+        },
+        {
+          "name": "retained_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "resolved_policy_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "0b9f6b686aa8655d8df0028323394ccf6ff819252b18d1be3127c50d7b2e0de9"
+        },
+        {
+          "name": "final_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "{\"bus\":0.0013097576948264572,\"line\":0.003129890453834116}"
+        },
+        {
+          "name": "retained_identity_set_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "bbcae61dbc11feed1346ff192f4d96b5b7e625f903cbe8b62390eed947410fc3"
+        },
+        {
+          "name": "mapping_semantic_sha256",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf"
+        },
+        {
+          "name": "equivalent_policy_ids",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_37"
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.projected_transformer_rows",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.generator",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 56
+        },
+        {
+          "name": "source.load",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 219
+        },
+        {
+          "name": "source.shunt_impedance",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.storage_unit",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.store",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "actual_source_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[0.32,0.6,0.69,0.8,1.0,1.14,10.5,13.8,15.8,16.0,18.0,20.0,27.5,37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "source_absent_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[330,110,35]"
+        },
+        {
+          "name": "candidate.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "candidate.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "candidate.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "accepted.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "accepted.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "accepted.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l1.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "l1.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "l1.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        }
+      ],
+      "package_version": "0.4.0",
+      "scenario_id": "cut_35",
+      "software_versions": {
+        "highspy_version": "1.15.1",
+        "pypsa_version": "1.2.4",
+        "python_version": "3.11.15"
+      },
+      "source_document_sha256": "99ba97ab4df6dffcb7d78bcc47877e47a657fbfd0b649f969d4b8d203a87a450",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr021-beijing-voltage-policy-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr021-beijing-voltage-policy-summary/v1",
+      "evaluation_convention": "Voltage cutoff structural matrix; exact source layers; no PF fidelity claim.",
+      "experiment_id": "PR021_BEIJING_VOLTAGE_POLICY_MATRIX",
+      "implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+      "implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_37"
+        },
+        {
+          "name": "requested_cutoff_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 37.0
+        },
+        {
+          "name": "retained_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "resolved_policy_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "0b9f6b686aa8655d8df0028323394ccf6ff819252b18d1be3127c50d7b2e0de9"
+        },
+        {
+          "name": "final_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "{\"bus\":0.0013097576948264572,\"line\":0.003129890453834116}"
+        },
+        {
+          "name": "retained_identity_set_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "bbcae61dbc11feed1346ff192f4d96b5b7e625f903cbe8b62390eed947410fc3"
+        },
+        {
+          "name": "mapping_semantic_sha256",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf"
+        },
+        {
+          "name": "equivalent_policy_ids",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_35"
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.projected_transformer_rows",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.generator",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 56
+        },
+        {
+          "name": "source.load",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 219
+        },
+        {
+          "name": "source.shunt_impedance",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.storage_unit",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.store",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "actual_source_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[0.32,0.6,0.69,0.8,1.0,1.14,10.5,13.8,15.8,16.0,18.0,20.0,27.5,37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "source_absent_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[330,110,35]"
+        },
+        {
+          "name": "candidate.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "candidate.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "candidate.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "accepted.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "accepted.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "accepted.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l1.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "l1.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "l1.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        }
+      ],
+      "package_version": "0.4.0",
+      "scenario_id": "cut_37",
+      "software_versions": {
+        "highspy_version": "1.15.1",
+        "pypsa_version": "1.2.4",
+        "python_version": "3.11.15"
+      },
+      "source_document_sha256": "99ba97ab4df6dffcb7d78bcc47877e47a657fbfd0b649f969d4b8d203a87a450",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr021-beijing-voltage-policy-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr021-beijing-voltage-policy-summary/v1",
+      "evaluation_convention": "Voltage cutoff structural matrix; exact source layers; no PF fidelity claim.",
+      "experiment_id": "PR021_BEIJING_VOLTAGE_POLICY_MATRIX",
+      "implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+      "implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_110"
+        },
+        {
+          "name": "requested_cutoff_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 110.0
+        },
+        {
+          "name": "retained_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[115.0,230.0,525.0]"
+        },
+        {
+          "name": "resolved_policy_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "620dc3dba2b46e65ea7dd6cccb5b64d9b70897c9f284fa2527977829e77ea0fd"
+        },
+        {
+          "name": "final_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "{\"bus\":0.0013097576948264572,\"line\":0.003129890453834116}"
+        },
+        {
+          "name": "retained_identity_set_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "1a4ee856ffc250cf19e3c758520c9a1eb230d54cf0f03068a81c273bc4bbe783"
+        },
+        {
+          "name": "mapping_semantic_sha256",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf"
+        },
+        {
+          "name": "equivalent_policy_ids",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_115"
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.projected_transformer_rows",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.generator",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 56
+        },
+        {
+          "name": "source.load",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 219
+        },
+        {
+          "name": "source.shunt_impedance",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.storage_unit",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.store",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "actual_source_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[0.32,0.6,0.69,0.8,1.0,1.14,10.5,13.8,15.8,16.0,18.0,20.0,27.5,37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "source_absent_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[330,110,35]"
+        },
+        {
+          "name": "candidate.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "candidate.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "candidate.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "accepted.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "accepted.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "accepted.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l1.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "l1.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "l1.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        }
+      ],
+      "package_version": "0.4.0",
+      "scenario_id": "cut_110",
+      "software_versions": {
+        "highspy_version": "1.15.1",
+        "pypsa_version": "1.2.4",
+        "python_version": "3.11.15"
+      },
+      "source_document_sha256": "99ba97ab4df6dffcb7d78bcc47877e47a657fbfd0b649f969d4b8d203a87a450",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr021-beijing-voltage-policy-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr021-beijing-voltage-policy-summary/v1",
+      "evaluation_convention": "Voltage cutoff structural matrix; exact source layers; no PF fidelity claim.",
+      "experiment_id": "PR021_BEIJING_VOLTAGE_POLICY_MATRIX",
+      "implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+      "implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_115"
+        },
+        {
+          "name": "requested_cutoff_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 115.0
+        },
+        {
+          "name": "retained_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[115.0,230.0,525.0]"
+        },
+        {
+          "name": "resolved_policy_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "620dc3dba2b46e65ea7dd6cccb5b64d9b70897c9f284fa2527977829e77ea0fd"
+        },
+        {
+          "name": "final_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "{\"bus\":0.0013097576948264572,\"line\":0.003129890453834116}"
+        },
+        {
+          "name": "retained_identity_set_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "1a4ee856ffc250cf19e3c758520c9a1eb230d54cf0f03068a81c273bc4bbe783"
+        },
+        {
+          "name": "mapping_semantic_sha256",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a3f74ac02ebe76425548bd021e3802755f54d8ff7657a835ce9d255293e6addf"
+        },
+        {
+          "name": "equivalent_policy_ids",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_110"
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.projected_transformer_rows",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.generator",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 56
+        },
+        {
+          "name": "source.load",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 219
+        },
+        {
+          "name": "source.shunt_impedance",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.storage_unit",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.store",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "actual_source_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[0.32,0.6,0.69,0.8,1.0,1.14,10.5,13.8,15.8,16.0,18.0,20.0,27.5,37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "source_absent_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[330,110,35]"
+        },
+        {
+          "name": "candidate.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "candidate.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "candidate.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "accepted.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "accepted.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "accepted.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l1.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "l1.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "l1.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        }
+      ],
+      "package_version": "0.4.0",
+      "scenario_id": "cut_115",
+      "software_versions": {
+        "highspy_version": "1.15.1",
+        "pypsa_version": "1.2.4",
+        "python_version": "3.11.15"
+      },
+      "source_document_sha256": "99ba97ab4df6dffcb7d78bcc47877e47a657fbfd0b649f969d4b8d203a87a450",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr021-beijing-voltage-policy-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr021-beijing-voltage-policy-summary/v1",
+      "evaluation_convention": "Voltage cutoff structural matrix; exact source layers; no PF fidelity claim.",
+      "experiment_id": "PR021_BEIJING_VOLTAGE_POLICY_MATRIX",
+      "implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+      "implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_230"
+        },
+        {
+          "name": "requested_cutoff_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 230.0
+        },
+        {
+          "name": "retained_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[230.0,525.0]"
+        },
+        {
+          "name": "resolved_policy_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "d1e41e3787653b83050758f352f86d6847514b207818ad84a393c3886127840d"
+        },
+        {
+          "name": "final_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "{\"bus\":0.08644400785854617,\"line\":0.20657276995305165}"
+        },
+        {
+          "name": "retained_identity_set_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "7ccd24d1a334df1d64fb81a0be124056fa69dd631da9ad424b40fa5076e88482"
+        },
+        {
+          "name": "mapping_semantic_sha256",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "aceb280a8e1eb251cfd9f4157a07c13553f173b2ffdc2338987c8c4d603a62f1"
+        },
+        {
+          "name": "equivalent_policy_ids",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.projected_transformer_rows",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.generator",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 56
+        },
+        {
+          "name": "source.load",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 219
+        },
+        {
+          "name": "source.shunt_impedance",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.storage_unit",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.store",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "actual_source_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[0.32,0.6,0.69,0.8,1.0,1.14,10.5,13.8,15.8,16.0,18.0,20.0,27.5,37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "source_absent_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[330,110,35]"
+        },
+        {
+          "name": "candidate.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1395
+        },
+        {
+          "name": "candidate.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 507
+        },
+        {
+          "name": "candidate.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "accepted.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1395
+        },
+        {
+          "name": "accepted.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 507
+        },
+        {
+          "name": "accepted.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l1.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1396
+        },
+        {
+          "name": "l1.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 508
+        },
+        {
+          "name": "l1.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        }
+      ],
+      "package_version": "0.4.0",
+      "scenario_id": "cut_230",
+      "software_versions": {
+        "highspy_version": "1.15.1",
+        "pypsa_version": "1.2.4",
+        "python_version": "3.11.15"
+      },
+      "source_document_sha256": "99ba97ab4df6dffcb7d78bcc47877e47a657fbfd0b649f969d4b8d203a87a450",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr021-beijing-voltage-policy-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr021-beijing-voltage-policy-summary/v1",
+      "evaluation_convention": "Voltage cutoff structural matrix; exact source layers; no PF fidelity claim.",
+      "experiment_id": "PR021_BEIJING_VOLTAGE_POLICY_MATRIX",
+      "implementation_commit": "4b740b58f6c0e8e1b08134a4a6364279ce370864",
+      "implementation_tree": "1f3bc4f7be30af68f69013ef858c8bcb4830ac6e",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_330"
+        },
+        {
+          "name": "requested_cutoff_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 330.0
+        },
+        {
+          "name": "retained_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[525.0]"
+        },
+        {
+          "name": "resolved_policy_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "9bc79f4ffc72574e402701b965009b4b53ef2868f3ffcfe3d48dce0d457ee11a"
+        },
+        {
+          "name": "final_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "accepted_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "{\"bus\":0.08840864440078586,\"line\":0.3755868544600939}"
+        },
+        {
+          "name": "retained_identity_set_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a119e67b1dad940386e8c6d59e9148ff2292f967da55c26029833d31811028a4"
+        },
+        {
+          "name": "mapping_semantic_sha256",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "60866e72d9f7df0cc076598c1fc71dcc4d9f0c7d6c0ab0fef0e17d0fb82f92e6"
+        },
+        {
+          "name": "equivalent_policy_ids",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.projected_transformer_rows",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.generator",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 56
+        },
+        {
+          "name": "source.load",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 219
+        },
+        {
+          "name": "source.shunt_impedance",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 135
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.storage_unit",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "source.store",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "actual_source_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[0.32,0.6,0.69,0.8,1.0,1.14,10.5,13.8,15.8,16.0,18.0,20.0,27.5,37.0,66.0,115.0,230.0,525.0]"
+        },
+        {
+          "name": "source_absent_voltage_layers_kv",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "[330,110,35]"
+        },
+        {
+          "name": "candidate.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "candidate.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 399
+        },
+        {
+          "name": "candidate.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "accepted.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "accepted.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 399
+        },
+        {
+          "name": "accepted.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "l1.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "l1.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 504
+        },
+        {
+          "name": "l1.compression_fraction",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        }
+      ],
+      "package_version": "0.4.0",
+      "scenario_id": "cut_330",
+      "software_versions": {
+        "highspy_version": "1.15.1",
+        "pypsa_version": "1.2.4",
+        "python_version": "3.11.15"
+      },
+      "source_document_sha256": "99ba97ab4df6dffcb7d78bcc47877e47a657fbfd0b649f969d4b8d203a87a450",
+      "source_model_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+      "source_name": "pr021-beijing-voltage-policy-summary.json",
+      "threshold_set_id": null,
+      "threshold_sha256": null
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr022-schema-1",
+      "evaluation_convention": "Static-snapshot AC PF fidelity; preregistered thresholds; no physical-equivalence claim.",
+      "experiment_id": "PR022_BEIJING_STATIC_SNAPSHOT_AC_PF",
+      "implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+      "implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "BASE"
+        },
+        {
+          "name": "s4_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "s4_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 399
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08840864440078586
+        },
+        {
+          "name": "line_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.3755868544600939
+        },
+        {
+          "name": "s4_pf_converged",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": true
+        },
+        {
+          "name": "vm_rmse_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 5.378045940839738e-05
+        },
+        {
+          "name": "vm_max_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 0.00019638027093504817
+        },
+        {
+          "name": "cutset_p_max_mw",
+          "status": "AVAILABLE",
+          "unit": "MW",
+          "value": 7.347785465051743
+        },
+        {
+          "name": "cutset_q_max_mvar",
+          "status": "AVAILABLE",
+          "unit": "Mvar",
+          "value": 1.1963330127292693
+        },
+        {
+          "name": "loss_relative_error",
+          "status": "AVAILABLE",
+          "unit": "relative",
+          "value": 0.00011097440734940648
+        },
+        {
+          "name": "post_fix_s4_pf_runtime_seconds_diagnostic_only",
+          "status": "AVAILABLE",
+          "unit": "s (diagnostic only)",
+          "value": 0.36325083393603563
+        },
+        {
+          "name": "structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "ac_readiness_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "AC_MODEL_READY"
+        },
+        {
+          "name": "pf_fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "source.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        }
+      ],
+      "package_version": "0.5.0",
+      "scenario_id": "base",
+      "software_versions": {
+        "installed_pypsa": "1.2.4",
+        "installed_python": "3.13.9"
+      },
+      "source_document_sha256": "c0efc9669ddcfd26c7dd72492878254c6b39b3c914422320efe5f228b6e1b436",
+      "source_model_sha256": null,
+      "source_name": "pr022-beijing-ac-pf-fidelity-summary.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr022-schema-1",
+      "evaluation_convention": "Static-snapshot AC PF fidelity; preregistered thresholds; no physical-equivalence claim.",
+      "experiment_id": "PR022_BEIJING_STATIC_SNAPSHOT_AC_PF",
+      "implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+      "implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_330"
+        },
+        {
+          "name": "s4_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1392
+        },
+        {
+          "name": "s4_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 399
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08840864440078586
+        },
+        {
+          "name": "line_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.3755868544600939
+        },
+        {
+          "name": "s4_pf_converged",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": true
+        },
+        {
+          "name": "vm_rmse_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 5.3780459403704873e-05
+        },
+        {
+          "name": "vm_max_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 0.0001963802709357143
+        },
+        {
+          "name": "cutset_p_max_mw",
+          "status": "AVAILABLE",
+          "unit": "MW",
+          "value": 7.347785465051743
+        },
+        {
+          "name": "cutset_q_max_mvar",
+          "status": "AVAILABLE",
+          "unit": "Mvar",
+          "value": 1.1963330126860683
+        },
+        {
+          "name": "loss_relative_error",
+          "status": "AVAILABLE",
+          "unit": "relative",
+          "value": 0.00011097440752881107
+        },
+        {
+          "name": "post_fix_s4_pf_runtime_seconds_diagnostic_only",
+          "status": "AVAILABLE",
+          "unit": "s (diagnostic only)",
+          "value": 0.3478596662171185
+        },
+        {
+          "name": "structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "ac_readiness_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "AC_MODEL_READY"
+        },
+        {
+          "name": "pf_fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "source.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        }
+      ],
+      "package_version": "0.5.0",
+      "scenario_id": "cut_330",
+      "software_versions": {
+        "installed_pypsa": "1.2.4",
+        "installed_python": "3.13.9"
+      },
+      "source_document_sha256": "c0efc9669ddcfd26c7dd72492878254c6b39b3c914422320efe5f228b6e1b436",
+      "source_model_sha256": null,
+      "source_name": "pr022-beijing-ac-pf-fidelity-summary.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr022-schema-1",
+      "evaluation_convention": "Static-snapshot AC PF fidelity; preregistered thresholds; no physical-equivalence claim.",
+      "experiment_id": "PR022_BEIJING_STATIC_SNAPSHOT_AC_PF",
+      "implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+      "implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_230"
+        },
+        {
+          "name": "s4_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1395
+        },
+        {
+          "name": "s4_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 507
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08644400785854617
+        },
+        {
+          "name": "line_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.20657276995305163
+        },
+        {
+          "name": "s4_pf_converged",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": true
+        },
+        {
+          "name": "vm_rmse_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 5.581910875684765e-05
+        },
+        {
+          "name": "vm_max_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 0.0002270926943408469
+        },
+        {
+          "name": "cutset_p_max_mw",
+          "status": "AVAILABLE",
+          "unit": "MW",
+          "value": 7.347785465051686
+        },
+        {
+          "name": "cutset_q_max_mvar",
+          "status": "AVAILABLE",
+          "unit": "Mvar",
+          "value": 1.1963212442419433
+        },
+        {
+          "name": "loss_relative_error",
+          "status": "AVAILABLE",
+          "unit": "relative",
+          "value": 0.00011103421360790007
+        },
+        {
+          "name": "post_fix_s4_pf_runtime_seconds_diagnostic_only",
+          "status": "AVAILABLE",
+          "unit": "s (diagnostic only)",
+          "value": 0.35545283276587725
+        },
+        {
+          "name": "structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "ac_readiness_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "AC_MODEL_READY"
+        },
+        {
+          "name": "pf_fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "source.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        }
+      ],
+      "package_version": "0.5.0",
+      "scenario_id": "cut_230",
+      "software_versions": {
+        "installed_pypsa": "1.2.4",
+        "installed_python": "3.13.9"
+      },
+      "source_document_sha256": "c0efc9669ddcfd26c7dd72492878254c6b39b3c914422320efe5f228b6e1b436",
+      "source_model_sha256": null,
+      "source_name": "pr022-beijing-ac-pf-fidelity-summary.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr022-schema-1",
+      "evaluation_convention": "Static-snapshot AC PF fidelity; preregistered thresholds; no physical-equivalence claim.",
+      "experiment_id": "PR022_BEIJING_STATIC_SNAPSHOT_AC_PF",
+      "implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+      "implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_115"
+        },
+        {
+          "name": "s4_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "s4_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.0013097576948264572
+        },
+        {
+          "name": "line_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.003129890453834116
+        },
+        {
+          "name": "s4_pf_converged",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": true
+        },
+        {
+          "name": "vm_rmse_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 4.887905955009205e-06
+        },
+        {
+          "name": "vm_max_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 3.453532406427762e-05
+        },
+        {
+          "name": "cutset_p_max_mw",
+          "status": "AVAILABLE",
+          "unit": "MW",
+          "value": 7.347785465051686
+        },
+        {
+          "name": "cutset_q_max_mvar",
+          "status": "AVAILABLE",
+          "unit": "Mvar",
+          "value": 0.8391246221334967
+        },
+        {
+          "name": "loss_relative_error",
+          "status": "AVAILABLE",
+          "unit": "relative",
+          "value": 8.10517697481874e-05
+        },
+        {
+          "name": "post_fix_s4_pf_runtime_seconds_diagnostic_only",
+          "status": "AVAILABLE",
+          "unit": "s (diagnostic only)",
+          "value": 0.4019273752346635
+        },
+        {
+          "name": "structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "ac_readiness_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "AC_MODEL_READY"
+        },
+        {
+          "name": "pf_fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "source.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        }
+      ],
+      "package_version": "0.5.0",
+      "scenario_id": "cut_115",
+      "software_versions": {
+        "installed_pypsa": "1.2.4",
+        "installed_python": "3.13.9"
+      },
+      "source_document_sha256": "c0efc9669ddcfd26c7dd72492878254c6b39b3c914422320efe5f228b6e1b436",
+      "source_model_sha256": null,
+      "source_name": "pr022-beijing-ac-pf-fidelity-summary.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr022-schema-1",
+      "evaluation_convention": "Static-snapshot AC PF fidelity; preregistered thresholds; no physical-equivalence claim.",
+      "experiment_id": "PR022_BEIJING_STATIC_SNAPSHOT_AC_PF",
+      "implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+      "implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_110"
+        },
+        {
+          "name": "s4_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "s4_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.0013097576948264572
+        },
+        {
+          "name": "line_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.003129890453834116
+        },
+        {
+          "name": "s4_pf_converged",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": true
+        },
+        {
+          "name": "vm_rmse_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 4.887905955009205e-06
+        },
+        {
+          "name": "vm_max_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 3.453532406427762e-05
+        },
+        {
+          "name": "cutset_p_max_mw",
+          "status": "AVAILABLE",
+          "unit": "MW",
+          "value": 7.347785465051686
+        },
+        {
+          "name": "cutset_q_max_mvar",
+          "status": "AVAILABLE",
+          "unit": "Mvar",
+          "value": 0.8391246221334967
+        },
+        {
+          "name": "loss_relative_error",
+          "status": "AVAILABLE",
+          "unit": "relative",
+          "value": 8.10517697481874e-05
+        },
+        {
+          "name": "post_fix_s4_pf_runtime_seconds_diagnostic_only",
+          "status": "AVAILABLE",
+          "unit": "s (diagnostic only)",
+          "value": 0.39898416586220264
+        },
+        {
+          "name": "structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "ac_readiness_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "AC_MODEL_READY"
+        },
+        {
+          "name": "pf_fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "source.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        }
+      ],
+      "package_version": "0.5.0",
+      "scenario_id": "cut_110",
+      "software_versions": {
+        "installed_pypsa": "1.2.4",
+        "installed_python": "3.13.9"
+      },
+      "source_document_sha256": "c0efc9669ddcfd26c7dd72492878254c6b39b3c914422320efe5f228b6e1b436",
+      "source_model_sha256": null,
+      "source_name": "pr022-beijing-ac-pf-fidelity-summary.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr022-schema-1",
+      "evaluation_convention": "Static-snapshot AC PF fidelity; preregistered thresholds; no physical-equivalence claim.",
+      "experiment_id": "PR022_BEIJING_STATIC_SNAPSHOT_AC_PF",
+      "implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+      "implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_37"
+        },
+        {
+          "name": "s4_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "s4_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.0013097576948264572
+        },
+        {
+          "name": "line_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.003129890453834116
+        },
+        {
+          "name": "s4_pf_converged",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": true
+        },
+        {
+          "name": "vm_rmse_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 4.887905955009205e-06
+        },
+        {
+          "name": "vm_max_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 3.453532406427762e-05
+        },
+        {
+          "name": "cutset_p_max_mw",
+          "status": "AVAILABLE",
+          "unit": "MW",
+          "value": 7.347785465051686
+        },
+        {
+          "name": "cutset_q_max_mvar",
+          "status": "AVAILABLE",
+          "unit": "Mvar",
+          "value": 0.8391246221334967
+        },
+        {
+          "name": "loss_relative_error",
+          "status": "AVAILABLE",
+          "unit": "relative",
+          "value": 8.10517697481874e-05
+        },
+        {
+          "name": "post_fix_s4_pf_runtime_seconds_diagnostic_only",
+          "status": "AVAILABLE",
+          "unit": "s (diagnostic only)",
+          "value": 0.38721399987116456
+        },
+        {
+          "name": "structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "ac_readiness_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "AC_MODEL_READY"
+        },
+        {
+          "name": "pf_fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "source.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        }
+      ],
+      "package_version": "0.5.0",
+      "scenario_id": "cut_37",
+      "software_versions": {
+        "installed_pypsa": "1.2.4",
+        "installed_python": "3.13.9"
+      },
+      "source_document_sha256": "c0efc9669ddcfd26c7dd72492878254c6b39b3c914422320efe5f228b6e1b436",
+      "source_model_sha256": null,
+      "source_name": "pr022-beijing-ac-pf-fidelity-summary.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "pr022-schema-1",
+      "evaluation_convention": "Static-snapshot AC PF fidelity; preregistered thresholds; no physical-equivalence claim.",
+      "experiment_id": "PR022_BEIJING_STATIC_SNAPSHOT_AC_PF",
+      "implementation_commit": "ecc0e935d5fa62d2caf2f71485fd34f661b96377",
+      "implementation_tree": "7f29e11f2adc9be5e73ecae07223c89b92e54bcc",
+      "observations": [
+        {
+          "name": "policy",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "CUT_35"
+        },
+        {
+          "name": "s4_bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1525
+        },
+        {
+          "name": "s4_line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 637
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.0013097576948264572
+        },
+        {
+          "name": "line_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.003129890453834116
+        },
+        {
+          "name": "s4_pf_converged",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": true
+        },
+        {
+          "name": "vm_rmse_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 4.887905955009205e-06
+        },
+        {
+          "name": "vm_max_pu",
+          "status": "AVAILABLE",
+          "unit": "pu",
+          "value": 3.453532406427762e-05
+        },
+        {
+          "name": "cutset_p_max_mw",
+          "status": "AVAILABLE",
+          "unit": "MW",
+          "value": 7.347785465051686
+        },
+        {
+          "name": "cutset_q_max_mvar",
+          "status": "AVAILABLE",
+          "unit": "Mvar",
+          "value": 0.8391246221334967
+        },
+        {
+          "name": "loss_relative_error",
+          "status": "AVAILABLE",
+          "unit": "relative",
+          "value": 8.10517697481874e-05
+        },
+        {
+          "name": "post_fix_s4_pf_runtime_seconds_diagnostic_only",
+          "status": "AVAILABLE",
+          "unit": "s (diagnostic only)",
+          "value": 0.38446758408099413
+        },
+        {
+          "name": "structural_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID"
+        },
+        {
+          "name": "ac_readiness_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "AC_MODEL_READY"
+        },
+        {
+          "name": "pf_fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "source.bus_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        }
+      ],
+      "package_version": "0.5.0",
+      "scenario_id": "cut_35",
+      "software_versions": {
+        "installed_pypsa": "1.2.4",
+        "installed_python": "3.13.9"
+      },
+      "source_document_sha256": "c0efc9669ddcfd26c7dd72492878254c6b39b3c914422320efe5f228b6e1b436",
+      "source_model_sha256": null,
+      "source_name": "pr022-beijing-ac-pf-fidelity-summary.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    },
+    {
+      "case_label": "BEIJING",
+      "declared_schema": "stage2c-execution/v1",
+      "evaluation_convention": "Adaptive Stage2C initial candidate; candidate metric values absent in source; not cross-filled.",
+      "experiment_id": "PR025_STAGE2C_EXECUTION",
+      "implementation_commit": "e16de2fb2d6a5f96246b1e47f361bb0d897607e5",
+      "implementation_tree": "8adbfbd057181a82b502c758403e9d19fda8a07a",
+      "observations": [
+        {
+          "name": "active_action_count",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 125
+        },
+        {
+          "name": "bus_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.08185985592665357
+        },
+        {
+          "name": "branch_compression_fraction",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0.11598587997982854
+        },
+        {
+          "name": "candidate_fingerprint",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "ad38f087c21873e784a38560f5f2cd58cf38239b05a9b6a478982425d49d9705"
+        },
+        {
+          "name": "fidelity_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_FIDELITY_WITHIN_TOLERANCE"
+        },
+        {
+          "name": "fidelity_metric_values",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "metrics_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a4bc6a9a084226bc1ea706386f0248575bee9969139a7a650f52396b9f780eaa"
+        },
+        {
+          "name": "pf_status",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PF_CONVERGED"
+        },
+        {
+          "name": "pf_iterations",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "pf_final_mismatch",
+          "status": "NOT_RECORDED",
+          "unit": null,
+          "value": null
+        },
+        {
+          "name": "overall_admission",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "PASS"
+        },
+        {
+          "name": "actual_derived_closure_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a3792678b1d7127cc03734a643c19029e91fd8ac05b7d9c86114365fa8c88066"
+        },
+        {
+          "name": "expected_derived_closure_digest",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "a3792678b1d7127cc03734a643c19029e91fd8ac05b7d9c86114365fa8c88066"
+        },
+        {
+          "name": "source.bus",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1527
+        },
+        {
+          "name": "source.line",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 639
+        },
+        {
+          "name": "source.transformer",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 1344
+        },
+        {
+          "name": "source.link",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": 0
+        },
+        {
+          "name": "projection_fidelity",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "NOT VALIDATED"
+        },
+        {
+          "name": "physical_equivalence",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "NOT CLAIMED"
+        },
+        {
+          "name": "experiment_outcome",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "ACCEPTED"
+        },
+        {
+          "name": "terminal_reason",
+          "status": "AVAILABLE",
+          "unit": null,
+          "value": "FIDELITY_SATISFIED"
+        }
+      ],
+      "package_version": "0.8.0",
+      "scenario_id": "initial-candidate",
+      "software_versions": {},
+      "source_document_sha256": "cecd31a1f4f793dd5eb40430da3dfebcf7a6b9ebee7522f424121c0bd760e5f8",
+      "source_model_sha256": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+      "source_name": "pr025-stage2c-execution.json",
+      "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+      "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+    }
+  ],
+  "schema_version": "psdcalc-comprehensive-historical-evidence/v1"
+}

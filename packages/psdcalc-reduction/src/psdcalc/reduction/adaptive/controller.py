@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import math
+from time import perf_counter
 from types import MappingProxyType
 from typing import Mapping, Protocol, Sequence
 
@@ -41,6 +42,7 @@ class RuntimePowerFlowOutcome:
     converged: bool
     failure_reason: str | None = None
     evidence: object | None = None
+    observation_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.status:
@@ -221,6 +223,16 @@ class AdaptiveReductionController:
         if catalog_digest != runtime.action_catalog_digest:
             raise AdaptiveControllerError("runtime action catalog digest does not match the supplied catalog")
         initial_action_set_fingerprint = journal.action_set_fingerprint
+        run_id = "adaptive-" + _digest({
+            "config": config.digest,
+            "s1": runtime.source_model_digest,
+            "sidecar": runtime.source_sidecar_digest,
+            "catalog": catalog_digest,
+        })[:16]
+        bind_observation_run_id = getattr(runtime, "bind_observation_run_id", None)
+        if callable(bind_observation_run_id):
+            bind_observation_run_id(run_id)
+        controller_started = perf_counter()
         visited = {initial_action_set_fingerprint}
         iterations: list[AdaptiveReductionIteration] = []
         selected_sequence: list[str] = []
@@ -234,6 +246,9 @@ class AdaptiveReductionController:
             iteration_index = len(iterations)
             active = journal.active_action_ids
             candidate = runtime.build(active)
+            _record_candidate_stage(runtime, candidate,
+                                    role="initial_candidate" if iteration_index == 0 else "incumbent",
+                                    iteration_index=iteration_index)
             self._validate_snapshot(candidate, active)
             if expected_rebuild is not None:
                 expected_candidate, expected_model, expected_mapping, expected_set = expected_rebuild
@@ -375,7 +390,7 @@ class AdaptiveReductionController:
                     runtime=runtime, source_pf=source_pf, actions=action_by_id,
                     journal=journal, current=candidate, expansion=expansion,
                     current_violation=current_violation, config=config,
-                    visited=visited,
+                    visited=visited, iteration_index=iteration_index,
                 )
                 eval_rows.append(evaluation)
                 if context is not None:
@@ -498,14 +513,12 @@ class AdaptiveReductionController:
         if not iterations or iterations[-1].stopping_reason is not terminal:
             last = iterations[-1]
             iterations[-1] = _replace_stopping_reason(last, terminal)
+        record_controller_total = getattr(runtime, "record_controller_total", None)
+        if callable(record_controller_total):
+            record_controller_total(perf_counter() - controller_started)
         return AdaptiveReductionReport(
             schema_version=SCHEMA_VERSION,
-            run_id="adaptive-" + _digest({
-                "config": config.digest,
-                "s1": runtime.source_model_digest,
-                "sidecar": runtime.source_sidecar_digest,
-                "catalog": catalog_digest,
-            })[:16],
+            run_id=run_id,
             config_digest=config.digest,
             s1_model_digest=runtime.source_model_digest,
             s1_sidecar_digest=runtime.source_sidecar_digest,
@@ -562,6 +575,7 @@ class AdaptiveReductionController:
         current: AdaptiveCandidateSnapshot, expansion: ExpansionCandidate,
         current_violation: float, config: AdaptiveReductionConfig,
         visited: set[str],
+        iteration_index: int,
     ) -> tuple[CandidateEvaluation, tuple[AdaptiveCandidateSnapshot, AdaptiveFidelityEvidence,
                                           ReductionActionJournal, tuple[str, ...]] | None]:
         """Rebuild, gate, solve, and compare one candidate without short-circuiting siblings."""
@@ -598,6 +612,8 @@ class AdaptiveReductionController:
                 "candidate does not monotonically deactivate active actions",
             ), None
         candidate = runtime.build(proposed_ids)
+        _record_candidate_stage(runtime, candidate, role="trial_candidate",
+                                iteration_index=iteration_index)
         AdaptiveReductionController._validate_snapshot(candidate, proposed_ids)
         if candidate.structural_status != "STRUCTURALLY_VALID":
             return _failed_evaluation(
@@ -799,6 +815,19 @@ class AdaptiveReductionController:
             reason=reason,
             rejected_candidates=assessment.attribution.rejected_candidates,
         )
+
+
+def _record_candidate_stage(
+    runtime: AdaptiveRuntime,
+    candidate: AdaptiveCandidateSnapshot,
+    *,
+    role: str,
+    iteration_index: int,
+) -> None:
+    """Notify an optional observation sink without exposing it to decisions."""
+    observer = getattr(runtime, "record_candidate_stage", None)
+    if callable(observer):
+        observer(candidate, role=role, iteration_index=iteration_index)
 
 
 def _failed_evaluation(

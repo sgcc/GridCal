@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
+from time import perf_counter
+from collections.abc import Callable
 import hashlib
 import json
 import math
@@ -527,6 +529,15 @@ class PypsaAdaptiveCandidateBuilder:
         )
 
     def build(self, active_action_ids: tuple[str, ...]) -> BuiltCandidate:
+        """Rebuild from S1 and explicit active action IDs using the public contract."""
+        return self._build_with_timing_callback(active_action_ids, timing_callback=None)
+
+    def _build_with_timing_callback(
+        self,
+        active_action_ids: tuple[str, ...],
+        *,
+        timing_callback: Callable[[float], None] | None,
+    ) -> BuiltCandidate:
         """Rebuild a candidate from the frozen S1 and the explicit active action set."""
         readiness = self.action_catalog_readiness(active_action_ids)
         if not readiness.ready:
@@ -602,14 +613,19 @@ class PypsaAdaptiveCandidateBuilder:
         self._adapter.validate_model(candidate_network, candidate_sidecar)
         _validate_mapping_coverage(self._source, self._sidecar, mappings)
         _validate_action_mapping(active_ids, self._by_id, mappings)
-        validation = CandidateValidationOrchestrator().validate(
-            source_network=self._source,
-            source_sidecar=self._sidecar,
-            candidate_network=candidate_network,
-            candidate_sidecar=candidate_sidecar,
-            mappings=mappings,
-            structural=structural,
-        )
+        validation_started = perf_counter()
+        try:
+            validation = CandidateValidationOrchestrator().validate(
+                source_network=self._source,
+                source_sidecar=self._sidecar,
+                candidate_network=candidate_network,
+                candidate_sidecar=candidate_sidecar,
+                mappings=mappings,
+                structural=structural,
+            )
+        finally:
+            if timing_callback is not None:
+                timing_callback(perf_counter() - validation_started)
         model_digest = canonical_model_digest(candidate_network, candidate_sidecar)
         mapping_digest = mappings.semantic_digest()
         structural_digest = _digest({

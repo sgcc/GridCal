@@ -33,4 +33,5 @@ class RunManifest(BaseModel):
     parallel_corridor_policy: str | None = None
     software_versions: dict[str, str] = Field(default_factory=dict)
     artifacts: dict[str, str] = Field(default_factory=dict)
+    artifact_sha256: dict[str, str] = Field(default_factory=dict)
     failure: dict[str, str] | None = None

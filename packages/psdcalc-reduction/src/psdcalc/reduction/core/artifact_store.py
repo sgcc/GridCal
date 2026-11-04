@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -76,13 +77,20 @@ class ArtifactStore:
         """Persist the current manifest atomically."""
         self.write_json("run_manifest.json", self._manifest.model_dump(mode="json"))
 
-    def record_artifact(self, name: str, relative: str) -> None:
-        """Attach an existing artifact path to the manifest."""
-        if not self.path(relative).exists():
+    def record_artifact(self, name: str, relative: str, *, bind_sha256: bool = False) -> None:
+        """Attach an existing artifact path and optionally its byte digest."""
+        artifact_path = self.path(relative)
+        if not artifact_path.exists():
             raise ArtifactError(f"Artifact does not exist: {relative}")
         artifacts = {**self._manifest.artifacts, name: relative}
-        self._manifest = self._manifest.model_copy(update={"artifacts": artifacts,
-                                                    "updated_at": utc_now()})
+        changes: dict[str, object] = {"artifacts": artifacts, "updated_at": utc_now()}
+        if bind_sha256:
+            artifact_sha256 = {
+                **self._manifest.artifact_sha256,
+                name: hashlib.sha256(artifact_path.read_bytes()).hexdigest(),
+            }
+            changes["artifact_sha256"] = artifact_sha256
+        self._manifest = self._manifest.model_copy(update=changes)
         self._save_manifest()
 
     def set_metadata(self, *, input_hash: str | None = None,

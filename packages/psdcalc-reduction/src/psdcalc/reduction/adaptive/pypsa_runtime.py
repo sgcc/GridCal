@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
+from time import perf_counter
 from typing import Mapping
 
 import networkx as nx
@@ -24,6 +26,14 @@ from psdcalc.reduction.adaptive.controller import (
     AdaptiveCandidateSnapshot,
     AdaptiveFidelityEvidence,
     RuntimePowerFlowOutcome,
+)
+from psdcalc.reduction.adaptive.observations import (
+    AdaptiveEvaluationObservation,
+    AdaptiveObservationRecorder,
+    NumericObservationBundle,
+    ObservationAvailability,
+    fidelity_comparison_observation,
+    power_flow_execution_observation,
 )
 from psdcalc.reduction.core.ids import IdentitySidecar, StableId
 from psdcalc.reduction.config.models import ReductionConfig
@@ -79,6 +89,7 @@ class PypsaAdaptiveRuntime:
         threshold_set: FrozenThresholdSet | None = None,
         executor: PypsaAcPowerFlowExecutor | None = None,
         attribution_engine: ErrorAttributionEngine | None = None,
+        observations_enabled: bool = True,
     ) -> None:
         """Bind immutable run inputs and optionally supplied existing components."""
         self._source = source_network
@@ -90,6 +101,14 @@ class PypsaAdaptiveRuntime:
         self._thresholds = threshold_set or FrozenThresholdSet.load()
         self._executor = executor or PypsaAcPowerFlowExecutor()
         self._attribution = attribution_engine or ErrorAttributionEngine()
+        self._observations = AdaptiveObservationRecorder(enabled=observations_enabled)
+        self._observation_role_by_candidate: dict[str, str] = {}
+        self._evaluation_id_by_attempt: dict[str, str] = {}
+        self._timing_ids_by_attempt: dict[str, list[str]] = {}
+        self._numeric_ids_by_attempt: dict[str, list[str]] = {}
+        self._fidelity_ids_by_attempt: dict[str, list[str]] = {}
+        self._candidate_by_observation_id: dict[str, str] = {}
+        self._source_pf_status = "NOT_RECORDED"
         self._derived_closure_evidence: dict[tuple[str, ...], dict[str, object]] = {}
         self.source_model_digest = canonical_model_digest(source_network, source_sidecar)
         self.source_sidecar_digest = builder.source_sidecar_digest
@@ -107,6 +126,20 @@ class PypsaAdaptiveRuntime:
             "tap_policy": operating_point.tap_policy,
             "phase_shift_policy": operating_point.phase_shift_policy,
         })
+        self._solver_contract_summary: dict[str, object] = {
+            "pypsa_version": str(pypsa.__version__),
+            "solver": operating_point.solver,
+            "tolerance": operating_point.tolerance,
+            "max_iterations_requested": operating_point.max_iterations,
+            "max_iterations_enforced": False,
+            "iteration_limit_source": "PyPSA public API default",
+            "distribute_slack": operating_point.distribute_slack,
+            "slack_weights": operating_point.slack_weights or "p_set",
+            "use_seed": operating_point.use_seed,
+            "control_policy": operating_point.control_policy,
+            "tap_policy": operating_point.tap_policy,
+            "phase_shift_policy": operating_point.phase_shift_policy,
+        }
         self.metric_policy_digest = metric_policy_digest(metric_policy)
         self.threshold_set_id = str(self._thresholds.payload["threshold_set_id"])
         self.threshold_digest = self._thresholds.sha256
@@ -153,12 +186,126 @@ class PypsaAdaptiveRuntime:
         return tuple(self._derived_closure_evidence[key]
                      for key in sorted(self._derived_closure_evidence))
 
+    def bind_observation_run_id(self, run_id: str) -> None:
+        """Bind observation IDs to the deterministic controller run identity."""
+        self._observations.bind_run_id(run_id)
+
+    def observation_bundle(self) -> NumericObservationBundle:
+        """Return the numeric/timing companion without touching controller reports."""
+        return self._observations.bundle()
+
+    def _record_timing(
+        self,
+        *,
+        operation_name: str,
+        role: str,
+        duration_seconds: float | None,
+        timing_scope: str,
+        operation_status: str = "COMPLETED",
+        availability_status: ObservationAvailability = ObservationAvailability.RECORDED,
+        candidate_identity: str | None = None,
+    ) -> str | None:
+        """Record path-free runtime timing as diagnostic-only evidence."""
+        return self._observations.add_timing(
+            operation_name=operation_name,
+            role=role,
+            duration_seconds=duration_seconds,
+            timing_scope=timing_scope,
+            backend="pypsa",
+            backend_version=str(pypsa.__version__),
+            candidate_identity=candidate_identity,
+            operation_status=operation_status,
+            availability_status=availability_status,
+        )
+
+    def _update_evaluation(
+        self,
+        attempt: str | None,
+        *,
+        pf_status: str | None = None,
+        fidelity_status: str | None = None,
+        numeric_observation_id: str | None = None,
+        timing_ids: tuple[str, ...] = (),
+    ) -> None:
+        """Attach observed outcomes to the controller row without affecting it."""
+        if attempt is None:
+            return
+        evaluation_id = self._evaluation_id_by_attempt.get(attempt)
+        if evaluation_id is None:
+            return
+        current = next((row for row in self._observations.evaluations()
+                        if row.evaluation_id == evaluation_id), None)
+        if current is None:
+            return
+        numeric_ids = set(current.numeric_observation_ids)
+        if numeric_observation_id is not None:
+            numeric_ids.add(numeric_observation_id)
+        all_timing_ids = set(current.timing_observation_ids)
+        all_timing_ids.update(self._timing_ids_by_attempt.get(attempt, ()))
+        all_timing_ids.update(timing_ids)
+        self._observations.replace_evaluation(replace(
+            current,
+            pf_status=pf_status or current.pf_status,
+            fidelity_status=fidelity_status or current.fidelity_status,
+            numeric_observation_ids=tuple(sorted(numeric_ids)),
+            timing_observation_ids=tuple(sorted(all_timing_ids)),
+        ))
+
+    def record_candidate_stage(
+        self, candidate: AdaptiveCandidateSnapshot, *, role: str, iteration_index: int,
+    ) -> None:
+        """Link existing build and Gate outcomes to one controller candidate stage."""
+        attempt = candidate.build_attempt_fingerprint
+        if attempt is None:
+            return
+        identity = candidate.candidate_fingerprint
+        evaluation_id = self._observations.next_id("adaptive_evaluation", role, identity or attempt)
+        self._evaluation_id_by_attempt[attempt] = evaluation_id
+        if identity is not None:
+            self._observation_role_by_candidate[identity] = role
+        timing_ids = tuple(sorted(self._timing_ids_by_attempt.get(attempt, ())))
+        self._observations.add_evaluation(AdaptiveEvaluationObservation(
+            evaluation_id=evaluation_id,
+            role=role,  # type: ignore[arg-type]
+            iteration_index=iteration_index,
+            candidate_identity=identity,
+            build_attempt_identity=attempt,
+            reconstruction_status="COMPLETED" if identity is not None else "FAILED",
+            structural_status=candidate.structural_status,
+            readiness_status=candidate.readiness_status,
+            pf_status="NOT_RUN",
+            fidelity_status="NOT_RUN",
+            numeric_observation_ids=(),
+            timing_observation_ids=timing_ids,
+        ))
+
+    def record_controller_total(self, duration_seconds: float) -> None:
+        """Record total controller wall time as a diagnostic only."""
+        self._observations.add_timing(
+            operation_name="adaptive_controller_total", role="run",
+            duration_seconds=duration_seconds, timing_scope="AdaptiveReductionController.run end-to-end",
+            backend="pypsa", backend_version=str(pypsa.__version__),
+        )
+
     def build(self, active_action_ids: tuple[str, ...]) -> AdaptiveCandidateSnapshot:
         """Rebuild through Stage 2 and expose its existing structural/readiness Gates."""
         active = tuple(sorted(active_action_ids))
         attempt = self._builder.build_attempt_fingerprint(active)
+        build_timing_ids: list[str] = []
+        reconstruction_started = perf_counter()
+
+        def readiness_timing(duration: float) -> None:
+            timing_id = self._record_timing(
+                operation_name="structural_ac_readiness", role="run",
+                duration_seconds=duration,
+                timing_scope="CandidateValidationOrchestrator.validate end-to-end; nested within candidate reconstruction",
+            )
+            if timing_id is not None:
+                build_timing_ids.append(timing_id)
+
         try:
-            built = self._builder.build(active)
+            built = self._builder._build_with_timing_callback(
+                active, timing_callback=readiness_timing)
         except CandidateReconstructionError as exc:
             action_set_fingerprint = _digest({"schema_version": "1.0", "active_action_ids": active})
             if isinstance(exc, ActionCatalogNotReady):
@@ -174,6 +321,15 @@ class PypsaAdaptiveRuntime:
                                  else "CANDIDATE_RECONSTRUCTION")
                 failure_code = exc.failure_code or "CANDIDATE_RECONSTRUCTION_FAILED"
                 offending = exc.offending_identity_fingerprints
+            timing_id = self._record_timing(
+                operation_name="candidate_reconstruction", role="run",
+                duration_seconds=perf_counter() - reconstruction_started,
+                timing_scope="PypsaAdaptiveCandidateBuilder.build end-to-end, including materialization, mapping, and validation",
+                operation_status="FAILED",
+            )
+            if timing_id is not None:
+                build_timing_ids.append(timing_id)
+            self._timing_ids_by_attempt[attempt] = build_timing_ids
             return AdaptiveCandidateSnapshot(
                 candidate_fingerprint=None,
                 active_action_ids=active,
@@ -195,6 +351,14 @@ class PypsaAdaptiveRuntime:
                 expected_derived_closure_digest=exc.expected_closure_digest,
                 actual_derived_closure_digest=exc.actual_closure_digest,
             )
+        timing_id = self._record_timing(
+            operation_name="candidate_reconstruction", role="run",
+            duration_seconds=perf_counter() - reconstruction_started,
+            timing_scope="PypsaAdaptiveCandidateBuilder.build end-to-end, including materialization, mapping, and validation",
+        )
+        if timing_id is not None:
+            build_timing_ids.append(timing_id)
+        self._timing_ids_by_attempt[attempt] = build_timing_ids
         if built.identity.reduction_config_digest != self.reduction_config_digest:
             raise CandidateReconstructionError("Stage-2 candidate used a different frozen reduction config")
         closure_payload = built.derived_mapping_closure.canonical_payload()
@@ -237,14 +401,21 @@ class PypsaAdaptiveRuntime:
 
     def solve_source(self) -> RuntimePowerFlowOutcome:
         """Run the existing AC PF executor on frozen S1."""
-        return self._solve(self._source, self._source_sidecar)
+        outcome = self._solve(self._source, self._source_sidecar, role="source")
+        self._source_pf_status = outcome.status
+        return outcome
 
     def solve_candidate(self, candidate: AdaptiveCandidateSnapshot) -> RuntimePowerFlowOutcome:
         """Run the existing AC PF executor on one gated Stage-2 candidate."""
         if not isinstance(candidate.artifact, BuiltCandidate):
             return RuntimePowerFlowOutcome(
                 "PF_EXECUTION_FAILED", False, "candidate artifact is unavailable")
-        return self._solve(candidate.artifact.network, candidate.artifact.sidecar)
+        return self._solve(
+            candidate.artifact.network, candidate.artifact.sidecar,
+            role=self._observation_role_by_candidate.get(
+                candidate.candidate_fingerprint or "", "initial_candidate"),
+            candidate=candidate,
+        )
 
     def assess(
         self,
@@ -260,6 +431,7 @@ class PypsaAdaptiveRuntime:
                 or not isinstance(source_result, PowerFlowExecutionResult)
                 or not isinstance(target_result, PowerFlowExecutionResult)):
             raise CandidateReconstructionError("fidelity assessment lacks successful built/PF evidence")
+        fidelity_started = perf_counter()
         mapping = derive_pf_comparison_mapping(
             built.mappings,
             source_bus_ids=_bus_ids(self._source, self._source_sidecar),
@@ -275,6 +447,37 @@ class PypsaAdaptiveRuntime:
         resolved = self._thresholds.resolve(reference_p, reference_q)
         threshold_evaluation = evaluate_metric_thresholds_detailed(
             comparison.metrics, resolved.thresholds, threshold_digest=resolved.digest)
+        fidelity_timing_id = self._record_timing(
+            operation_name="fidelity_comparison", role=self._observation_role_by_candidate.get(
+                candidate.candidate_fingerprint or "", "initial_candidate"),
+            duration_seconds=perf_counter() - fidelity_started,
+            timing_scope="PF mapping, metric projection, frozen threshold resolution, and threshold evaluation",
+            candidate_identity=candidate.candidate_fingerprint,
+        )
+        role = self._observation_role_by_candidate.get(
+            candidate.candidate_fingerprint or "", "initial_candidate")
+        fidelity_observation = fidelity_comparison_observation(
+            comparison.metrics,
+            resolved,
+            threshold_evaluation,
+            observation_id=self._observations.next_id(
+                "fidelity_comparison", role, candidate.candidate_fingerprint),
+            role=role,
+            source_model_digest=self.source_model_digest,
+            candidate_model_digest=built.identity.model_digest,
+            candidate_identity=built.identity.candidate_fingerprint,
+            snapshot=getattr(source_result, "snapshot", None),
+            source_pf_status=source_pf.status,
+            candidate_pf_status=target_pf.status,
+            source_sidecar_digest=self.source_sidecar_digest,
+            candidate_sidecar_digest=_digest(built.sidecar.to_rows()),
+            solver_contract_digest=self.solver_contract_digest,
+            operating_point_digest=self.operating_point_digest,
+            threshold_set_id=self.threshold_set_id,
+            threshold_set_digest=self.threshold_digest,
+        )
+        self._observations.add_numeric(fidelity_observation)
+        attribution_started = perf_counter()
         attribution = self._attribution.run(Stage3AttributionInput(
             comparison=comparison,
             threshold_evaluation=threshold_evaluation,
@@ -289,6 +492,21 @@ class PypsaAdaptiveRuntime:
             }),
             target_comparison_identity=built.identity.model_digest,
         ))
+        attribution_timing_id = self._record_timing(
+            operation_name="attribution", role=role,
+            duration_seconds=perf_counter() - attribution_started,
+            timing_scope="ErrorAttributionEngine.run end-to-end",
+            candidate_identity=candidate.candidate_fingerprint,
+        )
+        attempt = candidate.build_attempt_fingerprint
+        self._fidelity_ids_by_attempt.setdefault(attempt or "", []).append(
+            fidelity_observation.observation_id)
+        self._update_evaluation(
+            attempt,
+            fidelity_status=threshold_evaluation.fidelity_status.value,
+            numeric_observation_id=fidelity_observation.observation_id,
+            timing_ids=tuple(item for item in (fidelity_timing_id, attribution_timing_id) if item),
+        )
         return AdaptiveFidelityEvidence(
             fidelity_status=threshold_evaluation.fidelity_status.value,
             attribution=attribution,
@@ -296,14 +514,108 @@ class PypsaAdaptiveRuntime:
             threshold_digest=resolved.digest,
         )
 
-    def _solve(self, network: pypsa.Network, sidecar: IdentitySidecar) -> RuntimePowerFlowOutcome:
+    def _solve(
+        self,
+        network: pypsa.Network,
+        sidecar: IdentitySidecar,
+        *,
+        role: str,
+        candidate: AdaptiveCandidateSnapshot | None = None,
+    ) -> RuntimePowerFlowOutcome:
         """Adapt one existing PyPSA executor result without translating PF metrics."""
-        result = self._executor.solve(network, sidecar, self._operating_point)
+        started = perf_counter()
+        solver_called = False
+        solver_timing_id: str | None = None
+
+        def solver_timing(duration: float, status: str) -> None:
+            nonlocal solver_called, solver_timing_id
+            solver_called = True
+            operation = "source_pf_solver" if role == "source" else "candidate_pf_solver"
+            solver_timing_id = self._record_timing(
+                operation_name=operation,
+                role=role,
+                duration_seconds=duration,
+                timing_scope="single public PyPSA Network.pf call only",
+                operation_status=status,
+                candidate_identity=candidate.candidate_fingerprint if candidate else None,
+            )
+
+        if isinstance(self._executor, PypsaAcPowerFlowExecutor):
+            result = self._executor.solve(
+                network, sidecar, self._operating_point, timing_observer=solver_timing)
+        else:
+            result = self._executor.solve(network, sidecar, self._operating_point)
+        total_operation = "source_pf_total" if role == "source" else "candidate_pf_total"
+        total_timing_id = self._record_timing(
+            operation_name=total_operation,
+            role=role,
+            duration_seconds=perf_counter() - started,
+            timing_scope="PowerFlowExecutor.solve end-to-end including validation, clone, PF, extraction",
+            operation_status=result.status.value,
+            candidate_identity=candidate.candidate_fingerprint if candidate else None,
+        )
+        if not solver_called:
+            solver_status = (ObservationAvailability.NOT_APPLICABLE
+                             if isinstance(self._executor, PypsaAcPowerFlowExecutor)
+                             else ObservationAvailability.NOT_RECORDED)
+            solver_timing_id = self._record_timing(
+                operation_name="source_pf_solver" if role == "source" else "candidate_pf_solver",
+                role=role,
+                duration_seconds=None,
+                timing_scope="single public PyPSA Network.pf call only",
+                operation_status="NOT_INVOKED" if solver_status is ObservationAvailability.NOT_APPLICABLE
+                else "SOLVER_TIMING_UNAVAILABLE",
+                availability_status=solver_status,
+                candidate_identity=candidate.candidate_fingerprint if candidate else None,
+            )
+        observation_role = "source" if role == "source" else role
+        observation_id = self._observations.next_id(
+            "pf_execution", observation_role,
+            candidate.candidate_fingerprint if candidate else self.source_model_digest,
+        )
+        candidate_digest = candidate.model_digest if candidate else None
+        candidate_sidecar_digest = (
+            _digest(candidate.artifact.sidecar.to_rows())
+            if candidate and isinstance(candidate.artifact, BuiltCandidate) else None
+        )
+        observation = power_flow_execution_observation(
+            result,
+            observation_id=observation_id,
+            role=observation_role,
+            source_model_digest=self.source_model_digest,
+            candidate_model_digest=candidate_digest,
+            candidate_identity=candidate.candidate_fingerprint if candidate else None,
+            source_pf_status=None if role == "source" else self._source_pf_status,
+            source_sidecar_digest=self.source_sidecar_digest,
+            candidate_sidecar_digest=candidate_sidecar_digest,
+            solver_contract_digest=self.solver_contract_digest,
+            operating_point_digest=self.operating_point_digest,
+            threshold_set_id=self.threshold_set_id,
+            threshold_set_digest=self.threshold_digest,
+            solver_contract_summary={**self._solver_contract_summary, **result.solver_metadata},
+        )
+        self._observations.add_numeric(observation)
+        evaluation_id = self._evaluation_id_by_attempt.get(
+            candidate.build_attempt_fingerprint or "") if candidate else None
+        if evaluation_id is not None:
+            self._candidate_by_observation_id[observation_id] = evaluation_id
+        if candidate is not None:
+            timing_ids = tuple(item for item in (total_timing_id, solver_timing_id) if item)
+            attempt = candidate.build_attempt_fingerprint
+            if attempt:
+                self._numeric_ids_by_attempt.setdefault(attempt, []).append(observation_id)
+            self._update_evaluation(
+                attempt,
+                pf_status=result.status.value,
+                numeric_observation_id=observation_id,
+                timing_ids=timing_ids,
+            )
         if result.status is PowerFlowExecutionStatus.PF_CONVERGED:
-            return RuntimePowerFlowOutcome("PF_CONVERGED", True, evidence=result)
+            return RuntimePowerFlowOutcome(
+                "PF_CONVERGED", True, evidence=result, observation_id=observation_id)
         return RuntimePowerFlowOutcome(
             result.status.value, False, result.failure_reason or result.status.value,
-            evidence=result,
+            evidence=result, observation_id=observation_id,
         )
 
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import math
+from time import perf_counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Mapping
@@ -137,6 +139,8 @@ class PypsaAcPowerFlowExecutor:
         network: pypsa.Network,
         sidecar: IdentitySidecar,
         contract: PowerFlowOperatingPointContract,
+        *,
+        timing_observer: Callable[[float, str], None] | None = None,
     ) -> PowerFlowExecutionResult:
         """Solve one selected snapshot and return identity-indexed scalar results.
 
@@ -160,7 +164,7 @@ class PypsaAcPowerFlowExecutor:
         original_signature = structural_input_signature(network)
         try:
             working = self._adapter.clone(network)
-            result = self._run_pf(working, snapshot, contract)
+            result = self._run_pf(working, snapshot, contract, timing_observer=timing_observer)
         except _NoSlackIslandError:
             self._assert_original_unchanged(network, original_signature)
             island_count = self._connected_island_count(network)
@@ -220,15 +224,26 @@ class PypsaAcPowerFlowExecutor:
     def _run_pf(
         self, network: pypsa.Network, snapshot: object,
         contract: PowerFlowOperatingPointContract,
+        *,
+        timing_observer: Callable[[float, str], None] | None = None,
     ) -> Mapping[str, pd.DataFrame]:
         """Call the public nonlinear ``Network.pf`` accessor once."""
         self._require_slack_per_island(network)
         weights = contract.slack_weights or "p_set"
-        return network.pf(
-            snapshots=[snapshot], x_tol=contract.tolerance,
-            use_seed=contract.use_seed, distribute_slack=contract.distribute_slack,
-            slack_weights=weights,
-        )
+        started = perf_counter()
+        operation_status = "COMPLETED"
+        try:
+            return network.pf(
+                snapshots=[snapshot], x_tol=contract.tolerance,
+                use_seed=contract.use_seed, distribute_slack=contract.distribute_slack,
+                slack_weights=weights,
+            )
+        except Exception:
+            operation_status = "FAILED"
+            raise
+        finally:
+            if timing_observer is not None:
+                timing_observer(perf_counter() - started, operation_status)
 
     def _require_slack_per_island(self, network: pypsa.Network) -> None:
         """Return a solver nonconvergence result before PF if an island lacks Slack."""

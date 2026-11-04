@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, is_dataclass, replace
 from enum import StrEnum
 import hashlib
 import json
+import os
 from pathlib import Path
 import time
 from typing import Any, Mapping
@@ -27,6 +28,10 @@ from psdcalc.reduction.adaptive.contracts import (
     CandidateEvaluation,
 )
 from psdcalc.reduction.adaptive.journal import JournalIntegrityError, ReductionActionJournal
+from psdcalc.reduction.adaptive.observations import (
+    NumericObservationBundle,
+    PerformanceTimingObservation,
+)
 from psdcalc.reduction.adaptive.pypsa_runtime import PypsaAdaptiveRuntime
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.models import ReductionConfig
@@ -81,6 +86,7 @@ class AdaptiveReplayResult:
     semantic_digest: str
     report: AdaptiveReductionReport
     runtime_seconds: float
+    replay_timing_observation: PerformanceTimingObservation | None = None
 
 
 class AdaptiveReductionEvidenceStore:
@@ -105,6 +111,7 @@ class AdaptiveReductionEvidenceStore:
         Candidate networks are not serialized: replay rebuilds each from S1 and
         the explicit action set through the Stage-2 builder and existing Gates.
         """
+        persistence_started = time.perf_counter()
         try:
             if not isinstance(runtime, PypsaAdaptiveRuntime):
                 raise TypeError("the initial durable replay adapter requires PypsaAdaptiveRuntime")
@@ -235,6 +242,21 @@ class AdaptiveReductionEvidenceStore:
             for name, relative in evidence["artifacts"].items():
                 self.artifact_store.record_artifact(f"adaptive_{name}", relative)
             self.artifact_store.record_artifact("adaptive_evidence", "adaptive/evidence.json")
+            runtime._record_timing(
+                operation_name="evidence_persistence",
+                role="evidence",
+                duration_seconds=time.perf_counter() - persistence_started,
+                timing_scope=("persist authoritative adaptive artifacts through v2 evidence registration; "
+                              "excludes the numeric companion write and its final manifest binding"),
+            )
+            observation_bundle = runtime.observation_bundle()
+            if observation_bundle.run_id != report.run_id:
+                raise ValueError("numeric observation companion is bound to a different controller run")
+            _write_json(input_dir / "numeric_observations.json", observation_bundle.to_payload())
+            self.artifact_store.record_artifact(
+                "adaptive_numeric_observations", "adaptive/numeric_observations.json",
+                bind_sha256=True,
+            )
             self.artifact_store.set_metadata(input_hash=digests["s1_model_digest"],
                                              config_hash=digests["reduction_config_digest"])
             return durable_report
@@ -274,6 +296,7 @@ class AdaptiveReductionEvidenceStore:
                     AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
                     "historical candidate identity cannot be reinterpreted as closure-bound v2",
                 )
+            numeric_companion = _load_numeric_companion(directory)
             artifacts = evidence.get("artifacts")
             if not isinstance(artifacts, dict) or set(artifacts) != {
                 "frozen_s1", "source_sidecar", "reduction_config", "adaptive_config",
@@ -410,6 +433,15 @@ class AdaptiveReductionEvidenceStore:
                                             "recomputed derived closure evidence differs")
             _verify_reconstructed_journal(actions, initial, computed, stored_journal)
             _compare_report(report_expected, computed.to_dict(), replay_tolerance)
+            if numeric_companion is not None:
+                if numeric_companion.run_id != computed.run_id:
+                    raise AdaptiveEvidenceError(
+                        AdaptiveEvidenceErrorCode.INPUT_MISMATCH,
+                        "numeric observation companion belongs to another controller run",
+                    )
+                _compare_numeric_observation_bundles(
+                    numeric_companion, runtime.observation_bundle(), replay_tolerance,
+                )
             if computed.terminal_reason.value != evidence["digests"]["terminal_reason"]:
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.TERMINAL_MISMATCH,
                                             "terminal reason changed on replay")
@@ -430,10 +462,22 @@ class AdaptiveReductionEvidenceStore:
                 raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
                                             "run identity binding differs")
             _verify_manifest_references(directory, artifacts)
+            replay_timing = PerformanceTimingObservation(
+                operation_name="fresh_process_replay_total",
+                role="replay",
+                duration=time.perf_counter() - started,
+                duration_unit="s",
+                timing_scope="AdaptiveReductionEvidenceStore.replay end-to-end verification",
+                run_id=computed.run_id,
+                process_identity=f"pid:{os.getpid()}",
+                backend="pypsa",
+                backend_version=str(pypsa.__version__),
+            )
             return AdaptiveReplayResult(
                 verified=True, report_digest=expected_report_digest,
                 semantic_digest=semantic_digest, report=computed,
                 runtime_seconds=time.perf_counter() - started,
+                replay_timing_observation=replay_timing,
             )
         except AdaptiveEvidenceError:
             raise
@@ -651,6 +695,97 @@ def _verify_manifest_references(run_dir: Path, refs: Mapping[str, object]) -> No
     if artifact_refs.get("adaptive_evidence") != "adaptive/evidence.json":
         raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
                                     "adaptive evidence is not registered in manifest")
+
+
+def _load_numeric_companion(run_dir: Path) -> NumericObservationBundle | None:
+    """Load the optional v1 companion only when its manifest byte binding is valid."""
+    path = run_dir / "adaptive" / "numeric_observations.json"
+    manifest = _read_json(run_dir / "run_manifest.json")
+    artifact_refs = manifest.get("artifacts") if isinstance(manifest, dict) else None
+    byte_digests = manifest.get("artifact_sha256", {}) if isinstance(manifest, dict) else None
+    if not isinstance(artifact_refs, dict) or not isinstance(byte_digests, dict):
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
+                                    "run manifest lacks artifact/hash registries")
+    key = "adaptive_numeric_observations"
+    registered = key in artifact_refs
+    hashed = key in byte_digests
+    if not path.exists() and not registered and not hashed:
+        return None
+    if not path.is_file() or not registered or not hashed:
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.MISSING_OR_INVALID,
+                                    "numeric observation companion registration is incomplete")
+    if artifact_refs.get(key) != "adaptive/numeric_observations.json":
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                    "numeric observation manifest path differs")
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if byte_digests.get(key) != actual:
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                    "numeric observation companion byte digest differs")
+    try:
+        return NumericObservationBundle.from_payload(_read_json(path))
+    except Exception as exc:
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                    f"numeric observation companion is invalid: {type(exc).__name__}") from exc
+
+
+def _compare_numeric_observation_bundles(
+    expected: NumericObservationBundle,
+    actual: NumericObservationBundle,
+    tolerance: ReplayNumericTolerance,
+) -> None:
+    """Compare replayed numeric evidence while excluding all timing durations."""
+    if expected.run_id != actual.run_id:
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.INPUT_MISMATCH,
+                                    "numeric observation run identity changed on replay")
+    if len(expected.numeric_observations) != len(actual.numeric_observations):
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                    "numeric observation count changed on replay")
+    expected_rows = {row.observation_id: row.to_dict() for row in expected.numeric_observations}
+    actual_rows = {row.observation_id: row.to_dict() for row in actual.numeric_observations}
+    if set(expected_rows) != set(actual_rows):
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                    "numeric observation identities changed on replay")
+    for identity in sorted(expected_rows):
+        _compare_numeric_payload(expected_rows[identity], actual_rows[identity], tolerance,
+                                 f"numeric_observations[{identity}]")
+    expected_evaluations = [row.to_dict() for row in expected.adaptive_evaluations]
+    actual_evaluations = [row.to_dict() for row in actual.adaptive_evaluations]
+    if expected_evaluations != actual_evaluations:
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                    "adaptive numeric links changed on replay")
+
+
+def _compare_numeric_payload(
+    expected: object,
+    actual: object,
+    tolerance: ReplayNumericTolerance,
+    context: str,
+) -> None:
+    """Recursively compare numeric scalars under the existing replay tolerance."""
+    if isinstance(expected, Mapping) and isinstance(actual, Mapping):
+        if set(expected) != set(actual):
+            raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                        f"numeric observation fields changed: {context}")
+        for key in sorted(expected):
+            _compare_numeric_payload(expected[key], actual[key], tolerance, f"{context}.{key}")
+        return
+    if isinstance(expected, (list, tuple)) and isinstance(actual, (list, tuple)):
+        if len(expected) != len(actual):
+            raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                        f"numeric observation length changed: {context}")
+        for index, (left, right) in enumerate(zip(expected, actual)):
+            _compare_numeric_payload(left, right, tolerance, f"{context}[{index}]")
+        return
+    if (isinstance(expected, (int, float)) and not isinstance(expected, bool)
+            and isinstance(actual, (int, float)) and not isinstance(actual, bool)):
+        limit = tolerance.absolute + tolerance.relative * max(abs(float(expected)), abs(float(actual)))
+        if abs(float(expected) - float(actual)) > limit:
+            raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                        f"numeric observation value changed: {context}")
+        return
+    if expected != actual:
+        raise AdaptiveEvidenceError(AdaptiveEvidenceErrorCode.DIGEST_MISMATCH,
+                                    f"numeric observation value changed: {context}")
 
 
 def _journal_from_report(
