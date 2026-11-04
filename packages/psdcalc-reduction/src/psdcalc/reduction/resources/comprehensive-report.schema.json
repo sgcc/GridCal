@@ -1,0 +1,1573 @@
+{
+  "$defs": {
+    "ComponentMappingSummary": {
+      "additionalProperties": false,
+      "description": "Anonymous mapping counts for one source component type.",
+      "properties": {
+        "absorbed_internal_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "aggregated_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "component": {
+          "title": "Component",
+          "type": "string"
+        },
+        "mapping_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "preserved_identity_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_identity_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Identity Digest"
+        },
+        "target_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_identity_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Identity Digest"
+        }
+      },
+      "required": [
+        "component"
+      ],
+      "title": "ComponentMappingSummary",
+      "type": "object"
+    },
+    "ComprehensiveRunReport": {
+      "additionalProperties": false,
+      "description": "Complete A\u2013F report sections for one immutable experiment identity.",
+      "properties": {
+        "fidelity": {
+          "$ref": "#/$defs/FidelitySection"
+        },
+        "opportunity": {
+          "$ref": "#/$defs/OpportunitySection"
+        },
+        "performance": {
+          "$ref": "#/$defs/PerformanceSection"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ReportProvenance"
+        },
+        "retained_network_fidelity": {
+          "$ref": "#/$defs/RetainedNetworkFidelityReport"
+        },
+        "source_inventory": {
+          "$ref": "#/$defs/NetworkInventory"
+        },
+        "structural": {
+          "$ref": "#/$defs/StructuralComparison"
+        },
+        "voltage_layers": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/VoltageLayerSummary"
+          },
+          "title": "Voltage Layers",
+          "type": "array"
+        },
+        "voltage_policies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/VoltagePolicyResolution"
+          },
+          "title": "Voltage Policies",
+          "type": "array"
+        }
+      },
+      "required": [
+        "provenance",
+        "source_inventory"
+      ],
+      "title": "ComprehensiveRunReport",
+      "type": "object"
+    },
+    "CrossVoltageInterfaceReport": {
+      "additionalProperties": false,
+      "description": "Direction-normalized AC boundary flow and region-injection diagnostics.",
+      "properties": {
+        "interface_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "mapping_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "matched_interface_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "p_error_mw": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "q_error_mvar": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "region_net_injection_p_error_mw": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "region_net_injection_q_error_mvar": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "source_branch_member_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_p_mw": {
+          "$ref": "#/$defs/ValueStatistics"
+        },
+        "source_q_mvar": {
+          "$ref": "#/$defs/ValueStatistics"
+        },
+        "target_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_p_mw": {
+          "$ref": "#/$defs/ValueStatistics"
+        },
+        "target_q_mvar": {
+          "$ref": "#/$defs/ValueStatistics"
+        },
+        "unmatched_interface_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "title": "CrossVoltageInterfaceReport",
+      "type": "object"
+    },
+    "ErrorStatistics": {
+      "additionalProperties": false,
+      "description": "Diagnostic absolute-error summary with an explicit sample count.",
+      "properties": {
+        "maximum": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "p95": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "rmse": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "sample_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "title": "ErrorStatistics",
+      "type": "object"
+    },
+    "EvidenceReference": {
+      "additionalProperties": false,
+      "description": "Repository-relative reference to a digest-bound evidence artifact.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "EvidenceReference",
+      "type": "object"
+    },
+    "EvidenceStatus": {
+      "description": "Availability state for one report value.",
+      "enum": [
+        "AVAILABLE",
+        "NOT_RECORDED",
+        "NOT_AVAILABLE",
+        "NOT_APPLICABLE"
+      ],
+      "title": "EvidenceStatus",
+      "type": "string"
+    },
+    "EvidenceValue": {
+      "additionalProperties": false,
+      "description": "One scalar or small histogram plus its explicit evidence state.",
+      "properties": {
+        "mapping_coverage": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mapping Coverage"
+        },
+        "outcome": {
+          "$ref": "#/$defs/MetricOutcome",
+          "default": "NOT_EVALUATED"
+        },
+        "sample_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Count"
+        },
+        "source_identity_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Identity Digest"
+        },
+        "state": {
+          "$ref": "#/$defs/EvidenceStatus",
+          "default": "NOT_RECORDED"
+        },
+        "target_identity_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Identity Digest"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "EvidenceValue",
+      "type": "object"
+    },
+    "FidelityObservation": {
+      "additionalProperties": false,
+      "description": "One existing PF/Fidelity measurement, optionally grouped by topology.",
+      "properties": {
+        "group": {
+          "$ref": "#/$defs/MetricGroup"
+        },
+        "identity_binding_status": {
+          "$ref": "#/$defs/EvidenceStatus",
+          "default": "NOT_RECORDED"
+        },
+        "mapping_coverage": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mapping Coverage"
+        },
+        "mapping_coverage_status": {
+          "$ref": "#/$defs/EvidenceStatus",
+          "default": "NOT_RECORDED"
+        },
+        "metric_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric Digest"
+        },
+        "metric_name": {
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "observed": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "outcome": {
+          "$ref": "#/$defs/MetricOutcome",
+          "default": "NOT_RECORDED"
+        },
+        "sample_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Count"
+        },
+        "sample_count_status": {
+          "$ref": "#/$defs/EvidenceStatus",
+          "default": "NOT_RECORDED"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "enum": [
+                "HARD",
+                "DIAGNOSTIC"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity"
+        },
+        "source_identity_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Identity Digest"
+        },
+        "target_identity_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Identity Digest"
+        },
+        "threshold": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "threshold_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Digest"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "group",
+        "metric_name"
+      ],
+      "title": "FidelityObservation",
+      "type": "object"
+    },
+    "FidelitySection": {
+      "additionalProperties": false,
+      "description": "PF/Fidelity evidence grouped without altering PR-022 admission.",
+      "properties": {
+        "additional_groups_are_diagnostic_only": {
+          "const": true,
+          "default": true,
+          "title": "Additional Groups Are Diagnostic Only",
+          "type": "boolean"
+        },
+        "candidate_failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Candidate Failure Code"
+        },
+        "candidate_subnetworks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PFSubnetworkObservation"
+          },
+          "title": "Candidate Subnetworks",
+          "type": "array"
+        },
+        "fidelity_status": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "metric_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric Digest"
+        },
+        "observations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FidelityObservation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "pf_candidate_status": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "pf_source_status": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "solver_contract_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Solver Contract Digest"
+        },
+        "solver_contract_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Solver Contract Id"
+        },
+        "source_failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Failure Code"
+        },
+        "source_subnetworks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PFSubnetworkObservation"
+          },
+          "title": "Source Subnetworks",
+          "type": "array"
+        },
+        "threshold_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Digest"
+        }
+      },
+      "title": "FidelitySection",
+      "type": "object"
+    },
+    "MetricGroup": {
+      "description": "Network subset associated with an observed PF metric.",
+      "enum": [
+        "WHOLE_NETWORK",
+        "RETAINED_BACKBONE",
+        "CROSS_VOLTAGE_INTERFACES",
+        "AGGREGATED_REGION"
+      ],
+      "title": "MetricGroup",
+      "type": "string"
+    },
+    "MetricOutcome": {
+      "description": "Reporting outcome, separate from the evidence availability state.",
+      "enum": [
+        "PASS",
+        "FAIL",
+        "DIAGNOSTIC_ONLY",
+        "NOT_EVALUATED",
+        "NOT_RECORDED",
+        "NOT_AVAILABLE"
+      ],
+      "title": "MetricOutcome",
+      "type": "string"
+    },
+    "NetworkInventory": {
+      "additionalProperties": false,
+      "description": "Component and voltage-layer inventory for one network stage.",
+      "properties": {
+        "bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "connected_component_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "generator_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "link_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "load_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "shunt_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "total_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "transformer_3w_physical_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "transformer_3w_t_leg_projection_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "transformer_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "transformer_count_basis": {
+          "default": "NOT_RECORDED",
+          "enum": [
+            "PHYSICAL_UNITS",
+            "BACKEND_ROWS",
+            "NOT_RECORDED"
+          ],
+          "title": "Transformer Count Basis",
+          "type": "string"
+        },
+        "voltage_layers_kv": {
+          "default": [],
+          "items": {
+            "type": "number"
+          },
+          "title": "Voltage Layers Kv",
+          "type": "array"
+        }
+      },
+      "title": "NetworkInventory",
+      "type": "object"
+    },
+    "OpportunitySection": {
+      "additionalProperties": false,
+      "description": "Structural opportunities, planning candidates, and realized results.",
+      "properties": {
+        "actual_accepted_bus_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "actual_accepted_line_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "actual_accepted_total_branch_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "actual_achieved_bus_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "actual_achieved_line_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "actual_achieved_total_branch_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "anchor_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "ceiling_semantics": {
+          "const": "STRUCTURAL_BOUND_NOT_GLOBAL_OPTIMUM",
+          "default": "STRUCTURAL_BOUND_NOT_GLOBAL_OPTIMUM",
+          "title": "Ceiling Semantics",
+          "type": "string"
+        },
+        "eligible_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "minimum_cluster_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "planning_candidate_bus_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "planning_candidate_line_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "planning_candidate_total_branch_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "protected_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "radial_tree_candidate_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "radial_tree_eligible_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "radial_tree_rejected_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "rejected_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "rejection_histogram": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_cycle_rank": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_parallel_corridor_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "series_chain_candidate_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "series_chain_eligible_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "series_chain_rejected_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "strict_singleton_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "structural_compression_ceiling_bus_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "structural_compression_ceiling_line_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "structural_compression_ceiling_total_branch_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "title": "OpportunitySection",
+      "type": "object"
+    },
+    "PFSubnetworkObservation": {
+      "additionalProperties": false,
+      "description": "Solver iterations and terminal error for one anonymous subnetwork.",
+      "properties": {
+        "converged": {
+          "title": "Converged",
+          "type": "boolean"
+        },
+        "final_error": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Final Error"
+        },
+        "iterations": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Iterations"
+        },
+        "ordinal": {
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "side": {
+          "enum": [
+            "SOURCE",
+            "CANDIDATE"
+          ],
+          "title": "Side",
+          "type": "string"
+        }
+      },
+      "required": [
+        "side",
+        "ordinal",
+        "converged",
+        "iterations",
+        "final_error"
+      ],
+      "title": "PFSubnetworkObservation",
+      "type": "object"
+    },
+    "PerformanceSection": {
+      "additionalProperties": false,
+      "description": "Runtime, replay, and software context; timing is diagnostic only.",
+      "properties": {
+        "attribution_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "candidate_pf_end_to_end_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "candidate_pf_solver_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "candidate_reconstruction_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "controller_total_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "evidence_persistence_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "fidelity_evaluation_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "fresh_replay_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "replay_status": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "reported_total_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "runtime_comparison_scope": {
+          "const": "WITHIN_RUN_DIAGNOSTIC_ONLY",
+          "default": "WITHIN_RUN_DIAGNOSTIC_ONLY",
+          "title": "Runtime Comparison Scope",
+          "type": "string"
+        },
+        "software_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Software Versions",
+          "type": "object"
+        },
+        "source_pf_end_to_end_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_pf_solver_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "structural_ac_readiness_seconds": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "title": "PerformanceSection",
+      "type": "object"
+    },
+    "ReportProvenance": {
+      "additionalProperties": false,
+      "description": "Public run identity and source/software bindings.",
+      "properties": {
+        "config_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Config Sha256"
+        },
+        "evidence_sources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceReference"
+          },
+          "title": "Evidence Sources",
+          "type": "array"
+        },
+        "experiment_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiment Id"
+        },
+        "implementation_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Implementation Commit"
+        },
+        "implementation_tree": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Implementation Tree"
+        },
+        "metric_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric Digest"
+        },
+        "package_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Version"
+        },
+        "pypsa_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pypsa Version"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "software_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Software Versions",
+          "type": "object"
+        },
+        "source_ledger_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Ledger Sha256"
+        },
+        "source_model_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Model Sha256"
+        },
+        "source_sidecar_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Sidecar Sha256"
+        },
+        "study_id": {
+          "title": "Study Id",
+          "type": "string"
+        },
+        "threshold_set_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Set Id"
+        },
+        "threshold_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Sha256"
+        }
+      },
+      "required": [
+        "study_id",
+        "run_id"
+      ],
+      "title": "ReportProvenance",
+      "type": "object"
+    },
+    "RetainedGroupComparison": {
+      "additionalProperties": false,
+      "description": "Identity coverage and numerical summaries for one network group.",
+      "properties": {
+        "bus_va": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "bus_vm": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "compared_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "compared_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "group": {
+          "$ref": "#/$defs/MetricGroup"
+        },
+        "injection_p": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "injection_q": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "line_p": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "line_q": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "mapping_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "missing_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "missing_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "status": {
+          "$ref": "#/$defs/EvidenceStatus",
+          "default": "NOT_RECORDED"
+        },
+        "transformer_p": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "transformer_q": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "unmatched_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "unmatched_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "required": [
+        "group"
+      ],
+      "title": "RetainedGroupComparison",
+      "type": "object"
+    },
+    "RetainedNetworkFidelityReport": {
+      "additionalProperties": false,
+      "description": "Read-only per-object fidelity summaries derived from existing PF results.",
+      "properties": {
+        "groups": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RetainedGroupComparison"
+          },
+          "title": "Groups",
+          "type": "array"
+        },
+        "interfaces": {
+          "$ref": "#/$defs/CrossVoltageInterfaceReport"
+        },
+        "layers": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RetainedVoltageLayerComparison"
+          },
+          "title": "Layers",
+          "type": "array"
+        },
+        "mapping_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mapping Digest"
+        },
+        "source_pf_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Pf Digest"
+        },
+        "source_pf_status": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_pf_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Pf Digest"
+        },
+        "target_pf_status": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "title": "RetainedNetworkFidelityReport",
+      "type": "object"
+    },
+    "RetainedVoltageLayerComparison": {
+      "additionalProperties": false,
+      "description": "Per-cutoff counts and preserved-object AC errors on one actual layer.",
+      "properties": {
+        "bus_va": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "bus_vm": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "cutoff_kv": {
+          "title": "Cutoff Kv",
+          "type": "number"
+        },
+        "evaluation_status": {
+          "$ref": "#/$defs/EvidenceStatus",
+          "default": "NOT_RECORDED"
+        },
+        "line_p": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "line_q": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "policy_protected_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "policy_protected_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "preserved_bus_identity_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "preserved_identity_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "preserved_line_identity_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "preserved_transformer_identity_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "reduced_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "reduced_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "reduced_transformer_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_transformer_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_transformer_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_transformer_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "transformer_count_basis": {
+          "const": "BACKEND_ROWS",
+          "default": "BACKEND_ROWS",
+          "title": "Transformer Count Basis",
+          "type": "string"
+        },
+        "transformer_p": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "transformer_q": {
+          "$ref": "#/$defs/ErrorStatistics"
+        },
+        "voltage_kv": {
+          "title": "Voltage Kv",
+          "type": "number"
+        }
+      },
+      "required": [
+        "cutoff_kv",
+        "voltage_kv"
+      ],
+      "title": "RetainedVoltageLayerComparison",
+      "type": "object"
+    },
+    "StageInventorySummary": {
+      "additionalProperties": false,
+      "description": "Inventory at one named reduction stage.",
+      "properties": {
+        "inventory": {
+          "$ref": "#/$defs/NetworkInventory"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "inventory"
+      ],
+      "title": "StageInventorySummary",
+      "type": "object"
+    },
+    "StructuralComparison": {
+      "additionalProperties": false,
+      "description": "Structural inventories, map transitions, and final structural Gate.",
+      "properties": {
+        "absorbed_internal_branch_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "aggregated_parallel_corridor_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "component_mappings": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ComponentMappingSummary"
+          },
+          "title": "Component Mappings",
+          "type": "array"
+        },
+        "cross_voltage_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "cross_voltage_link_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "line_compression_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "mapping_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "preserved_identity_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "protected_cycle_preservation": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_connected_components": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "stages": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/StageInventorySummary"
+          },
+          "title": "Stages",
+          "type": "array"
+        },
+        "structural_gate_status": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_connected_components": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "target_inventory": {
+          "$ref": "#/$defs/NetworkInventory"
+        },
+        "total_branch_compression_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "title": "StructuralComparison",
+      "type": "object"
+    },
+    "ValueStatistics": {
+      "additionalProperties": false,
+      "description": "Signed value summary for directional P/Q observations.",
+      "properties": {
+        "max_absolute": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "maximum": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "mean": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "minimum": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "sample_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        }
+      },
+      "title": "ValueStatistics",
+      "type": "object"
+    },
+    "VoltageLayerSummary": {
+      "additionalProperties": false,
+      "description": "Exact nominal-voltage layer counts and identity coverage.",
+      "properties": {
+        "bus_compression_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "line_compression_fraction": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "meshed_structure_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "policy_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Id"
+        },
+        "protected_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "protected_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "radial_structure_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "reduced_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "reduced_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "rejected_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_identity_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "retained_line_identity_coverage": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_bus_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "source_line_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "transformer_interface_count": {
+          "$ref": "#/$defs/EvidenceValue"
+        },
+        "voltage_kv": {
+          "title": "Voltage Kv",
+          "type": "number"
+        }
+      },
+      "required": [
+        "voltage_kv"
+      ],
+      "title": "VoltageLayerSummary",
+      "type": "object"
+    },
+    "VoltagePolicyResolution": {
+      "additionalProperties": false,
+      "description": "One requested cutoff and its actual retained/compressible layers.",
+      "properties": {
+        "compressible_voltage_layers_kv": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Compressible Voltage Layers Kv",
+          "type": "array"
+        },
+        "equivalent_policy_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Equivalent Policy Ids",
+          "type": "array"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "requested_cutoff_kv": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Requested Cutoff Kv"
+        },
+        "resolved_policy_fingerprint": {
+          "title": "Resolved Policy Fingerprint",
+          "type": "string"
+        },
+        "retained_voltage_layers_kv": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Retained Voltage Layers Kv",
+          "type": "array"
+        },
+        "source_voltage_layers_kv": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Source Voltage Layers Kv",
+          "type": "array"
+        }
+      },
+      "required": [
+        "policy_id",
+        "requested_cutoff_kv",
+        "source_voltage_layers_kv",
+        "retained_voltage_layers_kv",
+        "compressible_voltage_layers_kv",
+        "resolved_policy_fingerprint"
+      ],
+      "title": "VoltagePolicyResolution",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Canonical machine-readable report shared by every exporter.",
+  "properties": {
+    "report_id": {
+      "title": "Report Id",
+      "type": "string"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/ComprehensiveRunReport"
+      },
+      "title": "Runs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "psdcalc-comprehensive-reduction-report/v1",
+      "default": "psdcalc-comprehensive-reduction-report/v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "report_id",
+    "runs"
+  ],
+  "title": "ComprehensiveReductionReport",
+  "type": "object"
+}

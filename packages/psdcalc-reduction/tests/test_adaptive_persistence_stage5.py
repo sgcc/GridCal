@@ -37,6 +37,7 @@ from psdcalc.reduction.adaptive.evidence import (
 )
 from psdcalc.reduction.adaptive.journal import ReductionActionJournal
 from psdcalc.reduction.adaptive.pypsa_runtime import PypsaAdaptiveRuntime
+from psdcalc.reduction.adaptive.observations import NumericObservationBundle
 from psdcalc.reduction.backends.pypsa.adapter import PypsaAdapter
 from psdcalc.reduction.config.loader import load_config
 from psdcalc.reduction.core.artifact_store import ArtifactStore
@@ -47,6 +48,7 @@ from psdcalc.reduction.fidelity.contracts import (
 )
 from psdcalc.reduction.fidelity.metrics import operating_point_digest
 from psdcalc.reduction.fidelity.persistence import FrozenThresholdSet
+from psdcalc.reduction.fidelity.pypsa_executor import PypsaAcPowerFlowExecutor
 from psdcalc.reduction.protection.engine import ProtectionSet
 from psdcalc.reduction.topology.parallel_provenance import (
     ParallelSourceLedger, SourceProfileContract,
@@ -73,6 +75,9 @@ def _case(
     strict_middle: bool = False,
     failure_mode: str | None = None,
     config_path_prefix: str | None = None,
+    observations_enabled: bool = True,
+    executor: PypsaAcPowerFlowExecutor | None = None,
+    initial_active_action_ids: tuple[str, ...] | None = None,
 ):
     network = pypsa.Network()
     network.add("Bus", "slack", v_nom=110.0)
@@ -205,7 +210,8 @@ def _case(
         source_network=network, source_sidecar=sidecar, builder=builder, actions=actions,
         reduction_config_digest=builder.reduction_config_digest,
         operating_point=operating_point, metric_policy=metric_policy,
-        threshold_set=thresholds,
+        threshold_set=thresholds, observations_enabled=observations_enabled,
+        executor=executor,
     )
     config = AdaptiveReductionConfig(
         schema_version=SCHEMA_VERSION,
@@ -219,10 +225,12 @@ def _case(
                                  if max_bus_count is not None else None),
         improvement_tolerance=improvement_tolerance,
     )
+    initial_ids = ((action.action_id,) if initial_active_action_ids is None
+                   else initial_active_action_ids)
     report = AdaptiveReductionController().run(
-        runtime=runtime, actions=actions, initial_active_action_ids=(action.action_id,), config=config,
+        runtime=runtime, actions=actions, initial_active_action_ids=initial_ids, config=config,
     )
-    return network, sidecar, reduction, empty_protection, actions, runtime, config, report, (action.action_id,)
+    return network, sidecar, reduction, empty_protection, actions, runtime, config, report, initial_ids
 
 
 def _persist(tmp_path: Path, *, run_id: str = "adaptive-stage5", **case_kwargs):
@@ -257,6 +265,136 @@ def test_persisted_adaptive_run_replays_in_fresh_process(tmp_path: Path) -> None
                             capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("True ")
+
+
+def test_numeric_companion_persists_and_replays_without_timing_equality(tmp_path: Path) -> None:
+    run_dir, case_data = _persist(tmp_path)
+    companion_path = run_dir / "adaptive/numeric_observations.json"
+    assert companion_path.is_file()
+    bundle = NumericObservationBundle.from_payload(json.loads(companion_path.read_text()))
+    assert bundle.run_id == case_data[7].run_id
+    assert any(row.observation_kind == "pf_execution" and row.role == "source"
+               for row in bundle.numeric_observations)
+    source_pf = next(row for row in bundle.numeric_observations
+                     if row.observation_kind == "pf_execution" and row.role == "source")
+    assert source_pf.solver_contract_summary["solver"].value == "pypsa.newton_raphson"
+    assert source_pf.solver_contract_digest == case_data[5].solver_contract_digest
+    assert source_pf.source_sidecar_digest == case_data[5].source_sidecar_digest
+    assert any(row.observation_kind == "fidelity_comparison"
+               for row in bundle.numeric_observations)
+    assert {row.operation_name for row in bundle.performance_timing_observations} >= {
+        "source_pf_total", "source_pf_solver", "candidate_pf_total", "candidate_pf_solver",
+        "candidate_reconstruction", "structural_ac_readiness", "fidelity_comparison",
+        "attribution", "adaptive_controller_total", "evidence_persistence",
+    }
+    replay = AdaptiveReductionEvidenceStore.replay(run_dir)
+    assert replay.verified
+    assert replay.replay_timing_observation.operation_name == "fresh_process_replay_total"
+    assert replay.replay_timing_observation.duration is not None
+
+
+def _write_rebound_numeric_companion(run_dir: Path, payload: dict[str, object]) -> None:
+    """Rebind syntactically valid tampering to isolate semantic replay checks."""
+    import hashlib
+
+    path = run_dir / "adaptive/numeric_observations.json"
+    path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+    manifest_path = run_dir / "run_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.setdefault("artifact_sha256", {})["adaptive_numeric_observations"] = hashlib.sha256(
+        path.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+
+@pytest.mark.parametrize("tamper", ["metric", "threshold"])
+def test_numeric_companion_semantic_tampering_fails_closed(tmp_path: Path, tamper: str) -> None:
+    run_dir, _ = _persist(tmp_path)
+    path = run_dir / "adaptive/numeric_observations.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if tamper in {"metric", "threshold"}:
+        row = next(item for item in payload["numeric_observations"]
+                   if item["observation_kind"] == "fidelity_comparison")
+        metric = row["metric_observations"][0]
+        field = "observed_value" if tamper == "metric" else "resolved_threshold"
+        value = metric[field]["value"]
+        metric[field]["value"] = float(value or 0.0) + 0.001
+        payload["numeric_observations_digest"] = _digest(json.dumps(
+            payload["numeric_observations"], sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False))
+    _write_rebound_numeric_companion(run_dir, payload)
+    with pytest.raises(AdaptiveEvidenceError):
+        AdaptiveReductionEvidenceStore.replay(run_dir)
+
+
+def test_timing_duration_is_not_part_of_numeric_replay_equality(tmp_path: Path) -> None:
+    run_dir, _ = _persist(tmp_path)
+    path = run_dir / "adaptive/numeric_observations.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["performance_timing_observations"][0]["duration"] += 0.001
+    payload["timing_observations_digest"] = _digest(json.dumps(
+        payload["performance_timing_observations"], sort_keys=True, separators=(",", ":"),
+        ensure_ascii=False))
+    _write_rebound_numeric_companion(run_dir, payload)
+    assert AdaptiveReductionEvidenceStore.replay(run_dir).verified
+
+
+def test_v2_without_numeric_companion_remains_replayable(tmp_path: Path) -> None:
+    run_dir, _ = _persist(tmp_path)
+    companion = run_dir / "adaptive/numeric_observations.json"
+    if companion.exists():
+        companion.unlink()
+    manifest_path = run_dir / "run_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.get("artifacts", {}).pop("adaptive_numeric_observations", None)
+    manifest.get("artifact_sha256", {}).pop("adaptive_numeric_observations", None)
+    manifest_path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+    assert AdaptiveReductionEvidenceStore.replay(run_dir).verified
+
+
+def test_instrumentation_does_not_change_controller_or_pf_call_count(tmp_path: Path) -> None:
+    class CountingExecutor(PypsaAcPowerFlowExecutor):
+        def __init__(self) -> None:
+            super().__init__()
+            self.calls = 0
+
+        def solve(self, *args, **kwargs):
+            self.calls += 1
+            return super().solve(*args, **kwargs)
+
+    enabled_executor = CountingExecutor()
+    disabled_executor = CountingExecutor()
+    enabled = _case(tmp_path / "enabled", executor=enabled_executor, observations_enabled=True)
+    disabled = _case(tmp_path / "disabled", executor=disabled_executor, observations_enabled=False)
+    assert enabled[7].selected_candidate_sequence == disabled[7].selected_candidate_sequence
+    assert enabled[7].terminal_reason == disabled[7].terminal_reason
+    assert [row.candidate_fingerprint for row in enabled[7].iterations] == [
+        row.candidate_fingerprint for row in disabled[7].iterations]
+    assert enabled_executor.calls == disabled_executor.calls
+    assert enabled[5].source_model_digest == disabled[5].source_model_digest
+    assert enabled[5].derived_closure_evidence() == disabled[5].derived_closure_evidence()
+    assert len([row for row in enabled[5].observation_bundle().numeric_observations
+                if row.observation_kind == "pf_execution"]) == enabled_executor.calls
+    assert enabled_executor.calls == 4
+    assert enabled[5].source_model_digest == (
+        "6b7047d504d1737dd17985628816d8995d9bbf9f58c3592e98a7824d8db9df5c")
+    assert enabled[7].selected_candidate_sequence == (
+        "85ebfded1b4eb6a5bdc65f593e6e860623f0bd08819c7c48f4ade4cc2c927623",
+    )
+    assert enabled[7].terminal_reason.value == "FIDELITY_SATISFIED"
+    assert tuple(row.candidate_fingerprint for row in enabled[7].iterations) == (
+        "e50ca01c8c10b05946e0e706ab992ab14fd432bdaa1c6174db9a5d98027bd885",
+        "9f7d89a087561ee6d68420c2425e03a13ba7c5b72f34413ba0b4345f1ccfb3dd",
+    )
+    assert tuple(row.mapping_digest for row in enabled[7].iterations) == (
+        "41ec309f62d692edc9a645bda7c8d9f172d2b3ffc51ee32eb8707b71346a6266",
+        "ec3ba94517bb430df2231b82b060d650d272f6e8f7f184c047f6193b86c175d6",
+    )
+    assert tuple(row.pf_status for row in enabled[7].iterations) == (
+        "PF_CONVERGED", "PF_CONVERGED")
+    assert tuple(row["actual_closure_digest"] for row in enabled[5].derived_closure_evidence()) == (
+        "23dcb3e71faa981145dc9f33f58cf41e9eb00c0d3f4b59b896044add470b3922",
+        "73accc71e4f7aec75108e8150249e4ef30a1a54a0d3b5bc072ed7ae0711793ed",
+    )
 
 
 @pytest.mark.parametrize("kwargs, failure_code", [

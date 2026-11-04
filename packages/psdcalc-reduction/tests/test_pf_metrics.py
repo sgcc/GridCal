@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import numpy as np
 import pypsa
@@ -14,7 +15,11 @@ from psdcalc.reduction.fidelity.contracts import (
     PowerFlowOperatingPointContract,
 )
 from psdcalc.reduction.fidelity.mapping import (
+    PfBranchComparisonEntry,
+    PfBusComparisonEntry,
+    PfComparisonMapping,
     PfBranchEndpoints,
+    PfComponentCorrespondence,
     derive_pf_comparison_mapping,
 )
 from psdcalc.reduction.fidelity.metrics import (
@@ -25,10 +30,16 @@ from psdcalc.reduction.fidelity.metrics import (
     relative_error,
     operating_point_digest,
     metric_policy_digest,
+    metric_set_digest,
+    _passive_branch_loss,
     summarize_errors,
     wrap_deg,
 )
 from psdcalc.reduction.fidelity.pypsa_executor import PypsaAcPowerFlowExecutor
+from psdcalc.reduction.fidelity.pypsa_executor import (
+    PowerFlowExecutionResult, PowerFlowExecutionStatus, PowerFlowSubnetworkStatus,
+)
+from psdcalc.reduction.fidelity.contracts import PowerFlowCoverage
 from psdcalc.reduction.mapping.bundle import MappingBundle
 from psdcalc.reduction.mapping.rows import MapEntry
 
@@ -213,6 +224,54 @@ def test_parallel_source_members_compare_once_as_one_target_corridor() -> None:
     assert compared.metrics.branch_q.max_abs == pytest.approx(0.0, abs=1e-8)
     assert compared.metrics.branch_p1.max_abs == pytest.approx(0.0, abs=1e-8)
     assert compared.metrics.branch_q1.max_abs == pytest.approx(0.0, abs=1e-8)
+
+
+def test_metric_digest_is_invariant_to_pf_mapping_insertion_order() -> None:
+    bus_ids = [StableId("order", "Bus", key) for key in ("a", "b", "c")]
+    branch_ids = [StableId("order", component, key)
+                  for component, key in (("Line", "a"), ("Line", "b"),
+                                         ("Line", "c"), ("Transformer", "d"),
+                                         ("Transformer", "e"))]
+    entries = tuple(PfBranchComparisonEntry(
+        branch, branch, branch.component, bus_ids[i % 3], bus_ids[(i + 1) % 3],
+        bus_ids[i % 3], bus_ids[(i + 1) % 3], 1, "preserved")
+        for i, branch in enumerate(branch_ids))
+    mapping = PfComparisonMapping(
+        tuple(PfBusComparisonEntry(bus, bus, "preserved_singleton", "c0", "c0")
+              for bus in bus_ids), entries, (PfComponentCorrespondence("c0", "c0"),), {},
+        {entry.target_branch_id: (entry,) for entry in entries}, "mapping", PowerFlowCoverage(
+            3, 3, 5, 5, 0, 5, preserved_bus_count=3))
+
+    def result(bus_values, loss_values):
+        return PowerFlowExecutionResult(
+            PowerFlowExecutionStatus.PF_CONVERGED, True, "snapshot",
+            (PowerFlowSubnetworkStatus(0, True, 1, 0.0),),
+            bus_vm_pu={bus: 1.0 for bus in bus_ids},
+            bus_va_deg={bus: 0.0 for bus in bus_ids},
+            bus_p_mw=bus_values, bus_q_mvar={bus: 0.0 for bus in bus_ids},
+            branch_p0=loss_values, branch_p1={branch: 0.0 for branch in branch_ids},
+            branch_q0={branch: 0.0 for branch in branch_ids},
+            branch_q1={branch: 0.0 for branch in branch_ids})
+
+    source = result({bus_ids[2]: -1e6, bus_ids[1]: 1e6, bus_ids[0]: 1e-12},
+                    {branch_ids[4]: 0.0, branch_ids[3]: 0.0, branch_ids[2]: -1e6,
+                     branch_ids[1]: 1e6, branch_ids[0]: 1e-12})
+    target = result({bus: 0.0 for bus in bus_ids}, {branch: 0.0 for branch in branch_ids})
+    source_reversed = replace(source, bus_p_mw=dict(reversed(tuple(source.bus_p_mw.items()))),
+                              branch_p0=dict(reversed(tuple(source.branch_p0.items()))))
+    first = compare_power_flow_results(source, target, mapping, _policy()).metrics
+    second = compare_power_flow_results(source_reversed, target, mapping, _policy()).metrics
+    expected_source_loss = sum(source.branch_p0[key] + source.branch_p1[key]
+                               for key in sorted(source.branch_p0, key=lambda item: item.encode()))
+    expected_source_balance = sum(source.bus_p_mw[key]
+                                  for key in sorted(source.bus_p_mw, key=lambda item: item.encode()))
+    expected_target_balance = sum(target.bus_p_mw[key]
+                                  for key in sorted(target.bus_p_mw, key=lambda item: item.encode()))
+    assert _passive_branch_loss(source) == expected_source_loss
+    assert first.passive_branch_losses.total_active_balance_abs_diff_mw == abs(
+        expected_source_balance - expected_target_balance)
+    assert first == second
+    assert metric_set_digest(first) == metric_set_digest(second)
 
 
 def test_absorbed_internal_branch_is_excluded_and_cutsets_use_terminal_flows() -> None:

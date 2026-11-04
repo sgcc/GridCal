@@ -330,8 +330,10 @@ def compare_power_flow_results(
     source_losses = _passive_branch_loss(source)
     target_losses = _passive_branch_loss(target)
     loss_difference = abs(source_losses - target_losses)
-    source_balance = sum(source.bus_p_mw.values())
-    target_balance = sum(target.bus_p_mw.values())
+    source_balance = sum(
+        source.bus_p_mw[key] for key in sorted(source.bus_p_mw, key=lambda item: item.encode()))
+    target_balance = sum(
+        target.bus_p_mw[key] for key in sorted(target.bus_p_mw, key=lambda item: item.encode()))
     loss_metrics = PowerFlowLossMetrics(
         passive_branch_active_abs_diff_mw=loss_difference,
         passive_branch_active_relative_diff=relative_error(
@@ -571,9 +573,10 @@ def _passive_branch_loss(result: PowerFlowExecutionResult) -> float:
     """Sum Line and Transformer p0+p1 losses, excluding shunts and Links."""
     if set(result.branch_p0) != set(result.branch_p1):
         raise MetricError("passive branch P terminal coverage is inconsistent")
-    total = sum(_finite_scalar(result.branch_p0[key], "branch p0") +
-                _finite_scalar(result.branch_p1[key], "branch p1")
-                for key in result.branch_p0)
+    total = sum(
+        _finite_scalar(result.branch_p0[key], "branch p0") +
+        _finite_scalar(result.branch_p1[key], "branch p1")
+        for key in sorted(result.branch_p0, key=lambda item: item.encode()))
     return _finite_scalar(total, "passive branch loss")
 
 

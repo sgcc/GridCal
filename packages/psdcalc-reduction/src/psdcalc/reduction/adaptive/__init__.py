@@ -64,6 +64,18 @@ from psdcalc.reduction.adaptive.controller import (
     RuntimePowerFlowOutcome,
 )
 from psdcalc.reduction.adaptive.pypsa_runtime import PypsaAdaptiveRuntime
+from psdcalc.reduction.adaptive.observations import (
+    AdaptiveEvaluationObservation,
+    AdaptiveObservationError,
+    AdaptiveObservationRecorder,
+    MetricValueObservation,
+    NumericFidelityObservation,
+    NumericObservationBundle,
+    NumericObservationValue,
+    ObservationAvailability,
+    PerformanceTimingObservation,
+    SubnetworkIterationObservation,
+)
 from psdcalc.reduction.adaptive.evidence import (
     AdaptiveEvidenceError,
     AdaptiveEvidenceErrorCode,
@@ -90,6 +102,10 @@ __all__ = [
     "AdaptiveCandidateSnapshot", "AdaptiveControllerError", "AdaptiveFidelityEvidence",
     "AdaptiveReductionController", "AdaptiveRuntime", "RuntimePowerFlowOutcome",
     "PypsaAdaptiveRuntime",
+    "AdaptiveEvaluationObservation", "AdaptiveObservationError", "AdaptiveObservationRecorder",
+    "MetricValueObservation", "NumericFidelityObservation", "NumericObservationBundle",
+    "NumericObservationValue", "ObservationAvailability", "PerformanceTimingObservation",
+    "SubnetworkIterationObservation",
     "AdaptiveEvidenceError", "AdaptiveEvidenceErrorCode",
     "AdaptiveReductionEvidenceStore", "AdaptiveReplayResult",
 ]
