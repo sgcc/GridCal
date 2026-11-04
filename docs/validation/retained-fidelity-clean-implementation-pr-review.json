@@ -1,0 +1,206 @@
+{
+  "attempt005": "NOT_STARTED",
+  "base_branch": "origin/codex/psdcalc-phase1-base",
+  "base_commit": "e16de2fb2d6a5f96246b1e47f361bb0d897607e5",
+  "changed_file_count": 33,
+  "current_review_commit": "8ec73f18f90a56e0e329b01964d889b94593350b",
+  "current_review_tree": "0d0ac5411c8579467950c5e9a5502a46b952594b",
+  "environment": {
+    "locked_dev_dependencies_verified": 67,
+    "networkx": "3.6.1",
+    "numpy": "2.4.6",
+    "pandas": "3.1.0",
+    "pydantic": "2.14.1",
+    "pypsa": "1.2.4",
+    "python": "3.11.15",
+    "scipy": "1.17.1"
+  },
+  "files": [
+    {
+      "kind": "documentation",
+      "path": "docs/architecture/adaptive-pf-fidelity-instrumentation.md",
+      "sha256": "ed864650d088abdc28052b575e0e5a379123ce52e688db48829283a1292ee385"
+    },
+    {
+      "kind": "documentation",
+      "path": "docs/superpowers/plans/2026-11-03-pf-fidelity-instrumentation.md",
+      "sha256": "0f00c46790badbccea642bf745c62c46a49b69707265c98ab6e8f53af41dcf4a"
+    },
+    {
+      "kind": "documentation",
+      "path": "docs/validation/beijing-retained-fidelity-v1-freeze.json",
+      "sha256": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476"
+    },
+    {
+      "kind": "experiment_tool",
+      "path": "packages/psdcalc-reduction/experiment_tools/__init__.py",
+      "sha256": "e1567df305d68b7c3c8e6604a22e75826c7a251e73e0069672ecb5a6b4f6f1ec"
+    },
+    {
+      "kind": "experiment_tool",
+      "path": "packages/psdcalc-reduction/experiment_tools/retained_fidelity_attempt_cli.py",
+      "sha256": "80c251dacfed2519933c00e189561209034e808a3b76be15367cb856ac27355a"
+    },
+    {
+      "kind": "experiment_tool",
+      "path": "packages/psdcalc-reduction/experiment_tools/retained_fidelity_driver.py",
+      "sha256": "36832348f084341ce6381b81510a2a85ac434c83feaa19828f85aaa9060b1edb"
+    },
+    {
+      "kind": "experiment_tool",
+      "path": "packages/psdcalc-reduction/experiment_tools/retained_fidelity_outputs.py",
+      "sha256": "e0078c72ec06e5e11ab9612fbf101a618c330ac323030811dddccc58aa5af6e4"
+    },
+    {
+      "kind": "experiment_tool",
+      "path": "packages/psdcalc-reduction/experiment_tools/retained_pf_evidence.py",
+      "sha256": "443a397f3bb9ba3d85a413e5a34c278daa5b947d075f8687429a1236abeab073"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/__init__.py",
+      "sha256": "44293e32e33fcc292beb0b1c5f70979e067cb97567ecd5d9453499ceffac8934"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/candidates.py",
+      "sha256": "70b9f754ffad574747cf48c064f427023997ed72f200e43025abdc41b4a92dbd"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/controller.py",
+      "sha256": "859bee31295e9880d2f2473e96f5d0fd22304da901eed07206b1e5c854853dfa"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/evidence.py",
+      "sha256": "fdda6ef5ea2ccd4f418e04e279f8fdd3397a03b7985d8d257b426f0ffe0a7b89"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/observations.py",
+      "sha256": "93c55cc284e95b0410a5c559106493a5c84003accc0b34b60a2fd176017003ec"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/adaptive/pypsa_runtime.py",
+      "sha256": "aff8d7088afd685b101031fd66eba12ebf183f440254f435d019e40b6b17eef6"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/core/artifact_store.py",
+      "sha256": "70b09d5842aba454367835ff1fde2bdb960268a87312b878526098d0fbb780bd"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/core/manifests.py",
+      "sha256": "64d56cb8599a7db259fee1599790aea2ab9fd245d8ba68d43beace20f2d8e2c7"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/fidelity/metrics.py",
+      "sha256": "2f0bc8ad6ea9f6ac350bf4c6541327fbb6e11fdddfe501917e27a5d6b08dba26"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/fidelity/pypsa_executor.py",
+      "sha256": "920207daf0a8d4e5962b39558c22611f1bfa0a1c8054550b253469812e48f972"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/__init__.py",
+      "sha256": "bf9d81cd3b497432986a14d28b91f334f48e1da8ae70d574e0b86ef8fb53a87c"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/comprehensive.py",
+      "sha256": "b4657f07315f52572cb234879b097b75980a25e84226231add7ceb74547a1a00"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/comprehensive_builder.py",
+      "sha256": "2203d81a432df6d5447c7811780ebc6e42913550f3e469d1ca8f00049a331ee8"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/comprehensive_export.py",
+      "sha256": "d6ed136795ce08c62d90909abab5fabbfd5cea8531c2081741963886883d66a6"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/reporting/retained_fidelity.py",
+      "sha256": "7cec95dc54246fbdca9ce07ac73aee0f384b45ce2b0e5812ac4038782ead3b9d"
+    },
+    {
+      "kind": "production",
+      "path": "packages/psdcalc-reduction/src/psdcalc/reduction/resources/comprehensive-report.schema.json",
+      "sha256": "51cec9d24cbff443718e7ae543529668b6c015ffd9df1d142117bd2ca1dcfa82"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_adaptive_numeric_observations.py",
+      "sha256": "704bc612de1f8be8b1e3ef6daaad23683437d4284366a55b721305195ada836d"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_adaptive_persistence_stage5.py",
+      "sha256": "9ff78e23e6d3c0f84efecacfbbc9ac73dec3bf785d68eb0dcf9b08c9f8dd5656"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_comprehensive_report_builder.py",
+      "sha256": "3148494e0ed0dbec5405da2d7f9eae2d2dccf531f8e8e7a6879a2130be451229"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_comprehensive_report_contracts.py",
+      "sha256": "2c77e4291240e15d9d5524e6d163aed5e5741d20ec0d80891a87f4983f436c7f"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_comprehensive_report_export.py",
+      "sha256": "a7c884d478fd8a5fc21cb7e451cff0870628b431fcdabbf89a5ae5f1bbf4ae1e"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_pf_metrics.py",
+      "sha256": "e70253f5236abf97b1294fc4bb4013e8943322e46d3730a76a9cf936e28dbfae"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_retained_fidelity_attempt_driver.py",
+      "sha256": "17cd5d628a52a6bf8f134b94cbd2039cfc5800b1958f0c38652db4e1beba6cf8"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_retained_network_fidelity.py",
+      "sha256": "5c2d4126685ddb32e0d6df00903f014ca5acaba994e71e55c58eb7ddd27b1bf0"
+    },
+    {
+      "kind": "test",
+      "path": "packages/psdcalc-reduction/tests/test_retained_pf_driver_evidence.py",
+      "sha256": "ebbc0684d48b841ff0e2613f57ac3b0211619e03f7f9f0854a21c840060eefaa"
+    }
+  ],
+  "implementation_source_commit": "35c9c473e52d2a55d1081a72ac3b400d4c9d23c1",
+  "implementation_source_tree": "a348ed39f0259161e0e166145317a6a89746528d",
+  "real_grid_pf_runs": 0,
+  "revision3_rebind_required": true,
+  "schema": "retained-fidelity-clean-implementation-review/v1",
+  "source_origins": {
+    "development_head": "0b943129347d1f282a2da1758c09c7a7bdb04265",
+    "stable_id_fix": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "test_repair": "32006039913aecb4ba9c46fc1b24e5e0a07b8014"
+  },
+  "stable_id_fix_file": "packages/psdcalc-reduction/src/psdcalc/reduction/fidelity/metrics.py",
+  "stable_id_fix_file_sha256": "2f0bc8ad6ea9f6ac350bf4c6541327fbb6e11fdddfe501917e27a5d6b08dba26",
+  "tests": {
+    "compileall": "PASS",
+    "focused": "235 passed / 0 failed",
+    "full": "687 passed / 0 failed",
+    "git_diff_check": "PASS",
+    "uv_lock_check_offline": "PASS"
+  },
+  "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+  "uv_lock_unchanged_from_base": true
+}
