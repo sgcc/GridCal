@@ -70,7 +70,8 @@ def test_contract_rejects_unknown_fields_and_invalid_mapping_coverage():
 def test_provenance_rejects_absolute_paths_and_non_sha_digests():
     api = _api()
     with pytest.raises(ValueError, match="repository-relative"):
-        api.EvidenceReference(path="/private/case/report.json", sha256="a" * 64)
+        api.EvidenceReference(
+            path=str(Path("synthetic/case/report.json").resolve()), sha256="a" * 64)
     with pytest.raises(ValueError, match="SHA-256"):
         api.EvidenceReference(path="docs/validation/report.json", sha256="bad")
 

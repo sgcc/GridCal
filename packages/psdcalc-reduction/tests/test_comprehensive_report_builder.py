@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+from pathlib import Path
 
 import pypsa
 import pytest
@@ -337,7 +338,7 @@ def test_pf_status_subnetworks_and_failure_code_are_copied_without_raw_exception
         converged=False,
         snapshot="snapshot-1",
         subnetwork_status=(PowerFlowSubnetworkStatus(0, False, 20, 0.01),),
-        failure_reason="private exception /Users/secret/model.dat",
+        failure_reason=f"private exception {Path('synthetic-model.dat').resolve()}",
     )
     report = build_comprehensive_run(
         provenance=_provenance(), source_network=source, source_sidecar=sidecar,

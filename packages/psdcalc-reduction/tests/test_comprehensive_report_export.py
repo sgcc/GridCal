@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+from pathlib import Path
 
 from psdcalc.reduction.reporting.comprehensive_export import (
     export_report_bundle,
@@ -138,7 +139,7 @@ def test_exporter_rejects_forbidden_private_material():
     from psdcalc.reduction.reporting.comprehensive_export import ComprehensiveExportError, validate_public_export_text
 
     try:
-        validate_public_export_text("/Users/private/grid.nc")
+        validate_public_export_text(str(Path("synthetic/grid.nc").resolve()))
     except ComprehensiveExportError:
         pass
     else:
