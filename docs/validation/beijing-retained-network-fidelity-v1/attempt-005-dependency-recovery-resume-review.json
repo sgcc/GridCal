@@ -1,0 +1,75 @@
+{
+  "baseline": {
+    "attempt005": "NOT_STARTED",
+    "attempt005_lease": "NOT_ISSUED",
+    "branch": "codex/psdcalc-next-development",
+    "head_before_report": "98edc076558fdae1c91c8dee85f679b1db242918",
+    "package_version": "0.8.0",
+    "revision3": "DRAFT",
+    "tree_before_report": "46c2ccfe0853130b6b7290e5fb24e85ec1869081"
+  },
+  "changed_files": [
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-dependency-recovery-resume-review.md",
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-dependency-recovery-resume-review.json"
+  ],
+  "date": "2026-11-04",
+  "environment": {
+    "lock_modified": false,
+    "lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "netcdf4": "NOT_INSTALLED",
+    "networkx": "NOT_INSTALLED",
+    "numpy": "NOT_INSTALLED",
+    "pillow": "NOT_INSTALLED",
+    "polars_runtime_32": "2.1.0",
+    "pyproj": "NOT_INSTALLED",
+    "pypsa": "NOT_INSTALLED",
+    "python_executable": "isolated temporary Python 3.11.15 environment",
+    "python_version": "3.11.15",
+    "required_sync_status": "BLOCKED_MISSING_NETCDF4_WHEEL",
+    "scipy": "NOT_INSTALLED"
+  },
+  "missing_artifact": {
+    "distribution": "netcdf4",
+    "filename": "netcdf4-1.7.5.1.post1-cp311-abi3-macosx_15_0_arm64.whl",
+    "local_file_found": false,
+    "locked_sha256": "e241c3e8c3af6a2e04a989bf80db31c580e4692ea6fc8f41d998ef1b2010fbcc",
+    "locked_url": "https://files.pythonhosted.org/packages/f7/85/4bf2ff1dc7ab58e777e44f6a25d196f3104b916b8836e4f749fe9e77b158/netcdf4-1.7.5.1.post1-cp311-abi3-macosx_15_0_arm64.whl",
+    "searched": [
+      "approved Attempt 005 wheelhouse",
+      "dedicated temporary uv cache"
+    ],
+    "version": "1.7.5.1.post1"
+  },
+  "polars_wheel": {
+    "distribution": "polars-runtime-32",
+    "expected_sha256": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+    "filename": "polars_runtime_32-2.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "installed_only_in_isolated_env": true,
+    "lock_sha256_matches": true,
+    "observed_sha256": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+    "path": "approved-wheelhouse/attempt005/polars_runtime_32-2.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+    "version": "2.1.0"
+  },
+  "schema": "attempt005-dependency-recovery-resume-review/v1",
+  "scope": {
+    "historical_evidence_modified": false,
+    "lock_modified": false,
+    "network_used": false,
+    "private_data_committed": false,
+    "serena_committed": false,
+    "source_modified": false,
+    "thresholds_modified": false
+  },
+  "status": "ARTIFACT_ACQUISITION_REQUIRED",
+  "validation": {
+    "attempt005": "NOT_STARTED",
+    "dependency_lock": "FAIL",
+    "fidelity_pf_evidence_tests": "NOT_RUN",
+    "full_test_suite": "NOT_RUN",
+    "lease_issued": false,
+    "real_grid_pf_runs": 0,
+    "revision3_freeze_approval_ready": false,
+    "strict_digest_validation": "NOT_RUN",
+    "warning_regression": "UNRESOLVED"
+  }
+}

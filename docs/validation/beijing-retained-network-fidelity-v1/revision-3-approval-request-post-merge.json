@@ -1,0 +1,36 @@
+{
+  "approval_record": null,
+  "attempt005": "NOT_STARTED",
+  "bindings": {
+    "dependency_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "pr15_head": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+    "production_implementation_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+    "production_implementation_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+    "threshold_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24"
+  },
+  "claim_boundary": {
+    "physical_equivalence": "NOT_CLAIMED",
+    "projection_fidelity": "NOT_VALIDATED",
+    "real_grid_pf_runs": 0
+  },
+  "evidence": {
+    "focused_tests": "140 passed / 0 failed on merge commit",
+    "formal_github_review": "NONE",
+    "fresh_process_replay": "PASS in focused suite",
+    "full_suite": "687 passed / 0 failed on exact PR head tree; reused by exact tree equality, not rerun on merge commit",
+    "historical_attempt004": "FAIL_STOPPED_FIRST_POLICY",
+    "pylint": "NOT_EXECUTED; Python 3.8 setup failure on Ubuntu 26.04; Python 3.9/3.10 cancelled",
+    "source_drift_rejection": "PASS before PF; zero PF calls",
+    "tamper_rejection": "PASS in focused suite"
+  },
+  "freeze_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-3-draft.json",
+  "freeze_sha256": "8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4",
+  "freeze_status": "DRAFT",
+  "independent_approval": "PENDING",
+  "lease_issued": false,
+  "request_status": "READY_FOR_INDEPENDENT_REVIEW_NOT_SUBMITTED",
+  "revision3": 3,
+  "schema": "revision-3-independent-approval-request/v2",
+  "superseded_pre_merge_freeze_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+  "previous_revision3_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930"
+}

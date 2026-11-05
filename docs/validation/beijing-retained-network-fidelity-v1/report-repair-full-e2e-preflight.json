@@ -1,0 +1,89 @@
+{
+  "claim_boundary": {
+    "beijing_pf_executed": false,
+    "historical_attempts_overwritten": false,
+    "physical_equivalence_claim": false,
+    "stage2d_executed": false
+  },
+  "driver_integration": {
+    "commit": "e1f075d9923b6ed530603eb2676eb73d1c35131a",
+    "tree": "eb9cb40f8d79bc95daccca1f4a893bcda869b6ef"
+  },
+  "environment": {
+    "highspy": "1.15.1",
+    "networkx": "3.6.1",
+    "numpy": "2.4.6",
+    "pandas": "3.1.0",
+    "polars": "2.1.0",
+    "pydantic": "2.14.1",
+    "pypsa": "1.2.4",
+    "python": "3.11.15",
+    "scipy": "1.17.1",
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+  },
+  "historical_evidence": {
+    "attempt001_stop_sha256": "fd6d4f4301d086e084f963d79d14eeac92aee2876b20f26dd34c036f6c55ef3e",
+    "attempt002_stop_sha256": "3853bb109900417ef5fff2ae5f2cdd6555d6191abc04e785db72cd456041a9b5",
+    "attempt003_stop_sha256": "380a7ee92c36b28d0b77728902b71141589af8778417e0b617855aa6e22f0499",
+    "original_freeze_sha256": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476"
+  },
+  "local_validation_artifacts": {
+    "release_claim": false,
+    "sdist_sha256": "cc73ee9a72dd77750e9829aab75d5915c70839559ea227c62a3ced3087562989",
+    "wheel_sha256": "19a2a038c1c57f959279797d81af740b7a881902d764d66ad5fbe53bdeb8ab89"
+  },
+  "negative_cases": {
+    "candidate_pf_nonconverged_no_admission": "PASS",
+    "cross_policy_report_tamper": "FAIL_CLOSED",
+    "freeze_revision_lease_tamper": "FAIL_CLOSED",
+    "mapping_tamper": "FAIL_CLOSED",
+    "numeric_tamper_with_forged_manifest_hash": "FAIL_CLOSED",
+    "retained_report_tamper": "FAIL_CLOSED",
+    "source_pf_nonconverged_stop": "PASS",
+    "synthetic_preflight_tamper": "FAIL_CLOSED_BEFORE_OUTPUT"
+  },
+  "package_version": "0.8.0",
+  "report_export_fix": {
+    "commit": "c9021d1fbbd5926e78c7ef3810e52f01d1279a8d",
+    "tree": "a20ba19833e74d5b054da3d977943f8ec6d61fc7"
+  },
+  "schema": "retained-fidelity-full-e2e-preflight/v1",
+  "scope": "PROGRAMMATIC_PYPSA_ONLY",
+  "status": "PASS",
+  "synthetic_execution": {
+    "all_ac_readiness_gates": "PASS",
+    "all_structural_gates": "PASS",
+    "attempt004_frozen_entry_synthetic": "PASS",
+    "candidate_pf_calls": 3,
+    "candidate_pf_statuses": [
+      "PF_CONVERGED",
+      "PF_CONVERGED",
+      "PF_CONVERGED"
+    ],
+    "cross_policy_report": "PASS",
+    "fidelity_statuses": [
+      "PF_FIDELITY_OUTSIDE_TOLERANCE",
+      "PF_FIDELITY_OUTSIDE_TOLERANCE",
+      "PF_FIDELITY_WITHIN_TOLERANCE"
+    ],
+    "fresh_candidate_per_policy": true,
+    "fresh_process_replay": "PASS",
+    "matched_cross_voltage_interfaces_for_one_policy": 2,
+    "nonempty_numeric_observations": true,
+    "policy_count": 3,
+    "retained_bus_line_transformer_samples": true,
+    "source_pf_calls": 1,
+    "source_pf_status": "PF_CONVERGED"
+  },
+  "validation": {
+    "compileall": "PASS",
+    "git_diff_check": "PASS",
+    "installed_wheel_import_root": "SITE_PACKAGES",
+    "installed_wheel_report_export": "PASS",
+    "installed_wheel_resource_equality": "PASS",
+    "isolated_dependency_install": "BLOCKED_BY_OFFLINE_CACHE_ANNOTATED_TYPES_0_8_0",
+    "python311_full_package": "693 passed / 0 failed",
+    "python313_focused": "15 passed / 0 failed",
+    "uv_lock_check_offline": "PASS"
+  }
+}

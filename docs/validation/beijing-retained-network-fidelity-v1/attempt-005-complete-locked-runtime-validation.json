@@ -1,0 +1,159 @@
+{
+  "artifacts": {
+    "netcdf4": {
+      "expected_sha256": "e241c3e8c3af6a2e04a989bf80db31c580e4692ea6fc8f41d998ef1b2010fbcc",
+      "file_sha256": "e241c3e8c3af6a2e04a989bf80db31c580e4692ea6fc8f41d998ef1b2010fbcc",
+      "filename": "netcdf4-1.7.5.1.post1-cp311-abi3-macosx_15_0_arm64.whl",
+      "lock_sha256": "e241c3e8c3af6a2e04a989bf80db31c580e4692ea6fc8f41d998ef1b2010fbcc",
+      "verified": true,
+      "version": "1.7.5.1.post1"
+    },
+    "polars_runtime_32": {
+      "expected_sha256": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+      "file_sha256": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+      "filename": "polars_runtime_32-2.1.0-cp311-abi3-macosx_11_0_arm64.whl",
+      "lock_sha256": "317314d65949f1d58c4939adf83aa0d2cfaf8da50fd4a725a2de27bde2c10018",
+      "verified": true,
+      "version": "2.1.0"
+    },
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+  },
+  "baseline": {
+    "branch": "codex/psdcalc-next-development",
+    "package_version": "0.8.0",
+    "revision2_comparison_commit": "ca3e2ec4e734a86a85202dc764b363c7e22ef4ba",
+    "tested_implementation_commit": "d46f18dafdd5af3e83458e642b62d8e6a2325a12",
+    "tested_implementation_tree": "66c897e6357f09b3dff690166cfdfff96843cf75",
+    "validation_head_before_report": "7e2ff597fb6143414a7b7b80e187ad019769f07f",
+    "validation_tree_before_report": "fed1281dba9fe0f921e07b1275037dd850e9f890"
+  },
+  "changed_files": [
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-complete-locked-runtime-validation.md",
+    "docs/validation/beijing-retained-network-fidelity-v1/attempt-005-complete-locked-runtime-validation.json"
+  ],
+  "date": "2026-11-04",
+  "failure": {
+    "production_pf_or_digest_defect_established": false,
+    "revision2_result": "PASS",
+    "revision3_result": "FAIL",
+    "root_cause": "The revised assertion expects FROZEN_IMPLEMENTATION_CHANGE_REQUIRED while constructing the lease from the current HEAD and tree. In a clean committed checkout, source matches that binding, so the guard correctly does not raise. The test expectation relied on the code patch remaining uncommitted.",
+    "test": "tests/test_retained_fidelity_attempt_driver.py::test_frozen_attempt004_entry_runs_three_synthetic_policies"
+  },
+  "freeze": {
+    "attempt005": "NOT_STARTED",
+    "lease_issued": false,
+    "real_grid_pf_runs": 0,
+    "revision3_freeze_approval_ready": false,
+    "revision3_status": "DRAFT",
+    "stage2d": "NOT_RUN"
+  },
+  "runtime": {
+    "architecture": "arm64",
+    "dependency_lock": "PASS",
+    "key_versions": {
+      "highspy": "1.15.1",
+      "hypothesis": "6.170.13",
+      "netcdf4": "1.7.5.1.post1",
+      "networkx": "3.6.1",
+      "numpy": "2.4.6",
+      "pandas": "3.1.0",
+      "pillow": "13.0.0",
+      "polars": "2.1.0",
+      "polars-runtime-32": "2.1.0",
+      "psdcalc-reduction": "0.8.0",
+      "pyarrow": "23.0.1",
+      "pydantic": "2.14.1",
+      "pyproj": "3.7.2",
+      "pypsa": "1.2.4",
+      "pytest": "9.2.0",
+      "scipy": "1.17.1"
+    },
+    "lock_check_offline": "PASS",
+    "os": "macOS 26.2",
+    "python": "3.11.15",
+    "selected_locked_distributions": 67,
+    "source_import": "current checkout",
+    "uv": "0.11.17",
+    "uv_sync": "PASS"
+  },
+  "schema": "attempt005-complete-locked-runtime-validation/v1",
+  "scope": {
+    "dependency_versions_changed": false,
+    "freeze_files_modified": false,
+    "historical_attempt_evidence_modified": false,
+    "private_model_committed": false,
+    "source_code_modified": false,
+    "tests_modified": false,
+    "third_party_wheels_committed": false,
+    "thresholds_modified": false,
+    "uv_lock_modified": false
+  },
+  "status": "VALIDATION_COMPLETE_FREEZE_APPROVAL_BLOCKED_BY_TEST_FAILURE",
+  "tests": {
+    "compileall": "PASS",
+    "focused": {
+      "duration_seconds": 276.67,
+      "failed": 1,
+      "passed": 190,
+      "status": "FAIL",
+      "warnings": 4479
+    },
+    "full_package": {
+      "duration_seconds": 192.23,
+      "failed": 1,
+      "passed": 693,
+      "status": "FAIL",
+      "warnings": 20671
+    },
+    "git_diff_check": "PASS",
+    "hard_admission": {
+      "duration_seconds": 11.11,
+      "failed": 0,
+      "passed": 22,
+      "status": "PASS"
+    },
+    "revision2_common": {
+      "commit": "ca3e2ec4e734a86a85202dc764b363c7e22ef4ba",
+      "duration_seconds": 154.72,
+      "failed": 0,
+      "passed": 670,
+      "warnings": 16703
+    },
+    "revision3_common": {
+      "duration_seconds": 156.52,
+      "failed": 0,
+      "passed": 670,
+      "warnings": 16703
+    },
+    "strict_replay_and_metric": {
+      "duration_seconds": 26.33,
+      "failed": 0,
+      "passed": 81,
+      "status": "PASS",
+      "warnings": 127
+    }
+  },
+  "warning_comparison": {
+    "categories": {
+      "Pandas4Warning": 16702,
+      "UserWarning": 1
+    },
+    "excluded_changed_test_files": [
+      "tests/test_pf_metrics.py",
+      "tests/test_retained_fidelity_attempt_driver.py"
+    ],
+    "numeric_or_evidence_integrity_warning_found": false,
+    "revision2_total": 16703,
+    "revision3_total": 16703,
+    "sources": {
+      "joblib loky CPU discovery": 1,
+      "pypsa.network.io.py:1104": 301,
+      "pypsa.network.io.py:1440": 375,
+      "pypsa.network.transform.py:454": 1867,
+      "pypsa.network.transform.py:458": 13890,
+      "pypsa.networks.py:1201": 266,
+      "synthetic test dtype assignment": 3
+    },
+    "status": "NO_REGRESSION_IN_COMMON_TEST_SET"
+  }
+}

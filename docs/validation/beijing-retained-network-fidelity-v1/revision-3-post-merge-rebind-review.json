@@ -1,0 +1,106 @@
+{
+  "attempt005": "NOT_STARTED",
+  "attempt005_execution_request_comparison": "UNCHANGED_FROM_PRE_MERGE_REVISION_3_DRAFT; field did not exist in Revision 2",
+  "contract_comparison": {
+    "attempt004_stop_rule": "UNCHANGED_FROM_REVISION_2",
+    "execution_contract": "UNCHANGED_FROM_REVISION_2",
+    "fidelity_contract": "UNCHANGED_FROM_REVISION_2",
+    "operating_point": "UNCHANGED_FROM_REVISION_2",
+    "pf_executor": "UNCHANGED_FROM_REVISION_2",
+    "policies": "UNCHANGED_FROM_REVISION_2",
+    "retained_metric_contract": "UNCHANGED_FROM_REVISION_2"
+  },
+  "dependency_lock": {
+    "locked_distributions": 67,
+    "pypsa": "1.2.4",
+    "python": "3.11.15",
+    "sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712",
+    "status": "PASS"
+  },
+  "disclosed_reporting_export_difference": "OUTSIDE_FROZEN_CALCULATION_SCOPE_REQUIRES_REVIEW",
+  "draft_pr_material": {
+    "body_path": "docs/validation/beijing-retained-network-fidelity-v1/revision-3-review-pr-description.md",
+    "publication": "NOT_CREATED_GITHUB_INTEGRATION_403",
+    "title": "Revision 3: rebind retained-fidelity freeze to merged implementation"
+  },
+  "formal_github_review": "NONE",
+  "hard_admission_unchanged": "PASS",
+  "historical_ci": {
+    "pylint_executed": false,
+    "python38": "setup failed on Ubuntu 26.04",
+    "python39_310": "cancelled"
+  },
+  "independent_freeze_approval": "PENDING",
+  "lease_issued": false,
+  "merge_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
+  "merge_commit_verified": true,
+  "merge_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+  "merge_tree_verified": true,
+  "metric_source_binding": {
+    "path": "packages/psdcalc-reduction/src/psdcalc/reduction/fidelity/metrics.py",
+    "sha256": "2f0bc8ad6ea9f6ac350bf4c6541327fbb6e11fdddfe501917e27a5d6b08dba26",
+    "status": "PASS",
+    "unchanged_from_old_draft": true
+  },
+  "original_revision3_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+  "parent_1": "e16de2fb2d6a5f96246b1e47f361bb0d897607e5",
+  "parent_2": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+  "physical_equivalence": "NOT_CLAIMED",
+  "pr15_head": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+  "pr15_url": "https://github.com/sgcc/GridCal/pull/15",
+  "pr_head_tree_equals_merge_tree": true,
+  "private_data_committed": false,
+  "production_content_equivalence": "PASS_FOR_FROZEN_SCOPE_WITH_DISCLOSED_REPORTING_EXPORT_OMISSION",
+  "projection_fidelity": "NOT_VALIDATED",
+  "real_grid_pf_runs": 0,
+  "revision3_draft_rebound": true,
+  "revision3_sha256": "8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4",
+  "schema": "revision-3-post-merge-rebind-review/v1",
+  "source_drift_rejection": {
+    "pf_calls": 0,
+    "status": "PASS"
+  },
+  "status": "READY_FOR_INDEPENDENT_REVIEW",
+  "strict_fresh_process_replay": "PASS_IN_FOCUSED_SUITE",
+  "tamper_rejection": "PASS_IN_FOCUSED_SUITE",
+  "target_branch": "codex/psdcalc-phase1-base",
+  "test_binding": {
+    "focused_merge_commit": {
+      "duration_seconds": 106.96,
+      "failed": 0,
+      "passed": 140,
+      "warnings": 4352
+    },
+    "full_suite_pr_head": {
+      "commit": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
+      "failed": 0,
+      "passed": 687,
+      "rerun_at_merge_commit": false,
+      "reused_by_tree_equality": true,
+      "skipped": 0,
+      "tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
+      "warnings": 20674
+    },
+    "status": "PASS",
+    "test_file_sha256": {
+      "packages/psdcalc-reduction/tests/test_adaptive_numeric_observations.py": "704bc612de1f8be8b1e3ef6daaad23683437d4284366a55b721305195ada836d",
+      "packages/psdcalc-reduction/tests/test_adaptive_persistence_stage5.py": "9ff78e23e6d3c0f84efecacfbbc9ac73dec3bf785d68eb0dcf9b08c9f8dd5656",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_builder.py": "07d41ef6dae26292eb4a6b04de2cf6612221796a249d1d0e2fe331079efc9a19",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_contracts.py": "9f384005d793497c12f4e5cae7c90a544919f0f23bed0a2fd5904f56c8e22bad",
+      "packages/psdcalc-reduction/tests/test_comprehensive_report_export.py": "ecb13819aa0da582dbcbb7309c4eeae1c9907a86c8068d23fcba5248d503e3bb",
+      "packages/psdcalc-reduction/tests/test_pf_metrics.py": "e70253f5236abf97b1294fc4bb4013e8943322e46d3730a76a9cf936e28dbfae",
+      "packages/psdcalc-reduction/tests/test_retained_fidelity_attempt_driver.py": "17cd5d628a52a6bf8f134b94cbd2039cfc5800b1958f0c38652db4e1beba6cf8",
+      "packages/psdcalc-reduction/tests/test_retained_network_fidelity.py": "5c2d4126685ddb32e0d6df00903f014ca5acaba994e71e55c58eb7ddd27b1bf0",
+      "packages/psdcalc-reduction/tests/test_retained_pf_driver_evidence.py": "ebbc0684d48b841ff0e2613f57ac3b0211619e03f7f9f0854a21c840060eefaa"
+    }
+  },
+  "previous_revision3_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930",
+  "final_git_diff_check": {
+    "command": "git diff --check 79016cfc82e7b05ffbe978187e435c2132789645 HEAD",
+    "exit_code": 0,
+    "checked_base": "79016cfc82e7b05ffbe978187e435c2132789645",
+    "checked_head": "300fd68f7306c13d8fb66b14dce55f697cef6e3d",
+    "scope": "Tracked Base-to-current-PR-016-HEAD diff whitespace/error check only.",
+    "boundary": "Not a full-suite rerun, independent freeze approval, or real-grid acceptance."
+  }
+}

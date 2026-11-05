@@ -1,0 +1,380 @@
+{
+  "attempt_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1_ATTEMPT_004",
+  "authorized_policies": [
+    "BACKBONE_500",
+    "BACKBONE_220",
+    "BACKBONE_100"
+  ],
+  "candidate_contract": {
+    "ac_readiness_required": "AC_MODEL_READY",
+    "candidate_count_frozen_from_history": false,
+    "candidate_provenance_schema": "retained-fidelity-candidate-provenance/v1",
+    "identity_binding": [
+      "experiment_id",
+      "attempt_id",
+      "frozen_source_model_digest",
+      "frozen_source_file_sha256",
+      "source_sidecar_digest",
+      "source_ledger_digest",
+      "policy_id",
+      "resolved_policy_fingerprint",
+      "semantic_config_digest",
+      "effective_protection_digest",
+      "planner",
+      "seed",
+      "candidate_model_digest",
+      "mapping_digest",
+      "partition_plan_sha256",
+      "structural_gate_sha256",
+      "ac_readiness_sha256"
+    ],
+    "pipeline": "MultiVoltageQuotientPipeline",
+    "reuse_historical_candidate": false,
+    "reuse_previous_policy_candidate": false,
+    "source_per_policy": "SAME_IMMUTABLE_FROZEN_S1_SIDECAR_LEDGER",
+    "source_pf_reuse_within_attempt_only": true,
+    "structural_gate_required": "MULTI_VOLTAGE_QUOTIENT_STRUCTURALLY_VALID",
+    "target_pf_reuse": false
+  },
+  "claim_boundary": {
+    "adaptive_controller_executed": false,
+    "beijing_pf_executed": false,
+    "physical_equivalence": "NOT_CLAIMED",
+    "projection_fidelity": "NOT_VALIDATED",
+    "stage2d_executed": false
+  },
+  "config_template_sha256": "fcb170c35015f7dfd1ae85b76f711f13ba78e00e2091dd79fb84b5d27153d7a9",
+  "driver_files_sha256": {
+    "retained_fidelity_attempt_cli.py": "80c251dacfed2519933c00e189561209034e808a3b76be15367cb856ac27355a",
+    "retained_fidelity_driver.py": "36832348f084341ce6381b81510a2a85ac434c83feaa19828f85aaa9060b1edb",
+    "retained_fidelity_outputs.py": "e0078c72ec06e5e11ab9612fbf101a618c330ac323030811dddccc58aa5af6e4"
+  },
+  "driver_fix_commit": "e1f075d9923b6ed530603eb2676eb73d1c35131a",
+  "driver_fix_tree": "eb9cb40f8d79bc95daccca1f4a893bcda869b6ef",
+  "execution": {
+    "adaptive_controller_executed": false,
+    "attempt_summary_schema": "retained-fidelity-attempt-summary/v1",
+    "beijing_pf_executed": false,
+    "candidate_materialization_executed": false,
+    "candidate_pf_nonconvergence": "RECORD_NONCONVERGENCE_WITHOUT_FIDELITY_ADMISSION",
+    "create_private_output_root_on_execution_only": true,
+    "failure_behavior": "STOP_FIRST_FAILED_POLICY_AND_MARK_REMAINING_NOT_RUN",
+    "failure_schema": "retained-fidelity-attempt-stop/v1",
+    "private_output_namespace": "NEW_PRIVATE_ATTEMPT_004_ROOT_ONLY",
+    "source_pf_nonconvergence": "STOP_BEFORE_TARGET_PF",
+    "stage2d_executed": false,
+    "stop_on": [
+      "source/parser digest drift",
+      "protection or policy mismatch",
+      "unsupported component",
+      "structural Gate failure",
+      "AC readiness failure",
+      "evidence integrity failure",
+      "candidate provenance mismatch",
+      "source PF nonconvergence",
+      "durable evidence replay mismatch",
+      "comprehensive report export or schema failure",
+      "numeric observation or timing integrity failure",
+      "cross-policy comparison replay mismatch"
+    ]
+  },
+  "experiment_id": "BEIJING_RETAINED_NETWORK_FIDELITY_V1",
+  "freeze_revision": 2,
+  "freeze_revision_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-2.json",
+  "freeze_revision_sha256": "25394674ba28e7de013bd3cc57da080155443109b77ec7f9eba7c8d57a8d2b04",
+  "frozen_implementation_commit": "e1f075d9923b6ed530603eb2676eb73d1c35131a",
+  "frozen_implementation_tree": "eb9cb40f8d79bc95daccca1f4a893bcda869b6ef",
+  "historical_attempts": {
+    "ATTEMPT_001": "FAILED_EVIDENCE_SERIALIZATION",
+    "ATTEMPT_002": "FAILED_PREFLIGHT_CONTRACT_CONFLICT",
+    "ATTEMPT_003": "STOPPED_BEFORE_REAL_CASE_EXECUTION"
+  },
+  "implementation_change_boundary": {
+    "adaptive_selection_changed": false,
+    "fidelity_metric_or_threshold_changed": false,
+    "integration_commit": "e1f075d9923b6ed530603eb2676eb73d1c35131a",
+    "integration_tree": "eb9cb40f8d79bc95daccca1f4a893bcda869b6ef",
+    "model_or_mapping_semantics_changed": false,
+    "pf_executor_parameters_changed": false,
+    "report_export_commit": "c9021d1fbbd5926e78c7ef3810e52f01d1279a8d",
+    "report_export_tree": "a20ba19833e74d5b054da3d977943f8ec6d61fc7"
+  },
+  "original_freeze": {
+    "algorithm_scope_changed": false,
+    "commit": "741a6e9f7411176b321e6becd51749bcbc6ffa16",
+    "path": "docs/validation/beijing-retained-fidelity-v1-freeze.json",
+    "scenario_order": [
+      "BACKBONE_500",
+      "BACKBONE_220",
+      "BACKBONE_100"
+    ],
+    "sha256": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476",
+    "source_changed": false,
+    "thresholds_changed": false
+  },
+  "original_freeze_sha256": "b1a3bc72150063b7560d3bb2616e546c5f8020aa5db529645891a1931f5d9476",
+  "parser": {
+    "manifest_count": 22,
+    "manifest_sha256": "609458cff5e87e710261ba5dbad9ba82872e0dfe9b832de4d20a13a2f950a596",
+    "per_file_verification": "VERIFY_ALL_22_FILES_FROM_ORIGINAL_FREEZE",
+    "repository_commit": "0ad2dd941ab6941afe0e4eda51f2c607278fb38a",
+    "repository_tree": "60675f1e2b6902b5899c6826043a762e5085e2c6"
+  },
+  "pf_and_fidelity": {
+    "hard_thresholds_unchanged": true,
+    "metric_policy_digest": "745cdb4b5cdb6d8547e1ac9139be988b6cd393b9e1f7838bfb245aa32f6db5ad",
+    "operating_point_digest": "334a7275a2e837722016db2b732d23e2c30ce392e3b1f592ade5d5f995706c1e",
+    "pf_executor": {
+      "distribute_slack": false,
+      "extra_pf_calls_for_diagnostics": 0,
+      "max_iterations": "PYPSA_1.2.4_PUBLIC_DEFAULT",
+      "name": "PypsaAcPowerFlowExecutor",
+      "public_api": "pypsa.Network.pf",
+      "slack_weights": "SOURCE_P_SET_DEFAULT",
+      "solver": "pypsa.newton_raphson",
+      "tolerance": 1e-08,
+      "use_seed": false
+    },
+    "pf_executor_contract_digest": "221369358669457b9ebe013fb6443fdff008585b93d718f302ad814df3e29ac6",
+    "physical_equivalence_claim": false,
+    "retained_metrics": "DIAGNOSTIC_ONLY",
+    "threshold_artifact_sha256": "4688f0f021f5aaabbfcb75bd1dcd8a1228753669dd415761d2d1b5471dac3f24",
+    "threshold_set_id": "PR022_AC_PF_FIDELITY_V1",
+    "threshold_version": 1
+  },
+  "policies": [
+    {
+      "candidate_state": "NOT_BUILT",
+      "effective_protection_digest": "90fa5fcaa497ae096f9d8aa13d1ecf5142bcf1a4b6ad5c0877f5e57ed579c1d3",
+      "pf_state": "NOT_RUN",
+      "planner_request": {
+        "aggregate_one_ports": [
+          "Load"
+        ],
+        "algorithm": "pypsa_modularity",
+        "connectivity_policy": "reject",
+        "parallel_corridors_policy": "preserve_protected_members",
+        "per_layer_override": {},
+        "seed": 17,
+        "target_total_clusters": 1392,
+        "topology_mode": "keep_transformer_interface"
+      },
+      "policy_id": "BACKBONE_500",
+      "requested_cutoff_kv": 500.0,
+      "resolved_compressible_layers_kv": [
+        0.32,
+        0.6,
+        0.69,
+        0.8,
+        1.0,
+        1.14,
+        10.5,
+        13.8,
+        15.8,
+        16.0,
+        18.0,
+        20.0,
+        27.5,
+        37.0,
+        66.0,
+        115.0,
+        230.0
+      ],
+      "resolved_policy_fingerprint": "9bc79f4ffc72574e402701b965009b4b53ef2868f3ffcfe3d48dce0d457ee11a",
+      "resolved_retained_layers_kv": [
+        525.0
+      ],
+      "semantic_config_digest": "37e33807332de8db1c7091bad2dbc07a12be0011a219a765004d97c7d9bf9f22"
+    },
+    {
+      "candidate_state": "NOT_BUILT",
+      "effective_protection_digest": "7baecd611eb313e90255c8bbcda68ff90ee3d294ac07a6449a5b760e0749bb77",
+      "pf_state": "NOT_RUN",
+      "planner_request": {
+        "aggregate_one_ports": [
+          "Load"
+        ],
+        "algorithm": "pypsa_modularity",
+        "connectivity_policy": "reject",
+        "parallel_corridors_policy": "preserve_protected_members",
+        "per_layer_override": {},
+        "seed": 17,
+        "target_total_clusters": 1392,
+        "topology_mode": "keep_transformer_interface"
+      },
+      "policy_id": "BACKBONE_220",
+      "requested_cutoff_kv": 220.0,
+      "resolved_compressible_layers_kv": [
+        0.32,
+        0.6,
+        0.69,
+        0.8,
+        1.0,
+        1.14,
+        10.5,
+        13.8,
+        15.8,
+        16.0,
+        18.0,
+        20.0,
+        27.5,
+        37.0,
+        66.0,
+        115.0
+      ],
+      "resolved_policy_fingerprint": "d1e41e3787653b83050758f352f86d6847514b207818ad84a393c3886127840d",
+      "resolved_retained_layers_kv": [
+        230.0,
+        525.0
+      ],
+      "semantic_config_digest": "5c224eeb145b3b78cae1a7ab6b8fc9a4658ba16002bd56773cbf4b4552901a4e"
+    },
+    {
+      "candidate_state": "NOT_BUILT",
+      "effective_protection_digest": "c40fd93c94c8f6e059df74cdab9f9f71de709041c8cd33c78d24a2bc967aa119",
+      "pf_state": "NOT_RUN",
+      "planner_request": {
+        "aggregate_one_ports": [
+          "Load"
+        ],
+        "algorithm": "pypsa_modularity",
+        "connectivity_policy": "reject",
+        "parallel_corridors_policy": "preserve_protected_members",
+        "per_layer_override": {},
+        "seed": 17,
+        "target_total_clusters": 1392,
+        "topology_mode": "keep_transformer_interface"
+      },
+      "policy_id": "BACKBONE_100",
+      "requested_cutoff_kv": 100.0,
+      "resolved_compressible_layers_kv": [
+        0.32,
+        0.6,
+        0.69,
+        0.8,
+        1.0,
+        1.14,
+        10.5,
+        13.8,
+        15.8,
+        16.0,
+        18.0,
+        20.0,
+        27.5,
+        37.0,
+        66.0
+      ],
+      "resolved_policy_fingerprint": "620dc3dba2b46e65ea7dd6cccb5b64d9b70897c9f284fa2527977829e77ea0fd",
+      "resolved_retained_layers_kv": [
+        115.0,
+        230.0,
+        525.0
+      ],
+      "semantic_config_digest": "f4711573087fce3688f0e22addf38f63ceb687a9f709633b4a23bc9556454990"
+    }
+  ],
+  "privacy": {
+    "device_identity_committed": false,
+    "historical_evidence_overwritten": false,
+    "pf_array_committed": false,
+    "private_path_committed": false,
+    "raw_dat_committed": false
+  },
+  "report_and_replay": {
+    "adaptive_action_journal_fabricated": false,
+    "comprehensive_report_schema": "psdcalc-comprehensive-reduction-report/v1",
+    "comprehensive_report_schema_sha256": "51cec9d24cbff443718e7ae543529668b6c015ffd9df1d142117bd2ca1dcfa82",
+    "cross_policy_artifacts": [
+      "cross_policy/comprehensive.json",
+      "cross_policy/comprehensive.md",
+      "cross_policy/comprehensive-metrics.csv",
+      "cross_policy/comprehensive-voltage-layers.csv",
+      "cross_policy/comprehensive-retained-fidelity.csv",
+      "cross_policy/comprehensive-policy-comparison.csv",
+      "cross_policy/manifest.json"
+    ],
+    "cross_policy_schema": "retained-fidelity-cross-policy/v1",
+    "fail_on_identity_or_digest_mismatch": true,
+    "fresh_process_required": true,
+    "numeric_observation_schema": "adaptive-numeric-observations/v1",
+    "per_policy_evidence": [
+      "resolved_config.yaml",
+      "input/source_ledger_binding",
+      "input/plan.json",
+      "levels/L2.nc",
+      "input/target_ids.json",
+      "maps",
+      "validation/multi_voltage_structural.json",
+      "validation/ac_model_readiness.json",
+      "validation/candidate_provenance.json",
+      "pf/source.json",
+      "pf/candidate.json",
+      "pf/binding.json",
+      "metrics/retained_fidelity.json",
+      "metrics/fidelity.json when both PF results converge",
+      "metrics/numeric_observations.json",
+      "metrics/stage_timings.json",
+      "metrics/comprehensive.json",
+      "metrics/comprehensive.md",
+      "metrics/comprehensive-metrics.csv",
+      "metrics/comprehensive-voltage-layers.csv",
+      "metrics/comprehensive-retained-fidelity.csv",
+      "metrics/comprehensive-policy-comparison.csv",
+      "run_manifest.json"
+    ],
+    "replay_runs_pf": false,
+    "replay_tolerance": {
+      "absolute": 1e-12,
+      "relative": 1e-10
+    },
+    "retained_metric_contract_id": "retained-network-metrics/v1",
+    "retained_metric_contract_sha256": "e8ed3e40e9cde4f8c4b9ebef6712cc846379f386d9b7e10d1f1134cf811c200b",
+    "stage_timing_schema": "retained-fidelity-stage-timings/v1",
+    "timing_excluded_from_semantic_identity": true,
+    "timing_values_excluded_from_semantic_equality": true
+  },
+  "runtime_environment": {
+    "dependency_manifest_sha256": "c6501a0d9f7725541f82e3e555283b916ae91e0c5ab954c3c5f5b96666201a1a",
+    "locked_versions": {
+      "highspy": "1.15.1",
+      "networkx": "3.6.1",
+      "numpy": "2.4.6",
+      "pandas": "3.1.0",
+      "polars": "2.1.0",
+      "pydantic": "2.14.1",
+      "scipy": "1.17.1"
+    },
+    "package_version": "0.8.0",
+    "pypsa": "1.2.4",
+    "python": "3.11.15",
+    "source_import_root": "CURRENT_CHECKOUT_SRC",
+    "uv_lock_sha256": "779d901329988f1f76e549a146a3c00a65c570b0cc0335b80ee281b717b55712"
+  },
+  "schema": "retained-fidelity-execution-lease/v1",
+  "source_inputs": {
+    "dat_sha256": "09b565efc1d4550f3cf281b0723f93fc28be947a8da2c01c1b3208f7e72eb11e",
+    "ref_sha256": "16af4d50f2fb57fa61185837e5c11140b2d0768f7ef7fcef6b5af3c897b549b6",
+    "source_device_schedule_digest": "f01eaab395ab2e692d86ec290bf6159df3fb4e7ca1311b52487849f4308754ca",
+    "source_ledger_digest": "5293db89fee4cc9e773880afe8b5a17d00b75b78aa8cb5f15697d92170976bd7",
+    "source_model_digest": "6339c7e08e09381a21fe39268362f718b9912aa2322456d033eaa5b912868150",
+    "source_s1_sha256": "8af9d7a971a78fd69867d4474d8ebff454b4c6999c53505138cf4b350103df21",
+    "source_sidecar_digest": "7fc151484448d06fe430b43a8618503a0caed123b2c9530d8b9de19afb3c6165",
+    "source_sidecar_file_sha256": "71dd5d1393d75445831a6bbdfb221eca556d9486915816082511db46b7cc6ddf",
+    "source_topology_digest": "706719ce503a4e5744b571ece1ff72776e778578c7fdf6e665a8315ed04b8b67"
+  },
+  "source_s1_sha256": "8af9d7a971a78fd69867d4474d8ebff454b4c6999c53505138cf4b350103df21",
+  "source_sidecar_file_sha256": "71dd5d1393d75445831a6bbdfb221eca556d9486915816082511db46b7cc6ddf",
+  "status": "READY_NOT_EXECUTED",
+  "synthetic_full_e2e_preflight": {
+    "beijing_pf_executed": false,
+    "candidate_pf_calls": 3,
+    "fresh_process_replay": "PASS",
+    "path": "docs/validation/beijing-retained-network-fidelity-v1/report-repair-full-e2e-preflight.json",
+    "policy_count": 3,
+    "python311_full_tests": "693 passed / 0 failed",
+    "python313_focused_tests": "15 passed / 0 failed",
+    "sha256": "9889d6946219e67e4a3fd673391f05fbc993fcd4318b14204478f7099d73a8a3",
+    "source_pf_calls": 1,
+    "status": "PASS"
+  }
+}
