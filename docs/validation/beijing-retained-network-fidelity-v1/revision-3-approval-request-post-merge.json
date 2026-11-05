@@ -24,12 +24,13 @@
     "tamper_rejection": "PASS in focused suite"
   },
   "freeze_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-3-draft.json",
-  "freeze_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930",
+  "freeze_sha256": "8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4",
   "freeze_status": "DRAFT",
   "independent_approval": "PENDING",
   "lease_issued": false,
   "request_status": "READY_FOR_INDEPENDENT_REVIEW_NOT_SUBMITTED",
   "revision3": 3,
   "schema": "revision-3-independent-approval-request/v2",
-  "superseded_pre_merge_freeze_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee"
+  "superseded_pre_merge_freeze_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+  "previous_revision3_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930"
 }

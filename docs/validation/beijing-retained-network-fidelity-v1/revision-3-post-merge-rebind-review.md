@@ -23,7 +23,7 @@ The merge commit has exactly the expected two parents. Its tree equals PR #15's 
 
 ## Implementation and binding comparison
 
-The old Revision 3 draft remains preserved byte-for-byte as `freeze-revision-3-draft-pre-merge.json` with SHA-256 `8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee`. The revised draft SHA-256 is `0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930`. Revision 2 remains unchanged and is the parent freeze.
+The old Revision 3 draft remains preserved byte-for-byte as `freeze-revision-3-draft-pre-merge.json` with SHA-256 `8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee`. The revised draft SHA-256 is `8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4` (the immediately preceding evidence-only draft digest `0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930` is superseded). Revision 2 remains unchanged and is the parent freeze.
 
 The revised JSON binds SHA-256 values for all 21 PR #15 production/tooling files, all 9 changed test files, the dependency lock, and the threshold artifact. The `metrics.py` content hash is unchanged from the old draft. Commit identity changed from the old development commit to the merge commit; this is recorded as an identity rebind, not represented as a code-equivalence inference.
 
@@ -66,3 +66,8 @@ The proposed review branch is based on the PR #15 merge commit and contains only
 
 
 Draft PR title/body material is prepared in `revision-3-review-pr-description.md`. GitHub branch creation returned HTTP 403 (`Resource not accessible by integration`), so no remote branch or PR was created; no further write attempt was made.
+
+
+## Final diff-check evidence update
+
+`git diff --check 79016cfc82e7b05ffbe978187e435c2132789645 HEAD` passed with exit code 0, covering the tracked Base-to-PR-016-head diff. This records whitespace/error checking only; it does not assert a new full-suite run, independent approval, or real-grid acceptance. The earlier freeze digest is retained above for traceability.

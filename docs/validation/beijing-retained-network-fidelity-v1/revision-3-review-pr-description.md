@@ -12,7 +12,7 @@ Submit the unapproved Revision 3 experiment-freeze draft for independent review 
 - Merge tree: `541a3fd05914db30fe63482e81fe58273ed82ef9`
 - PR #15 final head: `b38ce7d89caebab1efc70cdd39a2302f5e70e42f`
 - Merge tree equals final PR head tree.
-- Revised Revision 3 freeze SHA-256: `0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930`
+- Revised Revision 3 freeze SHA-256: `8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4`
 - Prior unapproved draft SHA-256 is retained in the review package and was not overwritten.
 
 The PR should contain only the Revision 3 freeze, identity manifests, historical non-sensitive experiment/stop records, and independent review/lease-request documents. It must not contain any PR #15 production code, real-grid model, raw PF data, third-party wheel, credential, local path, or Stage2D changes.
@@ -22,6 +22,7 @@ The PR should contain only the Revision 3 freeze, identity manifests, historical
 - Full package suite: **687 passed / 0 failed / 0 skipped**, run on PR #15 head in the locked Python 3.11.15 environment. Because the merge tree is identical, this is applicable to the same source snapshot; it was not rerun under the merge commit SHA.
 - Focused post-merge suite: **140 passed / 0 failed**, run on the merge commit in Python 3.11.15 / PyPSA 1.2.4.
 - `uv lock --check --offline`: PASS.
+- Base-to-PR-016-head `git diff --check 79016cfc82e7b05ffbe978187e435c2132789645 HEAD`: PASS (exit code 0); whitespace/error check only, not a test rerun, freeze approval, or real-grid acceptance.
 - Strict fresh-process replay, digest validation, evidence tamper rejection, source-drift rejection before PF, StableId canonical-order tests, and HARD admission regression: PASS in the focused suite.
 - Beijing PF calls in this task: **0**.
 

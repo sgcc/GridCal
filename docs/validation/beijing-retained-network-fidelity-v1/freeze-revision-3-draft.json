@@ -1032,7 +1032,7 @@
       "source": "PR #15 final validation evidence",
       "warnings": 20674
     },
-    "git_diff_check": "PENDING_FINAL_VALIDATION",
+    "git_diff_check": "PASS",
     "hard_admission_unchanged": "PASS; frozen Revision 2/3 contracts match and focused regression passes",
     "real_grid_pf_runs": 0,
     "source_drift_rejection": {
@@ -1054,6 +1054,14 @@
         "warnings": 16703
       },
       "revision2_vs_revision3_common_suite": "NO_REGRESSION"
+    },
+    "git_diff_check_evidence": {
+      "command": "git diff --check 79016cfc82e7b05ffbe978187e435c2132789645 HEAD",
+      "exit_code": 0,
+      "checked_base": "79016cfc82e7b05ffbe978187e435c2132789645",
+      "checked_head": "300fd68f7306c13d8fb66b14dce55f697cef6e3d",
+      "scope": "Tracked Base-to-PR-016-head diff whitespace/error check only.",
+      "boundary": "Does not assert full-suite rerun, independent freeze approval, or real-grid acceptance."
     }
   },
   "timing_contract": {

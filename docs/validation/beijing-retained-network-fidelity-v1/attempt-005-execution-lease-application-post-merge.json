@@ -26,7 +26,7 @@
   },
   "freeze_revision": 3,
   "freeze_revision_path": "docs/validation/beijing-retained-network-fidelity-v1/freeze-revision-3-draft.json",
-  "freeze_revision_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930",
+  "freeze_revision_sha256": "8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4",
   "freeze_revision_status": "DRAFT_PENDING_INDEPENDENT_REVIEW",
   "implementation_commit": "79016cfc82e7b05ffbe978187e435c2132789645",
   "implementation_tree": "541a3fd05914db30fe63482e81fe58273ed82ef9",
@@ -43,5 +43,6 @@
   ],
   "schema": "beijing-retained-fidelity-attempt-lease-application/v1",
   "source_pr_head": "b38ce7d89caebab1efc70cdd39a2302f5e70e42f",
-  "superseded_pre_merge_freeze_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee"
+  "superseded_pre_merge_freeze_sha256": "8a10f480f72457ecf96708781ba114277a62801b540cc32284a3e95393ae24ee",
+  "previous_freeze_revision_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930"
 }

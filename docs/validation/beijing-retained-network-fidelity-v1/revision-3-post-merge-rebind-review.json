@@ -54,7 +54,7 @@
   "projection_fidelity": "NOT_VALIDATED",
   "real_grid_pf_runs": 0,
   "revision3_draft_rebound": true,
-  "revision3_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930",
+  "revision3_sha256": "8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4",
   "schema": "revision-3-post-merge-rebind-review/v1",
   "source_drift_rejection": {
     "pf_calls": 0,
@@ -93,5 +93,14 @@
       "packages/psdcalc-reduction/tests/test_retained_network_fidelity.py": "5c2d4126685ddb32e0d6df00903f014ca5acaba994e71e55c58eb7ddd27b1bf0",
       "packages/psdcalc-reduction/tests/test_retained_pf_driver_evidence.py": "ebbc0684d48b841ff0e2613f57ac3b0211619e03f7f9f0854a21c840060eefaa"
     }
+  },
+  "previous_revision3_sha256": "0bf40ce99fd3d577583c1fd01f43abc098afa81cd2091992f46dc133af75e930",
+  "final_git_diff_check": {
+    "command": "git diff --check 79016cfc82e7b05ffbe978187e435c2132789645 HEAD",
+    "exit_code": 0,
+    "checked_base": "79016cfc82e7b05ffbe978187e435c2132789645",
+    "checked_head": "300fd68f7306c13d8fb66b14dce55f697cef6e3d",
+    "scope": "Tracked Base-to-current-PR-016-HEAD diff whitespace/error check only.",
+    "boundary": "Not a full-suite rerun, independent freeze approval, or real-grid acceptance."
   }
 }

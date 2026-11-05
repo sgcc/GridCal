@@ -54,3 +54,9 @@ PR #15's Pylint workflow did not execute analysis: Python 3.8 setup failed on Ub
 - Independent freeze approval is **PENDING**.
 
 Companion files: `freeze-revision-3-draft.json`, `revision-3-approval-request-post-merge.json`, and `attempt-005-execution-lease-application-post-merge.json`. Historical evidence files were copied byte-for-byte; no raw grid model or private execution data is included.
+
+## Final diff-check evidence
+
+Freeze JSON SHA-256: `8beeea47347c8f8ef820a67d156c97ef808ba874ef5aca72054fe649f8f6ead4`.
+
+The PR #16 tracked diff was checked with `git diff --check 79016cfc82e7b05ffbe978187e435c2132789645 HEAD` (base `79016cfc82e7b05ffbe978187e435c2132789645`, head `300fd68f7306c13d8fb66b14dce55f697cef6e3d`); exit code **0**. This is whitespace/error validation only. It does not mean the full suite was rerun, the freeze was independently approved, or the real grid was accepted.
